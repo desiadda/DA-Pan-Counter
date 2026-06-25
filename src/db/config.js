@@ -17,7 +17,17 @@ const getSavedFirebaseConfig = () => {
   }
 };
 
-const config = getSavedFirebaseConfig();
+const HARDCODED_CONFIG = {
+  apiKey: "AIzaSyAtWjwBHJi6ptVJBZS6G33aDjqnf-IEUlw",
+  authDomain: "da-paan-pos.firebaseapp.com",
+  projectId: "da-paan-pos",
+  storageBucket: "da-paan-pos.firebasestorage.app",
+  messagingSenderId: "163766615829",
+  appId: "1:163766615829:web:f4af65ae95d04aff1cb31c",
+  measurementId: "G-1QX1R8V5LP"
+};
+
+const config = getSavedFirebaseConfig() || HARDCODED_CONFIG;
 
 if (config && config.apiKey && config.projectId) {
   try {
@@ -44,12 +54,5 @@ export const clearConfig = () => {
 };
 
 export const getConfig = () => {
-  return getSavedFirebaseConfig() || {
-    apiKey: "",
-    authDomain: "",
-    projectId: "",
-    storageBucket: "",
-    messagingSenderId: "",
-    appId: "",
-  };
+  return getSavedFirebaseConfig() || HARDCODED_CONFIG;
 };
