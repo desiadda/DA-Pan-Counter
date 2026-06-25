@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { dbService } from "../firebase";
-import { useConfirm } from "../context/ConfirmContext";
+import { useConfirmStore } from "../stores/confirmStore";
 import { logError } from "../db/errorLog";
 
 export default function ExpensesView() {
-  const confirm = useConfirm();
+  const confirm = useConfirmStore((s) => s.confirm);
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(false);
 

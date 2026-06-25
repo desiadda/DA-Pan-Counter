@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { dbService } from "../firebase";
-import { useConfirm } from "../context/ConfirmContext";
-import { useMobileCart } from "../context/MobileCartContext";
+import { useConfirmStore } from "../stores/confirmStore";
+import { useCartStore } from "../stores/cartStore";
 import { playSaleSound } from "../utils/sound";
 import ProductGrid from "./ProductGrid";
 import CartSidebar from "./CartSidebar";
@@ -15,8 +15,9 @@ import DashboardWidgets from "./DashboardWidgets";
 import ShortcutsModal from "./ShortcutsModal";
 
 export default function POSView({ user }) {
-  const confirm = useConfirm();
-  const { open: openMobileCart, close: closeMobileCart } = useMobileCart();
+  const confirm = useConfirmStore((s) => s.confirm);
+  const openMobileCart = useCartStore((s) => s.openMobileCart);
+  const closeMobileCart = useCartStore((s) => s.closeMobileCart);
   const [products, setProducts] = useState([]);
   const [cart, setCart] = useState([]);
   const [customers, setCustomers] = useState([]);

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { dbService } from "../firebase";
-import { useConfirm } from "../context/ConfirmContext";
+import { useConfirmStore } from "../stores/confirmStore";
 import { hashPin } from "../db/hash";
 import { SkeletonList, SkeletonTable } from "./Skeleton";
 import BillViewModal from "./BillViewModal";
@@ -9,7 +9,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, L
 import { logError } from "../db/errorLog";
 
 export default function ReportsView({ initialSubTab, onSubTabChange, user }) {
-  const confirm = useConfirm();
+  const confirm = useConfirmStore((s) => s.confirm);
   const [transactions, setTransactions] = useState([]);
   const [products, setProducts] = useState([]);
   const [customers, setCustomers] = useState([]);

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { dbService } from "../firebase";
 import { hashPin } from "../db/hash";
-import { useConfirm } from "../context/ConfirmContext";
+import { useConfirmStore } from "../stores/confirmStore";
 import { getErrors, getCategories, getUnreadCount, markAsRead, markAllAsRead, deleteError, clearErrors } from "../db/errorLog";
 import { logError } from "../db/errorLog";
 
@@ -19,7 +19,7 @@ const getStore = () => {
 };
 
 export default function AdminSettings({ onBack }) {
-  const confirm = useConfirm();
+  const confirm = useConfirmStore((s) => s.confirm);
 
   // Store
   const [store, setStore] = useState(getStore);

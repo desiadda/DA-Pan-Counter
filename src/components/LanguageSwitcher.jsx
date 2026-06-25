@@ -1,7 +1,9 @@
-import { useLanguage } from "../context/LanguageContext";
+import { useLangStore } from "../stores/langStore";
 
 export default function LanguageSwitcher() {
-  const { lang, setLang, availableLangs } = useLanguage();
+  const lang = useLangStore((s) => s.lang);
+  const setLang = useLangStore((s) => s.setLang);
+  const availableLangs = useLangStore((s) => s.availableLangs);
 
   return (
     <div style={styles.wrapper} className="lang-switcher">

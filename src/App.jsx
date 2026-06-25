@@ -1,9 +1,6 @@
 import { useState, useEffect, useRef, useCallback, lazy, Suspense } from "react";
-import { AuthProvider, useAuth } from "./context/AuthContext";
-import { ConfirmProvider } from "./context/ConfirmContext";
-import { SessionProvider } from "./context/SessionContext";
-import { LanguageProvider } from "./context/LanguageContext";
-import { MobileCartProvider, useMobileCart } from "./context/MobileCartContext";
+import { useAuthStore } from "./stores/authStore";
+import { useCartStore } from "./stores/cartStore";
 import ErrorBoundary from "./components/ErrorBoundary";
 import AuthView from "./components/AuthView";
 import AdminHub from "./components/AdminHub";
@@ -48,7 +45,10 @@ const navItems = [
 ];
 
 function AppContent() {
-  const { user, setUser, logout, isOnline } = useAuth();
+  const user = useAuthStore((s) => s.user);
+  const setUser = useAuthStore((s) => s.setUser);
+  const logout = useAuthStore((s) => s.logout);
+  const isOnline = useAuthStore((s) => s.isOnline);
   const getTabFromHash = () => {
     const hash = window.location.hash.replace("#", "").split("/")[0];
     const normalized = hash === "khata" ? "credit" : hash;
@@ -127,7 +127,11 @@ function AppContent() {
     window.location.hash = activeTabRef.current + (path ? "/" + path : "");
   }, []);
 
-  const { props: mobileCartProps, open: openMobileCart, close: closeMobileCart, handleCheckout } = useMobileCart();
+  const mobileCartOpen = useCartStore((s) => s.mobileCartOpen);
+  const mobileCartProps = useCartStore((s) => s.mobileCartProps);
+  const openMobileCart = useCartStore((s) => s.openMobileCart);
+  const closeMobileCart = useCartStore((s) => s.closeMobileCart);
+  const handleCheckout = useCartStore((s) => s.handleCheckout);
 
   const renderMainContent = useCallback(() => {
     switch (activeTab) {
@@ -234,19 +238,9 @@ function AppContent() {
 
 export default function App() {
   return (
-    <LanguageProvider>
-      <ConfirmProvider>
-        <AuthProvider>
-          <ErrorBoundary>
-            <SessionProvider>
-              <MobileCartProvider>
-                <AppContent />
-              </MobileCartProvider>
-            </SessionProvider>
-          </ErrorBoundary>
-        </AuthProvider>
-      </ConfirmProvider>
-    </LanguageProvider>
+    <ErrorBoundary>
+      <AppContent />
+    </ErrorBoundary>
   );
 }
 

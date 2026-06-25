@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { dbService } from "../firebase";
-import { useConfirm } from "../context/ConfirmContext";
+import { useConfirmStore } from "../stores/confirmStore";
 import { SkeletonTable } from "./Skeleton";
 import { logError } from "../db/errorLog";
 import PriceHistoryModal from "./PriceHistoryModal";
@@ -9,7 +9,7 @@ import BulkPriceUpdate from "./BulkPriceUpdate";
 import SupplierDirectory from "./SupplierDirectory";
 
 export default function InventoryView() {
-  const confirm = useConfirm();
+  const confirm = useConfirmStore((s) => s.confirm);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   
