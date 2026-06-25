@@ -1,4 +1,4 @@
-import { collection, doc, getDocs, addDoc, deleteDoc, query, orderBy } from "firebase/firestore";
+import { addDoc, deleteDoc } from "firebase/firestore";
 import { db, isFirebaseEnabled } from "./config";
 import { logError } from "./errorLog";
 import { addToSyncQueue } from "./sync";
@@ -27,18 +27,6 @@ function deleteExpenseFromFirebase(id) {
 
 export const getExpenses = async () => {
   try {
-    if (isFirebaseEnabled) {
-      try {
-        const q = query(collection(db, "expenses"), orderBy("date", "desc"));
-        const snapshot = await getDocs(q);
-        const list = [];
-        snapshot.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
-        return list;
-      } catch (err) {
-        logError("EXPENSE", err.message, err.stack);
-        return getLocalExpenses();
-      }
-    }
     return getLocalExpenses();
   } catch (err) {
     logError("EXPENSE", err.message, err.stack);

@@ -1,4 +1,4 @@
-import { collection, doc, getDocs, setDoc, addDoc, deleteDoc, query } from "firebase/firestore";
+import { doc, setDoc, addDoc, deleteDoc } from "firebase/firestore";
 import { db, isFirebaseEnabled } from "./config";
 import { getLocalProducts, setLocalData } from "./storage";
 import { LS_KEYS } from "../constants";
@@ -36,26 +36,6 @@ export const getLowStockProducts = () => {
 
 export const getProducts = async () => {
   try {
-    if (isFirebaseEnabled) {
-      try {
-        const q = query(collection(db, "products"));
-        const snapshot = await getDocs(q);
-        const products = [];
-        snapshot.forEach(doc => products.push({ id: doc.id, ...doc.data() }));
-        if (products.length === 0) {
-          const defaults = getLocalProducts();
-          for (let p of defaults) {
-            const { id, ...data } = p;
-            await setDoc(doc(db, "products", id), data);
-            products.push(p);
-          }
-        }
-        return products;
-      } catch (err) {
-        logError("INVENTORY", err.message, err.stack);
-        return getLocalProducts();
-      }
-    }
     return getLocalProducts();
   } catch (err) {
     logError("INVENTORY", err.message, err.stack);

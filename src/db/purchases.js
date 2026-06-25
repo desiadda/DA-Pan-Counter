@@ -1,4 +1,4 @@
-import { collection, doc, getDocs, addDoc, setDoc, query, orderBy } from "firebase/firestore";
+import { doc, setDoc, addDoc } from "firebase/firestore";
 import { db, isFirebaseEnabled } from "./config";
 import { getLocalProducts, setLocalData } from "./storage";
 import { LS_KEYS } from "../constants";
@@ -17,18 +17,6 @@ function syncPurchaseToFirebase(order) {
 
 export const getPurchaseOrders = async () => {
   try {
-    if (isFirebaseEnabled) {
-      try {
-        const q = query(collection(db, "purchases"), orderBy("createdAt", "desc"));
-        const snapshot = await getDocs(q);
-        const list = [];
-        snapshot.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
-        return list;
-      } catch (err) {
-        logError("PURCHASE", err.message, err.stack);
-        return getLocalPurchases();
-      }
-    }
     return getLocalPurchases();
   } catch (err) {
     logError("PURCHASE", err.message, err.stack);

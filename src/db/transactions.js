@@ -1,4 +1,4 @@
-import { collection, doc, getDocs, addDoc, writeBatch, query, orderBy } from "firebase/firestore";
+import { collection, doc, writeBatch } from "firebase/firestore";
 import { db, isFirebaseEnabled } from "./config";
 import { getLocalProducts, getLocalTransactions, setLocalData, getLocalCustomers } from "./storage";
 import { LS_KEYS } from "../constants";
@@ -23,18 +23,6 @@ function syncTransaction(transaction) {
 
 export const getTransactions = async () => {
   try {
-    if (isFirebaseEnabled) {
-      try {
-        const q = query(collection(db, "transactions"), orderBy("timestamp", "desc"));
-        const snapshot = await getDocs(q);
-        const list = [];
-        snapshot.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
-        return list;
-      } catch (err) {
-        logError("TRANSACTION", err.message, err.stack);
-        return getLocalTransactions();
-      }
-    }
     return getLocalTransactions();
   } catch (err) {
     logError("TRANSACTION", err.message, err.stack);

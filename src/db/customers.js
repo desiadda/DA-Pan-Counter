@@ -1,4 +1,4 @@
-import { collection, doc, getDocs, setDoc, updateDoc, query } from "firebase/firestore";
+import { doc, setDoc, updateDoc } from "firebase/firestore";
 import { db, isFirebaseEnabled } from "./config";
 import { getLocalCustomers, setLocalData } from "./storage";
 import { LS_KEYS } from "../constants";
@@ -17,18 +17,6 @@ function syncUdhaarToFirebase(customerId, balance, ledger) {
 
 export const getCustomers = async () => {
   try {
-    if (isFirebaseEnabled) {
-      try {
-        const q = query(collection(db, "customers"));
-        const snapshot = await getDocs(q);
-        const list = [];
-        snapshot.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
-        return list;
-      } catch (err) {
-        logError("TRANSACTION", err.message, err.stack);
-        return getLocalCustomers();
-      }
-    }
     return getLocalCustomers();
   } catch (err) {
     logError("TRANSACTION", err.message, err.stack);
