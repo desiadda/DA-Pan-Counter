@@ -68,10 +68,8 @@ export default function BillViewModal({ tx, onClose }) {
           <div class="info"><span class="info-label">Cashier</span><span class="info-value">${tx.cashierName || tx.cashierEmail || "—"}</span></div>
           <div class="info"><span class="info-label">Payment</span><span class="info-value">${tx.paymentMode}</span></div>
           <hr>
-          <table>
-            <thead><tr><th>Item</th><th style="text-align:center">Qty</th><th style="text-align:right">Price</th><th style="text-align:right">Total</th></tr></thead>
-            <tbody>${itemRows}</tbody>
-          </table>
+          <table><thead><tr><th>Item</th><th style="text-align:center">Qty</th><th style="text-align:right">Price</th><th style="text-align:right">Total</th></tr></thead>
+          <tbody>${itemRows}</tbody></table>
           <hr>
           <div class="total-row"><span>Subtotal</span><span>฿${(tx.subtotal || 0).toFixed(2)}</span></div>
           ${tx.discountAmount > 0 ? `<div class="total-row" style="color:#dc2626"><span>Discount${tx.discountType === "percent" ? ` (${tx.discountValue}%)` : ""}</span><span>-฿${(tx.discountAmount || 0).toFixed(2)}</span></div>` : ""}
@@ -100,149 +98,87 @@ export default function BillViewModal({ tx, onClose }) {
   return (
     <ModalPortal>
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()} style={styles.wrapper}>
-        <div style={styles.receipt}>
-          {/* Header */}
-          <div style={styles.header}>
+      <div className="modal-content bill-wrapper" onClick={e => e.stopPropagation()}>
+        <div className="bill-receipt">
+          <div className="bill-header">
             {store.logo && <img src={store.logo} alt="Store Logo" style={{height: "56px", marginBottom: "4px", objectFit: "contain"}} />}
-            <div style={styles.storeName}>{store.name || "Paan Counter"}</div>
-            {store.address && <div style={styles.storeDetail}>{store.address}</div>}
-            {store.phone && <div style={styles.storeDetail}>Tel: {store.phone}</div>}
-            {store.taxId && <div style={styles.storeDetail}>Tax ID: {store.taxId}</div>}
-            <div style={styles.receiptTitle}>SALES RECEIPT</div>
+            <div className="bill-store-name">{store.name || "Paan Counter"}</div>
+            {store.address && <div className="bill-store-detail">{store.address}</div>}
+            {store.phone && <div className="bill-store-detail">Tel: {store.phone}</div>}
+            {store.taxId && <div className="bill-store-detail">Tax ID: {store.taxId}</div>}
+            <div className="bill-title">SALES RECEIPT</div>
           </div>
 
-          <div style={styles.divider} />
+          <div className="bill-divider" />
 
-          {/* Bill Info */}
-          <div style={styles.infoGrid}>
-            <div style={styles.infoRow}><span style={styles.infoLabel}>Bill ID</span><span style={styles.infoValue}>#{tx.id?.replace("tx_", "").slice(-8)}</span></div>
-            <div style={styles.infoRow}><span style={styles.infoLabel}>Date</span><span style={styles.infoValue}>{formatDate(tx.timestamp)}</span></div>
-            <div style={styles.infoRow}><span style={styles.infoLabel}>Cashier</span><span style={styles.infoValue}>{tx.cashierName || tx.cashierEmail || "—"}</span></div>
-            <div style={styles.infoRow}><span style={styles.infoLabel}>Payment</span><span style={{...styles.infoValue, ...styles.paymentBadge(tx.paymentMode)}}>{tx.paymentMode}</span></div>
+          <div className="bill-info-grid">
+            <div className="info-row info-row-sm"><span className="info-label">Bill ID</span><span className="info-value">#{tx.id?.replace("tx_", "").slice(-8)}</span></div>
+            <div className="info-row info-row-sm"><span className="info-label">Date</span><span className="info-value">{formatDate(tx.timestamp)}</span></div>
+            <div className="info-row info-row-sm"><span className="info-label">Cashier</span><span className="info-value">{tx.cashierName || tx.cashierEmail || "—"}</span></div>
+            <div className="info-row info-row-sm"><span className="info-label">Payment</span><span className={`info-value`} style={{ color: tx.paymentMode === "Cash" ? "var(--primary)" : tx.paymentMode === "Udhaar" ? "var(--error)" : tx.paymentMode === "Bank Transfer" ? "#2563eb" : "var(--secondary)" }}>{tx.paymentMode}</span></div>
           </div>
 
-          <div style={styles.divider} />
+          <div className="bill-divider" />
 
-          {/* Items */}
-          <div style={styles.itemsHeader}>
-            <span style={styles.colItem}>Item</span>
-            <span style={styles.colQty}>Qty</span>
-            <span style={styles.colPrice}>Price</span>
-            <span style={styles.colTotal}>Total</span>
+          <div className="flex" style={{ fontSize: "0.65rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px", padding: "0.25rem 0" }}>
+            <span className="bill-col-item">Item</span>
+            <span className="bill-col-qty">Qty</span>
+            <span className="bill-col-price">Price</span>
+            <span className="bill-col-total">Total</span>
           </div>
-          <div style={styles.dividerLight} />
+          <div className="bill-divider-light" />
           {tx.items?.map((item, i) => (
-            <div key={i} style={styles.itemRow}>
-              <span style={styles.colItem}>
-                <span style={styles.itemName}>{item.name}</span>
-                {item.isPack && <span style={styles.itemPack}>(Pack of {item.packSize || 20})</span>}
+            <div key={i} className="bill-item-row">
+              <span className="bill-col-item">
+                <span className="bill-item-name">{item.name}</span>
+                {item.isPack && <span className="bill-item-pack">(Pack of {item.packSize || 20})</span>}
               </span>
-              <span style={styles.colQty}>×{item.quantity}</span>
-              <span style={styles.colPrice}>฿{(item.isPack ? item.sellingPricePack || item.sellingPrice : item.sellingPrice).toFixed(2)}</span>
-              <span style={styles.colTotal}>฿{((item.isPack ? item.sellingPricePack || item.sellingPrice : item.sellingPrice) * item.quantity).toFixed(2)}</span>
+              <span className="bill-col-qty">×{item.quantity}</span>
+              <span className="bill-col-price">฿{(item.isPack ? item.sellingPricePack || item.sellingPrice : item.sellingPrice).toFixed(2)}</span>
+              <span className="bill-col-total">฿{((item.isPack ? item.sellingPricePack || item.sellingPrice : item.sellingPrice) * item.quantity).toFixed(2)}</span>
             </div>
           ))}
 
-          <div style={styles.divider} />
+          <div className="bill-divider" />
 
-          {/* Totals */}
-          <div style={styles.totalSection}>
-            <div style={styles.totalRow}><span>Subtotal</span><span>฿{(tx.subtotal || 0).toFixed(2)}</span></div>
+          <div className="bill-total-section">
+            <div className="total-row total-row-sm"><span>Subtotal</span><span>฿{(tx.subtotal || 0).toFixed(2)}</span></div>
             {tx.discountAmount > 0 && (
-              <div style={{...styles.totalRow, color: "#dc2626"}}>
+              <div className="total-row total-row-sm" style={{ color: "var(--error)" }}>
                 <span>Discount {tx.discountType === "percent" ? `(${tx.discountValue}%)` : ""}</span>
                 <span>-฿{(tx.discountAmount || 0).toFixed(2)}</span>
               </div>
             )}
-            {tx.discountReason && <div style={styles.discountReason}>Reason: {tx.discountReason}</div>}
-            {tx.taxEnabled && <div style={styles.totalRow}><span>VAT {tx.taxRate}%</span><span>฿{(tx.taxAmount || 0).toFixed(2)}</span></div>}
-            <div style={styles.divider} />
-            <div style={styles.grandTotal}>
+            {tx.discountReason && <div className="bill-discount-reason">Reason: {tx.discountReason}</div>}
+            {tx.taxEnabled && <div className="total-row total-row-sm"><span>VAT {tx.taxRate}%</span><span>฿{(tx.taxAmount || 0).toFixed(2)}</span></div>}
+            <div className="bill-divider" />
+            <div className="bill-grand-total">
               <span>TOTAL</span>
               <span>฿{(tx.totalAmount || 0).toFixed(2)}</span>
             </div>
             {tx.paymentMode === "Cash" && (
               <>
-                <div style={styles.totalRow}><span>Cash Received</span><span>฿{(tx.receivedAmount || 0).toFixed(2)}</span></div>
-                <div style={styles.totalRow}><span>Change</span><span>฿{(tx.changeAmount || 0).toFixed(2)}</span></div>
+                <div className="total-row total-row-sm"><span>Cash Received</span><span>฿{(tx.receivedAmount || 0).toFixed(2)}</span></div>
+                <div className="total-row total-row-sm"><span>Change</span><span>฿{(tx.changeAmount || 0).toFixed(2)}</span></div>
               </>
             )}
-            {tx.customerId && tx.customerName && <div style={{...styles.totalRow, color: "#7c3aed"}}><span>Customer</span><span>{tx.customerName || tx.customerId}</span></div>}
+            {tx.customerId && tx.customerName && <div className="total-row total-row-sm" style={{ color: "#7c3aed" }}><span>Customer</span><span>{tx.customerName || tx.customerId}</span></div>}
           </div>
 
-          <div style={styles.divider} />
+          <div className="bill-divider" />
 
-          {/* Footer */}
-          <div style={styles.footer}>
-            <div style={styles.footerText}>Thank you for your purchase!</div>
-            <div style={styles.footerSub}>Visit again 😊</div>
+          <div className="bill-footer">
+            <div className="bill-footer-text">Thank you for your purchase!</div>
+            <div className="bill-footer-sub">Visit again 😊</div>
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: "0.5rem", marginTop: "1rem" }}>
-          <button onClick={onClose} className="btn btn-outline" style={{ flex: 1, padding: "0.75rem" }}>
-            Close
-          </button>
-          <button onClick={handlePrint} className="btn btn-primary" style={{ flex: 1, padding: "0.75rem" }}>
-            🖨️ Print / PDF
-          </button>
+        <div className="flex-btn-group" style={{ marginTop: "1rem" }}>
+          <button onClick={onClose} className="btn btn-outline">Close</button>
+          <button onClick={handlePrint} className="btn btn-primary">🖨️ Print / PDF</button>
         </div>
       </div>
     </div>
     </ModalPortal>
   );
 }
-
-const styles = {
-  wrapper: {
-    maxWidth: "400px",
-    width: "100%",
-    backgroundColor: "#ffffff",
-    borderRadius: "16px",
-    padding: "1.5rem",
-  },
-  receipt: {
-    backgroundColor: "#ffffff",
-    borderRadius: "12px",
-    border: "1px solid #e2e8f0",
-    padding: "1.25rem",
-  },
-  header: { textAlign: "center", marginBottom: "0.75rem" },
-  storeName: { fontSize: "1.25rem", fontWeight: 800, color: "#047857", letterSpacing: "-0.5px" },
-  storeDetail: { fontSize: "0.7rem", color: "#64748b", marginTop: "2px", lineHeight: "1.3" },
-  receiptTitle: { fontSize: "0.7rem", fontWeight: 700, color: "#64748b", letterSpacing: "2px", marginTop: "4px", textTransform: "uppercase" },
-  divider: { height: "1px", backgroundColor: "#e2e8f0", margin: "0.5rem 0" },
-  dividerLight: { height: "1px", backgroundColor: "#f1f5f9", margin: "0.25rem 0" },
-  infoGrid: { display: "flex", flexDirection: "column", gap: "0.3rem" },
-  infoRow: { display: "flex", justifyContent: "space-between", fontSize: "0.75rem" },
-  infoLabel: { color: "#94a3b8", fontWeight: 600 },
-  infoValue: { color: "#1e293b", fontWeight: 700 },
-  paymentBadge: (mode) => ({
-    color: mode === "Cash" ? "#047857" : mode === "Udhaar" ? "#dc2626" : mode === "Bank Transfer" ? "#2563eb" : "#d97706",
-  }),
-  itemsHeader: {
-    display: "flex", fontSize: "0.65rem", fontWeight: 700, color: "#64748b",
-    textTransform: "uppercase", letterSpacing: "0.5px", padding: "0.25rem 0",
-  },
-  colItem: { flex: 2, textAlign: "left" },
-  colQty: { width: "36px", textAlign: "center" },
-  colPrice: { width: "60px", textAlign: "right" },
-  colTotal: { width: "68px", textAlign: "right" },
-  itemRow: {
-    display: "flex", alignItems: "center", fontSize: "0.78rem",
-    padding: "0.35rem 0", borderBottom: "1px solid #f8fafc",
-  },
-  itemName: { fontWeight: 600, color: "#1e293b" },
-  itemPack: { display: "block", fontSize: "0.6rem", color: "#94a3b8", fontWeight: 500 },
-  totalSection: { display: "flex", flexDirection: "column", gap: "0.35rem" },
-  totalRow: { display: "flex", justifyContent: "space-between", fontSize: "0.8rem", fontWeight: 600, color: "#475569" },
-  discountReason: { fontSize: "0.65rem", color: "#92400e", fontStyle: "italic", textAlign: "right" },
-  grandTotal: {
-    display: "flex", justifyContent: "space-between",
-    fontSize: "1.1rem", fontWeight: 800, color: "#047857",
-  },
-  footer: { textAlign: "center", padding: "0.5rem 0 0" },
-  footerText: { fontSize: "0.8rem", fontWeight: 700, color: "#047857" },
-  footerSub: { fontSize: "0.7rem", color: "#94a3b8", marginTop: "2px" },
-};
