@@ -1,53 +1,30 @@
-import { createContext, useContext, useState, useCallback } from "react";
+import { createContext, useContext, useCallback } from "react";
+import { useConfirmStore } from "../stores/confirmStore";
 import ConfirmDialog from "../components/ConfirmDialog";
 
 const ConfirmContext = createContext(null);
 
 export function ConfirmProvider({ children }) {
-  const [state, setState] = useState({
-    open: false,
-    title: "",
-    message: "",
-    confirmLabel: "Confirm",
-    cancelLabel: "Cancel",
-    variant: "default",
-    resolve: null,
-  });
-
-  const confirm = useCallback((message, options = {}) => {
-    return new Promise((resolve) => {
-      setState({
-        open: true,
-        message,
-        title: options.title || "",
-        confirmLabel: options.confirmLabel || "Confirm",
-        cancelLabel: options.cancelLabel || "Cancel",
-        variant: options.variant || "default",
-        resolve,
-      });
-    });
-  }, []);
-
-  const handleConfirm = () => {
-    state.resolve(true);
-    setState((s) => ({ ...s, open: false, resolve: null }));
-  };
-
-  const handleCancel = () => {
-    state.resolve(false);
-    setState((s) => ({ ...s, open: false, resolve: null }));
-  };
+  const open = useConfirmStore((s) => s.open);
+  const title = useConfirmStore((s) => s.title);
+  const message = useConfirmStore((s) => s.message);
+  const confirmLabel = useConfirmStore((s) => s.confirmLabel);
+  const cancelLabel = useConfirmStore((s) => s.cancelLabel);
+  const variant = useConfirmStore((s) => s.variant);
+  const handleConfirm = useConfirmStore((s) => s.handleConfirm);
+  const handleCancel = useConfirmStore((s) => s.handleCancel);
+  const confirm = useConfirmStore((s) => s.confirm);
 
   return (
     <ConfirmContext.Provider value={confirm}>
       {children}
       <ConfirmDialog
-        open={state.open}
-        title={state.title}
-        message={state.message}
-        confirmLabel={state.confirmLabel}
-        cancelLabel={state.cancelLabel}
-        variant={state.variant}
+        open={open}
+        title={title}
+        message={message}
+        confirmLabel={confirmLabel}
+        cancelLabel={cancelLabel}
+        variant={variant}
         onConfirm={handleConfirm}
         onCancel={handleCancel}
       />

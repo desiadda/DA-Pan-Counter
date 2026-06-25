@@ -1,20 +1,13 @@
-import { createContext, useContext, useState, useEffect } from "react";
-import { LANGUAGES, DEFAULT_LANG, LS_LANG_KEY, t } from "../lang/translations";
+import { createContext, useContext } from "react";
+import { useLangStore } from "../stores/langStore";
 
-const LanguageContext = createContext();
+const LanguageContext = createContext(null);
 
 export function LanguageProvider({ children }) {
-  const [lang, setLang] = useState(() => {
-    return localStorage.getItem(LS_LANG_KEY) || DEFAULT_LANG;
-  });
-
-  useEffect(() => {
-    localStorage.setItem(LS_LANG_KEY, lang);
-    document.documentElement.lang = lang;
-  }, [lang]);
-
-  const translate = (key) => t(key, lang);
-  const availableLangs = LANGUAGES;
+  const lang = useLangStore((s) => s.lang);
+  const setLang = useLangStore((s) => s.setLang);
+  const translate = useLangStore((s) => s.translate);
+  const availableLangs = useLangStore((s) => s.availableLangs);
 
   return (
     <LanguageContext.Provider value={{ lang, setLang, translate, availableLangs }}>
