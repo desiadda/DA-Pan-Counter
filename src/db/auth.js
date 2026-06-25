@@ -1,5 +1,3 @@
-import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
-import { auth, isFirebaseEnabled } from "./config";
 import { LS_KEYS, ADMIN_PERMISSIONS, DEFAULT_PERMISSIONS } from "../constants";
 import { hashPin, verifyPin, isPlainPin } from "./hash";
 import { logError } from "./errorLog";
@@ -78,9 +76,6 @@ export const login = async (email, password) => {
           permissions: u.permissions,
         };
         localStorage.setItem(LS_KEYS.USER, JSON.stringify(user));
-        if (isFirebaseEnabled) {
-          try { await signInWithEmailAndPassword(auth, user.email, password); } catch (_) {}
-        }
         return user;
       }
     }
@@ -96,9 +91,6 @@ export const login = async (email, password) => {
 export const logout = async () => {
   try {
     localStorage.removeItem(LS_KEYS.USER);
-    if (isFirebaseEnabled) {
-      try { await signOut(auth); } catch (_) {}
-    }
   } catch (err) {
     logError("AUTH", err.message, err.stack);
     console.error("logout error", err);
