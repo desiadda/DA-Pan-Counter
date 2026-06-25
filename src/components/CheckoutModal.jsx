@@ -1,3 +1,4 @@
+import { useState } from "react";
 import ModalPortal from "./ModalPortal";
 
 export default function CheckoutModal({
@@ -34,6 +35,7 @@ export default function CheckoutModal({
   discountAmount,
   finalTotal,
 }) {
+  const [isCustomReason, setIsCustomReason] = useState(false);
   const itemCount = cart.reduce((s, i) => s + i.quantity, 0);
 
   const showDiscount = discountType && discountValue > 0;
@@ -98,16 +100,24 @@ export default function CheckoutModal({
             <div className="input-group">
               <label className="input-label">Reason</label>
               <div style={{ display: "flex", gap: "0.5rem" }}>
-                <select value={discountReason} onChange={e => setDiscountReason(e.target.value)} className="input-field" style={{ flex: 1, fontFamily: "inherit" }}>
+                <select value={isCustomReason ? "__custom__" : discountReason} onChange={e => {
+                  if (e.target.value === "__custom__") {
+                    setIsCustomReason(true);
+                    setDiscountReason("__custom__");
+                  } else {
+                    setIsCustomReason(false);
+                    setDiscountReason(e.target.value);
+                  }
+                }} className="input-field" style={{ flex: 1, fontFamily: "inherit" }}>
                   <option value="">Select reason...</option>
                   {discountReasons.map(r => <option key={r} value={r}>{r}</option>)}
                   <option value="__custom__">Other (type below)</option>
                 </select>
               </div>
-              {discountReason === "__custom__" && (
+              {isCustomReason && (
                 <input
                   type="text"
-                  value=""
+                  value={discountReason === "__custom__" ? "" : discountReason}
                   onChange={e => setDiscountReason(e.target.value)}
                   placeholder="Type reason..."
                   className="input-field"

@@ -26,7 +26,7 @@ export default function COHPanel({ user, users, onClose }) {
     }
   };
 
-  useEffect(() => { load(); }, [user]);
+  useEffect(() => { load(); }, [user?.id]);
 
   const handleTransfer = () => {
     setError("");

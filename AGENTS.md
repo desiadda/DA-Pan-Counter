@@ -65,7 +65,12 @@ Paan shop POS system with billing, inventory, khata (credit accounts), reports, 
 - Permission checks use `tab.perm` not `tab.key`
 - `handleTabClick` receives tab object, uses `tab.perm || tab.key` for permission, `tab.key` for navigation
 - Styles object must be included when rewriting components
-- Always verify build + tests after changes
+  - Always verify build + tests after changes
+  - `navItems` array is module-level (not inside component) — no rebuild on re-render
+  - `handleTabClick`, `handleSubNavigate`, `renderMainContent` wrapped in `useCallback` — stable references
+  - `activeTabRef` tracks activeTab for `handleSubNavigate` closure freshness
+  - Effect deps: use `user?.id`, `product?.id` not `user`, `product` (reference stability)
+  - `syncHelper` in `db/sync.js` was dead code (no imports) — fixed double-write pattern
 
 ## Tests
 ```bash

@@ -32,11 +32,12 @@ export default function ReturnModal({ tx, onClose, onReturned }) {
       await dbService.returnTransaction(tx, returnItems, reason || "Customer return", user.id, user.name);
       alert(`Return processed! Refund amount: ฿${returnAmount.toFixed(2)}`);
       onReturned?.();
-      onClose();
     } catch (err) {
       alert(err.message || "Return failed");
+    } finally {
+      setProcessing(false);
+      onClose();
     }
-    setProcessing(false);
   };
 
   return (

@@ -51,14 +51,12 @@ export async function processSyncQueue() {
 
 export function syncHelper(firebaseFn) {
   return async (...args) => {
-    const result = await firebaseFn(...args);
-    if (isFirebaseEnabled) {
-      try {
-        await firebaseFn(...args);
-      } catch (err) {
-        addToSyncQueue({ fn: () => firebaseFn(...args), _ts: Date.now() });
-      }
+    if (!isFirebaseEnabled) return await firebaseFn(...args);
+    try {
+      return await firebaseFn(...args);
+    } catch (err) {
+      addToSyncQueue({ fn: () => firebaseFn(...args), _ts: Date.now() });
+      return null;
     }
-    return result;
   };
 }

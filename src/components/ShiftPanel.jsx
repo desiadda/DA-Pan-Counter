@@ -30,7 +30,7 @@ export default function ShiftPanel({ user, onClose }) {
   };
 
   const handleClose = () => {
-    if (!closingCash) { alert("Enter actual cash count"); return; }
+    if (closingCash === "") { alert("Enter actual cash count"); return; }
     try {
       const s = closeShift(user.id, closingCash);
       setShift(s);

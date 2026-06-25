@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from "react";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ConfirmProvider } from "./context/ConfirmContext";
 import { SessionProvider } from "./context/SessionContext";
@@ -21,6 +21,32 @@ const POSView = lazy(() => import("./components/POSView"));
 const InventoryView = lazy(() => import("./components/InventoryView"));
 const KhataView = lazy(() => import("./components/KhataView"));
 
+const navItems = [
+  {
+    key: "pos",
+    label: "POS",
+    icon: <><rect x="2" y="2" width="20" height="20" rx="4" /><path d="M6 6h12M6 12h12M6 18h6" /></>,
+  },
+  {
+    key: "inventory",
+    label: "Inventory",
+    icon: <><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><polyline points="3.27 6.96 12 12.01 20.73 6.96" /><line x1="12" y1="22.08" x2="12" y2="12" /></>,
+    perm: "stock",
+  },
+  {
+    key: "credit",
+    label: "Credit Accounts",
+    icon: <><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></>,
+    perm: "khata",
+  },
+  {
+    key: "admin",
+    label: "Menu",
+    icon: <><circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" /></>,
+    perm: "menu",
+  },
+];
+
 function AppContent() {
   const { user, setUser, logout, isOnline } = useAuth();
   const getTabFromHash = () => {
@@ -39,6 +65,8 @@ function AppContent() {
   const [showShift, setShowShift] = useState(false);
   const [criticalErrors, setCriticalErrors] = useState(getCriticalUnreadCount());
   const [lowStockCount, setLowStockCount] = useState(dbService.getLowStockCount());
+  const activeTabRef = useRef(activeTab);
+  activeTabRef.current = activeTab;
 
   const updateFavicon = (dataUrl) => {
     let link = document.querySelector("link[rel~='icon']");
@@ -83,7 +111,7 @@ function AppContent() {
     return user.permissions?.[key] === true;
   };
 
-  const handleTabClick = (tab) => {
+  const handleTabClick = useCallback((tab) => {
     const permKey = tab.perm || tab.key;
     if (canAccessTab(permKey)) {
       setActiveTab(tab.key);
@@ -92,16 +120,16 @@ function AppContent() {
     } else {
       alert("Access Denied! You don't have permission for this section.");
     }
-  };
+  }, []);
 
-  const handleSubNavigate = (path) => {
+  const handleSubNavigate = useCallback((path) => {
     setSubPath(path);
-    window.location.hash = activeTab + (path ? "/" + path : "");
-  };
+    window.location.hash = activeTabRef.current + (path ? "/" + path : "");
+  }, []);
 
   const { props: mobileCartProps, open: openMobileCart, close: closeMobileCart, handleCheckout } = useMobileCart();
 
-  const renderMainContent = () => {
+  const renderMainContent = useCallback(() => {
     switch (activeTab) {
       case "pos":
         return <POSView user={user} onMobileCartOpen={openMobileCart} />;
@@ -114,33 +142,8 @@ function AppContent() {
       default:
         return <POSView user={user} />;
     }
-  };
+  }, [activeTab, subPath, user, openMobileCart, handleSubNavigate]);
 
-  const navItems = [
-    {
-      key: "pos",
-      label: "POS",
-      icon: <><rect x="2" y="2" width="20" height="20" rx="4" /><path d="M6 6h12M6 12h12M6 18h6" /></>,
-    },
-    {
-      key: "inventory",
-      label: "Inventory",
-      icon: <><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><polyline points="3.27 6.96 12 12.01 20.73 6.96" /><line x1="12" y1="22.08" x2="12" y2="12" /></>,
-      perm: "stock",
-    },
-    {
-      key: "credit",
-      label: "Credit Accounts",
-      icon: <><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></>,
-      perm: "khata",
-    },
-    {
-      key: "admin",
-      label: "Menu",
-      icon: <><circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" /></>,
-      perm: "menu",
-    },
-  ];
 
   return (
     <AppShell>

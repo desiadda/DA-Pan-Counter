@@ -8,7 +8,7 @@ export default function PriceHistoryModal({ product, onClose }) {
 
   useEffect(() => {
     if (product) setHistory(getPriceHistory(product.id));
-  }, [product]);
+  }, [product?.id]);
 
   if (!product) return null;
 

@@ -204,6 +204,7 @@ body {
 #app-shell {
   padding-left: var(--safe-left);
   padding-right: var(--safe-right);
+  overflow: hidden;
 }
 
 @media (display-mode: standalone) {
@@ -598,7 +599,6 @@ body {
 .payment-selector {
   overflow-x: auto;
   white-space: nowrap;
-  -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
 .payment-selector::-webkit-scrollbar {

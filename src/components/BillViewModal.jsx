@@ -12,6 +12,7 @@ export default function BillViewModal({ tx, onClose }) {
 
   const handlePrint = () => {
     const printWin = window.open("", "_blank", "width=400,height=600");
+    if (!printWin) { alert("Popup blocked! Please allow popups for this site."); return; }
     const itemRows = tx.items?.map(item => `
       <tr>
         <td style="padding:4px 0;font-size:12px">${item.name}${item.isPack ? `<br><small style="color:#94a3b8">(Pack of ${item.packSize || 20})</small>` : ""}</td>
