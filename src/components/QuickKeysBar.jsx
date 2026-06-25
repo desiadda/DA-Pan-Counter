@@ -131,32 +131,31 @@ const popupRef = { current: null };
 
 const styles = {
   wrapper: {
-    display: "flex", flexDirection: "column", gap: "0.5rem",
+    display: "flex", flexDirection: "column", gap: "0.35rem",
   },
   hint: {
-    fontSize: "0.7rem", color: "#94a3b8", textAlign: "center", fontStyle: "italic",
+    fontSize: "0.65rem", color: "#94a3b8", textAlign: "center", fontStyle: "italic",
   },
   grid: {
     display: "grid",
-    gridTemplateColumns: "repeat(9, 1fr)",
-    gap: "0.35rem",
+    gridTemplateColumns: "repeat(auto-fill, minmax(48px, 1fr))",
+    gap: "0.3rem",
   },
   slotBtn: {
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    padding: "0.4rem 0.2rem",
+    padding: "0.3rem 0.15rem",
     borderRadius: "10px",
     border: "1px solid #e2e8f0",
     cursor: "pointer",
     fontFamily: "inherit",
-    fontSize: "0.65rem",
+    fontSize: "0.55rem",
     fontWeight: 600,
-    minHeight: "56px",
-    gap: "0.15rem",
+    minHeight: "44px",
+    gap: "0.1rem",
     position: "relative",
-    transition: "all 0.15s ease",
   },
   slotFilled: {
     background: "#f0fdf4",

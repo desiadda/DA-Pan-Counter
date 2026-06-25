@@ -158,15 +158,17 @@ body {
 /* Tab Bar Navigation (Mobile-first bottom navigation) */
 .nav-bar {
   display: flex;
-  background: var(--card-bg);
-  border-top: 1px solid var(--border);
+  background: #fff;
+  border-top: 1px solid #e2e8f0;
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  height: 65px;
+  height: 64px;
   z-index: 100;
-  box-shadow: 0 -4px 6px -1px rgba(0,0,0,0.05);
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+  padding: 0 8px;
+  backdrop-filter: blur(10px);
 }
 
 .nav-item {
@@ -175,25 +177,27 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: var(--text-muted);
+  color: #94a3b8;
   text-decoration: none;
-  font-size: 0.75rem;
-  font-weight: 500;
+  font-size: 0.65rem;
+  font-weight: 600;
   background: none;
   border: none;
   cursor: pointer;
-  gap: 3px;
-  transition: color 0.2s ease;
+  gap: 2px;
+  transition: color 0.15s;
+  padding: 4px;
+  border-radius: 8px;
 }
 
 .nav-item.active {
-  color: var(--primary);
-  font-weight: 600;
+  color: #047857;
+  background: #f0fdf4;
 }
 
 .nav-item svg {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
 }
 
 /* Page Layout Container */
@@ -332,7 +336,7 @@ body {
   color: #c2410c;
 }
 
-/* POS Responsive Layout */
+/* POS Responsive Layout — Mobile First */
 .pos-layout {
   display: grid;
   grid-template-columns: 1fr;
@@ -346,57 +350,99 @@ body {
   }
 }
 
-.pos-cart-sidebar {
-  background: var(--card-bg);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border);
-  padding: 1.25rem;
-  display: flex;
-  flex-direction: column;
-  box-shadow: var(--shadow-sm);
+.pos-cart-col {
+  display: none;
 }
 
 @media (min-width: 768px) {
-  .pos-cart-sidebar {
+  .pos-cart-col {
+    display: block;
+  }
+  .pos-cart-col .pos-cart-sidebar {
+    background: var(--card-bg);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-sm);
     position: sticky;
-    top: 85px; /* stick below header */
+    top: 85px;
     max-height: calc(100vh - 170px);
   }
 }
 
-/* Mobile Sticky Summary Cart Bar */
-.mobile-cart-summary-bar {
+/* Mobile FAB — Floating Action Button */
+.mobile-cart-fab {
   display: none;
   position: fixed;
-  bottom: 65px; /* sit above main nav bar */
-  left: 0;
-  right: 0;
-  background: var(--primary);
+  bottom: 76px;
+  right: 16px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #047857, #10b981);
   color: #fff;
-  padding: 0.85rem 1.25rem;
+  font-size: 24px;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(4,120,87,0.35);
+  z-index: 99;
+  align-items: center;
+  justify-content: center;
+}
+
+.fab-count {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #ef4444;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Mobile Cart Bar — Sticky Bottom */
+.mobile-cart-bar {
+  display: none;
+  position: fixed;
+  bottom: 64px;
+  left: 16px;
+  right: 16px;
+  background: #1e293b;
+  color: #fff;
+  border-radius: 14px;
+  padding: 12px 16px;
   justify-content: space-between;
   align-items: center;
-  z-index: 99;
-  box-shadow: 0 -4px 10px rgba(0,0,0,0.15);
-  animation: slideUpMobileCart 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 98;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
   cursor: pointer;
 }
 
-.mobile-cart-summary-bar:hover {
-  background-color: var(--primary-hover);
+.cart-bar-arrow {
+  background: rgba(255,255,255,0.15);
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.85rem;
 }
 
 @media (max-width: 767px) {
-  .mobile-cart-summary-bar {
+  .mobile-cart-fab {
     display: flex;
   }
-  .desktop-only-cart {
-    display: none !important;
+  .mobile-cart-bar {
+    display: flex;
   }
-  
-  /* Increase padding inside POS grid on mobile to avoid summary overlap */
   .app-container {
-    padding-bottom: 135px; /* extra space for mobile summary + bottom bar */
+    padding-bottom: 100px;
   }
 }
 

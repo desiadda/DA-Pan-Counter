@@ -4,15 +4,14 @@ import { useConfirm } from "../context/ConfirmContext";
 import { playSaleSound } from "../utils/sound";
 import ProductGrid from "./ProductGrid";
 import CartSidebar from "./CartSidebar";
-import MobileCartDrawer from "./MobileCartDrawer";
 import VariantModal from "./VariantModal";
 import { logError } from "../db/errorLog";
 import CheckoutModal from "./CheckoutModal";
 import QuickKeysBar from "./QuickKeysBar";
-
 import ScanBarcode from "./ScanBarcode";
 import DashboardWidgets from "./DashboardWidgets";
 import ShortcutsModal from "./ShortcutsModal";
+import CartBottomSheet from "./CartBottomSheet";
 
 export default function POSView({ user }) {
   const confirm = useConfirm();
@@ -307,41 +306,49 @@ export default function POSView({ user }) {
         <button onClick={() => setShowShortcuts(true)} style={styles.shortcutBtn} title="Keyboard Shortcuts">⌨️</button>
       </div>
       <div className="pos-layout">
-        <div>
+        <div className="pos-main-col">
           <QuickKeysBar products={products} onAddToCart={addToCart} />
           <ProductGrid products={products} onAddToCart={addToCart} />
         </div>
 
-        <CartSidebar
-          cart={cart}
-          cartSubtotal={cartSubtotal}
-          taxEnabled={taxEnabled}
-          taxRate={taxRate}
-          taxAmount={taxAmountDisplay}
-          cartTotal={cartTotal}
-          onUpdateQty={updateCartQty}
-          onClear={handleClearCart}
-          onCheckout={() => setShowCheckout(true)}
-        />
+        <div className="pos-cart-col">
+          <CartSidebar
+            cart={cart}
+            cartSubtotal={cartSubtotal}
+            taxEnabled={taxEnabled}
+            taxRate={taxRate}
+            taxAmount={taxAmountDisplay}
+            cartTotal={cartTotal}
+            onUpdateQty={updateCartQty}
+            onClear={handleClearCart}
+            onCheckout={() => setShowCheckout(true)}
+          />
+        </div>
       </div>
 
       <DashboardWidgets onNavigate={(tab) => { window.location.hash = tab; }} />
 
       {cart.length > 0 && (
-        <div className="mobile-cart-summary-bar" onClick={() => setShowMobileCart(true)}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <span style={{ fontSize: "1.2rem" }}>🛒</span>
-            <span style={{ fontWeight: "bold" }}>{cart.reduce((sum, item) => sum + item.quantity, 0)} Items</span>
+        <>
+          <div className="mobile-cart-fab" onClick={() => setShowMobileCart(true)}>
+            🛒
+            <span className="fab-count">{cart.reduce((s,i) => s + i.quantity, 0)}</span>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-            <span style={{ fontWeight: "800", fontSize: "1.1rem" }}>฿{cartTotal.toFixed(2)}</span>
-            <span style={{ backgroundColor: "rgba(255,255,255,0.2)", padding: "4px 8px", borderRadius: "6px", fontSize: "0.8rem", fontWeight: "bold" }}>Review Order</span>
+          <div className="mobile-cart-bar" onClick={() => setShowMobileCart(true)}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <span style={{ fontSize: "1.1rem" }}>🛒</span>
+              <span style={{ fontWeight: 600, fontSize: "0.85rem" }}>{cart.reduce((s,i) => s + i.quantity, 0)} Items</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <span style={{ fontWeight: 800, fontSize: "1rem" }}>฿{cartTotal.toFixed(2)}</span>
+              <span className="cart-bar-arrow">→</span>
+            </div>
           </div>
-        </div>
+        </>
       )}
 
-      {showMobileCart && cart.length > 0 && (
-        <MobileCartDrawer
+      {showMobileCart && (
+        <CartBottomSheet
           cart={cart}
           cartSubtotal={cartSubtotal}
           taxEnabled={taxEnabled}
@@ -350,7 +357,7 @@ export default function POSView({ user }) {
           cartTotal={cartTotal}
           onUpdateQty={updateCartQty}
           onClear={handleClearCart}
-          onCheckout={() => setShowCheckout(true)}
+          onCheckout={() => { setShowMobileCart(false); setTimeout(() => setShowCheckout(true), 200); }}
           onClose={() => setShowMobileCart(false)}
         />
       )}
@@ -416,5 +423,6 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     gap: "1rem",
+    paddingBottom: "100px",
   },
 };
