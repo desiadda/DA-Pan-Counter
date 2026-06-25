@@ -1,3 +1,5 @@
+import ModalPortal from "./ModalPortal";
+
 export default function BillViewModal({ tx, onClose }) {
   if (!tx) return null;
 
@@ -95,6 +97,7 @@ export default function BillViewModal({ tx, onClose }) {
   };
 
   return (
+    <ModalPortal>
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={e => e.stopPropagation()} style={styles.wrapper}>
         <div style={styles.receipt}>
@@ -186,6 +189,7 @@ export default function BillViewModal({ tx, onClose }) {
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }
 

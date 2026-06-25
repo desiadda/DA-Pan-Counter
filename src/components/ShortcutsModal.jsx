@@ -1,3 +1,5 @@
+import ModalPortal from "./ModalPortal";
+
 export default function ShortcutsModal({ onClose }) {
   const groups = [
     {
@@ -27,6 +29,7 @@ export default function ShortcutsModal({ onClose }) {
   ];
 
   return (
+    <ModalPortal>
     <div style={styles.overlay} onClick={onClose}>
       <div style={styles.modal} onClick={e => e.stopPropagation()}>
         <div style={styles.header}>
@@ -49,6 +52,7 @@ export default function ShortcutsModal({ onClose }) {
         <p style={styles.footer}>Tip: Barcode scanners act as keyboard input — just focus the scan field and scan.</p>
       </div>
     </div>
+    </ModalPortal>
   );
 }
 

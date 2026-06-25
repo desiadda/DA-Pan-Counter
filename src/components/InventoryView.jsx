@@ -662,7 +662,6 @@ const styles = {
   },
   valueSummary: {
     display: "grid",
-    gridTemplateColumns: "1fr 1fr 1fr",
     gap: "0.75rem",
   },
   valueCard: {

@@ -1,3 +1,5 @@
+import ModalPortal from "./ModalPortal";
+
 export default function CheckoutModal({
   cart,
   cartSubtotal,
@@ -37,6 +39,7 @@ export default function CheckoutModal({
   const showDiscount = discountType && discountValue > 0;
 
   return (
+    <ModalPortal>
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()} style={styles.checkoutModal}>
         <div style={styles.modalHeader}>
@@ -183,7 +186,7 @@ export default function CheckoutModal({
             <img
               src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=promptpay://${promptpayNumber}/${finalTotal.toFixed(2)}`}
               alt="PromptPay QR Code"
-              style={{ width: "180px", height: "180px", borderRadius: "8px", border: "1px solid #cbd5e1" }}
+              style={{ maxWidth: "100%", width: "180px", height: "auto", aspectRatio: 1, borderRadius: "8px", border: "1px solid #cbd5e1" }}
             />
             <div style={{ marginTop: "1rem", fontSize: "0.85rem", color: "#64748b" }}>
               Or enter custom PromptPay ID in settings
@@ -242,6 +245,7 @@ export default function CheckoutModal({
         </button>
       </div>
     </div>
+    </ModalPortal>
   );
 }
 
@@ -331,14 +335,17 @@ const styles = {
   },
   paymentSelector: {
     display: "flex",
+    overflowX: "auto",
+    whiteSpace: "nowrap",
+    WebkitOverflowScrolling: "touch",
     backgroundColor: "#f1f5f9",
     padding: "4px",
     borderRadius: "8px",
     gap: "4px",
   },
   paymentTab: {
-    flex: 1,
-    padding: "0.6rem",
+    flex: "0 0 auto",
+    padding: "0.6rem 0.8rem",
     fontSize: "0.85rem",
     fontWeight: "bold",
     color: "#64748b",
@@ -346,6 +353,7 @@ const styles = {
     border: "none",
     borderRadius: "6px",
     cursor: "pointer",
+    whiteSpace: "nowrap",
   },
   activePaymentTab: {
     backgroundColor: "#ffffff",

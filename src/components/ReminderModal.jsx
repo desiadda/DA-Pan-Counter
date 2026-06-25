@@ -2,6 +2,8 @@ import { useState } from "react";
 import { getLocalData, setLocalData } from "../db/storage";
 import { LS_KEYS } from "../constants";
 
+import ModalPortal from "./ModalPortal";
+
 export default function ReminderModal({ customers, onClose }) {
   const [selected, setSelected] = useState({});
   const [copiedId, setCopiedId] = useState(null);
@@ -52,6 +54,7 @@ export default function ReminderModal({ customers, onClose }) {
   const selectedTotal = debtors.filter(c => selected[c.id]).reduce((sum, c) => sum + (c.balance || 0), 0);
 
   return (
+    <ModalPortal>
     <div style={styles.overlay} onClick={onClose}>
       <div style={styles.modal} onClick={e => e.stopPropagation()}>
         <div style={styles.header}>
@@ -139,6 +142,7 @@ export default function ReminderModal({ customers, onClose }) {
         )}
       </div>
     </div>
+    </ModalPortal>
   );
 }
 

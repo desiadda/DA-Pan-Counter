@@ -71,7 +71,7 @@ export default function ProductGrid({ products, onAddToCart }) {
                 <div style={styles.productPrice}>฿{p.sellingPrice}</div>
               )}
               <div style={styles.stockBar}>
-                <div style={{ ...styles.stockFill, width: `${Math.min(100, (p.stock / (p.lowStockLimit * 3 || 100)) * 100)}%`,
+                <div style={{ ...styles.stockFill, width: `${Math.min(100, Math.max(0, (p.stock / (p.lowStockLimit * 3 || 100)) * 100))}%`,
                   background: isOutOfStock ? "#ef4444" : isLowStock ? "#f59e0b" : "#10b981" }} />
               </div>
               {hoveredId === p.id && (
@@ -114,6 +114,6 @@ const styles = {
   priceBox: { fontSize: "0.75rem", fontWeight: 700, color: "#b45309", background: "#fffbeb", padding: "2px 6px", borderRadius: "4px" },
   stockBar: { height: "4px", background: "#f1f5f9", borderRadius: "2px", overflow: "hidden", marginTop: "2px" },
   stockFill: { height: "100%", borderRadius: "2px", transition: "width 0.3s" },
-  popover: { position: "absolute", top: "100%", left: "4px", right: "4px", zIndex: 10, background: "#1e293b", color: "#fff", borderRadius: "6px", padding: "0.5rem", fontSize: "0.7rem", display: "flex", flexDirection: "column", gap: "0.25rem", marginTop: "2px", boxShadow: "0 4px 12px rgba(0,0,0,0.2)" },
+  popover: { position: "absolute", top: "100%", left: "4px", right: "4px", zIndex: 100, background: "#1e293b", color: "#fff", borderRadius: "6px", padding: "0.5rem", fontSize: "0.7rem", display: "flex", flexDirection: "column", gap: "0.25rem", marginTop: "2px", boxShadow: "0 4px 12px rgba(0,0,0,0.2)" },
   popRow: { display: "flex", justifyContent: "space-between" },
 };

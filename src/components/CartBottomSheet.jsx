@@ -1,5 +1,8 @@
+import ModalPortal from "./ModalPortal";
+
 export default function CartBottomSheet({ cart, cartSubtotal, taxEnabled, taxRate, taxAmount, cartTotal, onUpdateQty, onClear, onCheckout, onClose }) {
   return (
+    <ModalPortal>
     <div style={styles.overlay} onClick={onClose}>
       <div style={styles.sheet} onClick={e => e.stopPropagation()}>
         <div style={styles.handle} />
@@ -41,13 +44,14 @@ export default function CartBottomSheet({ cart, cartSubtotal, taxEnabled, taxRat
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }
 
 const styles = {
   overlay: {
     position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-    background: "rgba(15,23,42,0.4)", zIndex: 100,
+    background: "rgba(15,23,42,0.4)", zIndex: 1000,
     display: "flex", alignItems: "flex-end",
   },
   sheet: {
@@ -73,13 +77,13 @@ const styles = {
   itemPrice: { fontSize: "0.75rem", color: "#64748b" },
   qtyWrap: { display: "flex", alignItems: "center", gap: 6 },
   qtyBtn: {
-    width: 34, height: 34, borderRadius: 10, border: "1px solid #e2e8f0",
+    width: 36, height: 36, borderRadius: 10, border: "1px solid #e2e8f0",
     background: "#fff", fontSize: "1rem", fontWeight: 700, cursor: "pointer",
     display: "flex", alignItems: "center", justifyContent: "center", color: "#475569",
   },
   qtyNum: { fontSize: "0.9rem", fontWeight: 700, minWidth: 20, textAlign: "center" },
   itemTotal: { fontWeight: 700, fontSize: "0.85rem", minWidth: 50, textAlign: "right" },
-  footer: { padding: "12px 20px 20px", borderTop: "1px solid #f1f5f9", display: "flex", flexDirection: "column", gap: 6 },
+  footer: { padding: "12px 20px calc(20px + env(safe-area-inset-bottom, 8px))", borderTop: "1px solid #f1f5f9", display: "flex", flexDirection: "column", gap: 6 },
   totalRow: { display: "flex", justifyContent: "space-between", fontWeight: 600, fontSize: "0.85rem" },
   grandTotal: { fontSize: "1.1rem", fontWeight: 800, color: "#047857" },
   checkoutBtn: {

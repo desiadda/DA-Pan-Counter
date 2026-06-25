@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { dbService } from "../firebase";
+import ModalPortal from "./ModalPortal";
 
 export default function ReturnModal({ tx, onClose, onReturned }) {
   const [returnQtys, setReturnQtys] = useState({});
@@ -39,6 +40,7 @@ export default function ReturnModal({ tx, onClose, onReturned }) {
   };
 
   return (
+    <ModalPortal>
     <div style={styles.overlay} onClick={onClose}>
       <div style={styles.modal} onClick={e => e.stopPropagation()}>
         <div style={styles.header}>
@@ -84,6 +86,7 @@ export default function ReturnModal({ tx, onClose, onReturned }) {
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }
 

@@ -3,12 +3,15 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ConfirmProvider } from "./context/ConfirmContext";
 import { SessionProvider } from "./context/SessionContext";
 import { LanguageProvider } from "./context/LanguageContext";
+import { MobileCartProvider, useMobileCart } from "./context/MobileCartContext";
 import ErrorBoundary from "./components/ErrorBoundary";
 import AuthView from "./components/AuthView";
 import AdminHub from "./components/AdminHub";
 import COHPanel from "./components/COHPanel";
 import ShiftPanel from "./components/ShiftPanel";
 import LanguageSwitcher from "./components/LanguageSwitcher";
+import CartBottomSheet from "./components/CartBottomSheet";
+import AppShell from "./components/AppShell";
 import { getUsers } from "./db/auth";
 import { dbService } from "./firebase";
 import { getCriticalUnreadCount } from "./db/errorLog";
@@ -96,10 +99,12 @@ function AppContent() {
     window.location.hash = activeTab + (path ? "/" + path : "");
   };
 
+  const { props: mobileCartProps, open: openMobileCart, close: closeMobileCart, handleCheckout } = useMobileCart();
+
   const renderMainContent = () => {
     switch (activeTab) {
       case "pos":
-        return <POSView user={user} />;
+        return <POSView user={user} onMobileCartOpen={openMobileCart} />;
       case "inventory":
         return <InventoryView />;
       case "credit":
@@ -138,7 +143,7 @@ function AppContent() {
   ];
 
   return (
-    <div className="app-container">
+    <AppShell>
       <header className="header">
         <div className="header-title">
           <span>🍃</span>
@@ -168,7 +173,7 @@ function AppContent() {
             </button>
           )}
 
-          <button onClick={() => setShowShift(true)} style={styles.shiftBadge} title="Shift Management">
+          <button onClick={() => setShowShift(true)} style={styles.shiftBadge} className="header-shift-btn" title="Shift Management">
             <span>🛑</span>
           </button>
 
@@ -216,7 +221,8 @@ function AppContent() {
 
       {showCOH && <COHPanel user={user} users={allUsers} onClose={() => setShowCOH(false)} />}
       {showShift && <ShiftPanel user={user} onClose={() => setShowShift(false)} />}
-    </div>
+      {mobileCartProps && <CartBottomSheet {...mobileCartProps} onClose={closeMobileCart} onCheckout={handleCheckout} />}
+    </AppShell>
   );
 }
 
@@ -227,7 +233,9 @@ export default function App() {
         <AuthProvider>
           <ErrorBoundary>
             <SessionProvider>
-              <AppContent />
+              <MobileCartProvider>
+                <AppContent />
+              </MobileCartProvider>
             </SessionProvider>
           </ErrorBoundary>
         </AuthProvider>

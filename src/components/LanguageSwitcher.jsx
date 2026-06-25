@@ -4,7 +4,7 @@ export default function LanguageSwitcher() {
   const { lang, setLang, availableLangs } = useLanguage();
 
   return (
-    <div style={styles.wrapper}>
+    <div style={styles.wrapper} className="lang-switcher">
       <select
         value={lang}
         onChange={(e) => setLang(e.target.value)}

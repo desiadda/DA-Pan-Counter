@@ -1,8 +1,11 @@
+import ModalPortal from "./ModalPortal";
+
 export default function VariantModal({ product, onSelect, onClose }) {
   if (!product) return null;
   const availableBoxes = product.stockPack != null ? product.stockPack : Math.floor(product.stock / (product.packSize || 20));
 
   return (
+    <ModalPortal>
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()} style={styles.checkoutModal}>
         <div style={styles.modalHeader}>
@@ -44,6 +47,7 @@ export default function VariantModal({ product, onSelect, onClose }) {
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }
 

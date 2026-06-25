@@ -45,7 +45,7 @@ export default function DashboardWidgets({ onNavigate }) {
   ];
 
   return (
-    <div style={styles.grid}>
+    <div style={styles.grid} className="dashboard-widgets-grid">
       {items.map((item, i) => (
         <div
           key={i}

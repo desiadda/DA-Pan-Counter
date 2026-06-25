@@ -1,9 +1,12 @@
+import ModalPortal from "./ModalPortal";
+
 export default function ConfirmDialog({ open, title, message, confirmLabel, cancelLabel, onConfirm, onCancel, variant }) {
   if (!open) return null;
 
   const isDanger = variant === "danger";
 
   return (
+    <ModalPortal>
     <div className="modal-overlay" onClick={onCancel}>
       <div
         className="modal-content"
@@ -40,5 +43,6 @@ export default function ConfirmDialog({ open, title, message, confirmLabel, canc
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }

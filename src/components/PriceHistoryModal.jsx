@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { getPriceHistory } from "../db/priceHistory";
 
+import ModalPortal from "./ModalPortal";
+
 export default function PriceHistoryModal({ product, onClose }) {
   const [history, setHistory] = useState([]);
 
@@ -18,6 +20,7 @@ export default function PriceHistoryModal({ product, onClose }) {
   };
 
   return (
+    <ModalPortal>
     <div style={styles.overlay} onClick={onClose}>
       <div style={styles.modal} onClick={e => e.stopPropagation()}>
         <div style={styles.header}>
@@ -50,6 +53,7 @@ export default function PriceHistoryModal({ product, onClose }) {
         )}
       </div>
     </div>
+    </ModalPortal>
   );
 }
 

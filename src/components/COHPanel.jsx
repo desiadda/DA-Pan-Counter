@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { dbService } from "../firebase";
 import { logError } from "../db/errorLog";
+import ModalPortal from "./ModalPortal";
 
 export default function COHPanel({ user, users, onClose }) {
   const [balance, setBalance] = useState(0);
@@ -67,6 +68,7 @@ export default function COHPanel({ user, users, onClose }) {
   const formatDate = (ts) => new Date(ts).toLocaleString();
 
   return (
+    <ModalPortal>
     <div style={styles.overlay} onClick={onClose}>
       <div style={styles.panel} onClick={e => e.stopPropagation()}>
         <div style={styles.header}>
@@ -199,6 +201,7 @@ export default function COHPanel({ user, users, onClose }) {
         )}
       </div>
     </div>
+    </ModalPortal>
   );
 }
 

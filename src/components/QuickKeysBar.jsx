@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { getLocalData, setLocalData } from "../db/storage";
 import { LS_KEYS } from "../constants";
 
@@ -7,6 +7,7 @@ const MAX_SLOTS = 9;
 export default function QuickKeysBar({ products, onAddToCart }) {
   const [mappings, setMappings] = useState({});
   const [showAssign, setShowAssign] = useState(null);
+  const popupRef = useRef(null);
 
   useEffect(() => {
     const saved = getLocalData(LS_KEYS.QUICK_KEYS, {});
@@ -127,7 +128,7 @@ export default function QuickKeysBar({ products, onAddToCart }) {
   );
 }
 
-const popupRef = { current: null };
+
 
 const styles = {
   wrapper: {
@@ -210,8 +211,9 @@ const styles = {
     border: "1px solid #e2e8f0",
     borderRadius: "12px",
     boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)",
-    zIndex: 100,
+    zIndex: 101,
     width: "220px",
+    maxWidth: "90vw",
     maxHeight: "280px",
     display: "flex",
     flexDirection: "column",

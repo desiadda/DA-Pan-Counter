@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { getOpenShift, openShift, closeShift, getTodayShiftSummary } from "../db/shifts";
+import ModalPortal from "./ModalPortal";
 
 export default function ShiftPanel({ user, onClose }) {
   const [shift, setShift] = useState(null);
   const [startingCash, setStartingCash] = useState("");
   const [closingCash, setClosingCash] = useState("");
-  const [mode, setMode] = useState("view"); // view | open | close
+  const [mode, setMode] = useState("view");
   const [summary, setSummary] = useState(null);
   const [msg, setMsg] = useState("");
 
@@ -41,6 +42,7 @@ export default function ShiftPanel({ user, onClose }) {
   };
 
   return (
+    <ModalPortal>
     <div style={styles.overlay} onClick={onClose}>
       <div style={styles.panel} onClick={e => e.stopPropagation()}>
         <div style={styles.header}>
@@ -107,6 +109,7 @@ export default function ShiftPanel({ user, onClose }) {
         )}
       </div>
     </div>
+    </ModalPortal>
   );
 }
 

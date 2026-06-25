@@ -80,7 +80,7 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  overflow-x: hidden;
+  position: relative;
 }
 
 #root {
@@ -158,14 +158,10 @@ body {
 /* Tab Bar Navigation (Mobile-first bottom navigation) */
 .nav-bar {
   display: flex;
+  flex-shrink: 0;
   background: #fff;
   border-top: 1px solid #e2e8f0;
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
   height: 64px;
-  z-index: 100;
   box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
   padding: 0 8px;
   backdrop-filter: blur(10px);
@@ -188,6 +184,10 @@ body {
   transition: color 0.15s;
   padding: 4px;
   border-radius: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 .nav-item.active {
@@ -201,11 +201,15 @@ body {
 }
 
 /* Page Layout Container */
-.app-container {
-  display: flex;
-  flex-direction: column;
-  padding-bottom: calc(75px + var(--safe-bottom));
-  min-height: 100vh;
+#app-shell {
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+}
+
+@media (display-mode: standalone) {
+  #app-shell {
+    padding-top: calc(8px + var(--safe-top));
+  }
 }
 
 .header {
@@ -239,8 +243,12 @@ body {
 }
 
 /* Modal and Drawers */
+#app-modal-layer [style*="position: fixed"] {
+  position: absolute !important;
+}
 .modal-overlay {
-  position: fixed;
+  position: absolute;
+  pointer-events: auto;
   top: 0;
   left: 0;
   right: 0;
@@ -248,7 +256,7 @@ body {
   background: var(--overlay);
   backdrop-filter: blur(4px);
   display: flex;
-  align-items: flex-end; /* Mobile bottom sheet style */
+  align-items: flex-end;
   justify-content: center;
   z-index: 1000;
 }
@@ -375,6 +383,7 @@ body {
 /* Mobile FAB — Floating Action Button */
 .mobile-cart-fab {
   display: none;
+  pointer-events: auto;
   position: fixed;
   bottom: 76px;
   right: 16px;
@@ -411,6 +420,7 @@ body {
 /* Mobile Cart Bar — Sticky Bottom */
 .mobile-cart-bar {
   display: none;
+  pointer-events: auto;
   position: fixed;
   bottom: 64px;
   left: 16px;
@@ -441,8 +451,8 @@ body {
   .mobile-cart-bar {
     display: flex;
   }
-  .app-container {
-    padding-bottom: 100px;
+  .nav-bar {
+    padding-bottom: var(--safe-bottom);
   }
 }
 
@@ -465,9 +475,21 @@ body {
   }
 }
 
+.inventory-value-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.75rem;
+}
+
 @media (max-width: 640px) {
-  body .inventory-value-summary {
-    grid-template-columns: 1fr 1fr !important;
+  .inventory-value-summary {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 400px) {
+  .inventory-value-summary {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -542,9 +564,72 @@ body {
   .status-text {
     display: none;
   }
-  .header-role-text {
+  .header-role-text,
+  .header-role {
     display: none;
   }
+  .header-shift-btn {
+    display: none;
+  }
+  .header-right {
+    gap: 0.35rem;
+  }
+  .header {
+    padding: 0.75rem 1rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .header-title {
+    font-size: 0.85rem;
+  }
+  .header-right .lang-switcher {
+    display: none;
+  }
+  .header-right {
+    gap: 0.2rem;
+  }
+  .header {
+    padding: 0.5rem 0.75rem;
+  }
+}
+
+/* ── Payment Selector Scrollable ── */
+.payment-selector {
+  overflow-x: auto;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.payment-selector::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── Dashboard Widgets Responsive ── */
+.dashboard-widgets-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+}
+@media (max-width: 480px) {
+  .dashboard-widgets-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* ── iOS Safari Input Zoom Fix ── */
+input[type="text"],
+input[type="number"],
+input[type="email"],
+input[type="password"],
+input[type="tel"],
+textarea {
+  font-size: 16px;
+}
+
+/* ── Touch Target Optimization ── */
+button, a, [role="button"] {
+  touch-action: manipulation;
 }
 
 /* ── PWA / App-like behavior ── */
@@ -554,7 +639,6 @@ html, body {
   -webkit-user-select: none;
   user-select: none;
   overscroll-behavior: none;
-  -webkit-overflow-scrolling: touch;
 }
 
 input, textarea, [contenteditable] {
@@ -562,18 +646,7 @@ input, textarea, [contenteditable] {
   user-select: text;
 }
 
-.app-container {
-  padding-left: var(--safe-left);
-  padding-right: var(--safe-right);
-}
-
 .nav-bar {
-  padding-bottom: var(--safe-bottom) !important;
-}
-
-@media (display-mode: standalone) {
-  .app-container {
-    padding-top: calc(8px + var(--safe-top));
-  }
+  padding-bottom: var(--safe-bottom);
 }
 

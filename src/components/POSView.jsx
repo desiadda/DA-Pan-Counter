@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { dbService } from "../firebase";
 import { useConfirm } from "../context/ConfirmContext";
+import { useMobileCart } from "../context/MobileCartContext";
 import { playSaleSound } from "../utils/sound";
 import ProductGrid from "./ProductGrid";
 import CartSidebar from "./CartSidebar";
@@ -11,16 +13,15 @@ import QuickKeysBar from "./QuickKeysBar";
 import ScanBarcode from "./ScanBarcode";
 import DashboardWidgets from "./DashboardWidgets";
 import ShortcutsModal from "./ShortcutsModal";
-import CartBottomSheet from "./CartBottomSheet";
 
 export default function POSView({ user }) {
   const confirm = useConfirm();
+  const { open: openMobileCart, close: closeMobileCart } = useMobileCart();
   const [products, setProducts] = useState([]);
   const [cart, setCart] = useState([]);
   const [customers, setCustomers] = useState([]);
 
   const [showCheckout, setShowCheckout] = useState(false);
-  const [showMobileCart, setShowMobileCart] = useState(false);
   const [variantProduct, setVariantProduct] = useState(null);
   const [paymentMode, setPaymentMode] = useState("Cash");
   const [receivedCash, setReceivedCash] = useState("");
@@ -299,6 +300,20 @@ export default function POSView({ user }) {
     if (ok) setCart([]);
   };
 
+  const handleOpenMobileCart = () => {
+    const checkoutCb = () => setShowCheckout(true);
+    openMobileCart({
+      cart,
+      cartSubtotal,
+      taxEnabled,
+      taxRate,
+      taxAmount: taxAmountDisplay,
+      cartTotal,
+      onUpdateQty: updateCartQty,
+      onClear: handleClearCart,
+    }, checkoutCb);
+  };
+
   return (
     <div style={styles.container}>
       <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.35rem" }}>
@@ -328,13 +343,13 @@ export default function POSView({ user }) {
 
       <DashboardWidgets onNavigate={(tab) => { window.location.hash = tab; }} />
 
-      {cart.length > 0 && (
+      {cart.length > 0 && createPortal(
         <>
-          <div className="mobile-cart-fab" onClick={() => setShowMobileCart(true)}>
+          <div className="mobile-cart-fab" onClick={handleOpenMobileCart}>
             🛒
             <span className="fab-count">{cart.reduce((s,i) => s + i.quantity, 0)}</span>
           </div>
-          <div className="mobile-cart-bar" onClick={() => setShowMobileCart(true)}>
+          <div className="mobile-cart-bar" onClick={handleOpenMobileCart}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
               <span style={{ fontSize: "1.1rem" }}>🛒</span>
               <span style={{ fontWeight: 600, fontSize: "0.85rem" }}>{cart.reduce((s,i) => s + i.quantity, 0)} Items</span>
@@ -344,22 +359,8 @@ export default function POSView({ user }) {
               <span className="cart-bar-arrow">→</span>
             </div>
           </div>
-        </>
-      )}
-
-      {showMobileCart && (
-        <CartBottomSheet
-          cart={cart}
-          cartSubtotal={cartSubtotal}
-          taxEnabled={taxEnabled}
-          taxRate={taxRate}
-          taxAmount={taxAmountDisplay}
-          cartTotal={cartTotal}
-          onUpdateQty={updateCartQty}
-          onClear={handleClearCart}
-          onCheckout={() => { setShowMobileCart(false); setTimeout(() => setShowCheckout(true), 200); }}
-          onClose={() => setShowMobileCart(false)}
-        />
+        </>,
+        document.getElementById("app-modal-layer") || document.body
       )}
 
       {variantProduct && (
@@ -415,7 +416,7 @@ export default function POSView({ user }) {
 const styles = {
   shortcutBtn: {
     background: "#f8fafc", border: "1px dashed #cbd5e1", borderRadius: "8px",
-    padding: "0.4rem 0.5rem", cursor: "pointer", fontFamily: "inherit",
+    padding: "0.5rem 0.65rem", cursor: "pointer", fontFamily: "inherit",
     fontSize: "0.85rem", lineHeight: 1,
   },
   container: {
@@ -423,6 +424,6 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     gap: "1rem",
-    paddingBottom: "100px",
+    paddingBottom: "16px",
   },
 };
