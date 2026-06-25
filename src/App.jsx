@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, lazy, Suspense } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuthStore } from "./stores/authStore";
 import { useCartStore } from "./stores/cartStore";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -49,17 +50,19 @@ function AppContent() {
   const setUser = useAuthStore((s) => s.setUser);
   const logout = useAuthStore((s) => s.logout);
   const isOnline = useAuthStore((s) => s.isOnline);
-  const getTabFromHash = () => {
-    const hash = window.location.hash.replace("#", "").split("/")[0];
-    const normalized = hash === "khata" ? "credit" : hash;
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const getTabFromPath = () => {
+    const path = location.pathname.replace("/", "").split("/")[0];
+    const normalized = path === "khata" ? "credit" : path;
     return ["pos", "inventory", "credit", "admin"].includes(normalized) ? normalized : "pos";
   };
   const getSubPath = () => {
-    const hash = window.location.hash.replace("#", "");
-    const parts = hash.split("/");
-    return parts.slice(1).join("/");
+    const parts = location.pathname.split("/");
+    return parts.slice(2).join("/");
   };
-  const [activeTab, setActiveTab] = useState(getTabFromHash());
+  const [activeTab, setActiveTab] = useState(getTabFromPath());
   const [subPath, setSubPath] = useState(getSubPath());
   const [showCOH, setShowCOH] = useState(false);
   const [showShift, setShowShift] = useState(false);
@@ -68,30 +71,27 @@ function AppContent() {
   const activeTabRef = useRef(activeTab);
   activeTabRef.current = activeTab;
 
-  const updateFavicon = (dataUrl) => {
-    let link = document.querySelector("link[rel~='icon']");
-    if (!link) {
-      link = document.createElement("link");
-      link.rel = "icon";
-      document.head.appendChild(link);
-    }
-    link.href = dataUrl;
-  };
+  useEffect(() => {
+    setActiveTab(getTabFromPath());
+    setSubPath(getSubPath());
+  }, [location.pathname]);
 
   useEffect(() => {
-    const onHashChange = () => {
-      setActiveTab(getTabFromHash());
-      setSubPath(getSubPath());
-    };
-    window.addEventListener("hashchange", onHashChange);
     const onError = () => setCriticalErrors(getCriticalUnreadCount());
     window.addEventListener("error-logged", onError);
     const refreshStock = () => setLowStockCount(dbService.getLowStockCount());
     window.addEventListener("stock-changed", refreshStock);
     const store = JSON.parse(localStorage.getItem("pan_store_settings") || "{}");
-    if (store.logo) updateFavicon(store.logo);
+    if (store.logo) {
+      let link = document.querySelector("link[rel~='icon']");
+      if (!link) {
+        link = document.createElement("link");
+        link.rel = "icon";
+        document.head.appendChild(link);
+      }
+      link.href = store.logo;
+    }
     return () => {
-      window.removeEventListener("hashchange", onHashChange);
       window.removeEventListener("error-logged", onError);
       window.removeEventListener("stock-changed", refreshStock);
     };
@@ -116,27 +116,26 @@ function AppContent() {
     if (canAccessTab(permKey)) {
       setActiveTab(tab.key);
       setSubPath("");
-      window.location.hash = tab.key;
+      navigate("/" + tab.key, { replace: true });
     } else {
       alert("Access Denied! You don't have permission for this section.");
     }
-  }, []);
+  }, [navigate]);
 
   const handleSubNavigate = useCallback((path) => {
     setSubPath(path);
-    window.location.hash = activeTabRef.current + (path ? "/" + path : "");
-  }, []);
+    navigate("/" + activeTabRef.current + (path ? "/" + path : ""), { replace: true });
+  }, [navigate]);
 
   const mobileCartOpen = useCartStore((s) => s.mobileCartOpen);
   const mobileCartProps = useCartStore((s) => s.mobileCartProps);
-  const openMobileCart = useCartStore((s) => s.openMobileCart);
   const closeMobileCart = useCartStore((s) => s.closeMobileCart);
   const handleCheckout = useCartStore((s) => s.handleCheckout);
 
   const renderMainContent = useCallback(() => {
     switch (activeTab) {
       case "pos":
-        return <POSView user={user} onMobileCartOpen={openMobileCart} />;
+        return <POSView user={user} />;
       case "inventory":
         return <InventoryView />;
       case "credit":
@@ -146,8 +145,7 @@ function AppContent() {
       default:
         return <POSView user={user} />;
     }
-  }, [activeTab, subPath, user, openMobileCart, handleSubNavigate]);
-
+  }, [activeTab, subPath, user, handleSubNavigate]);
 
   return (
     <AppShell>
@@ -172,8 +170,8 @@ function AppContent() {
 
           {(lowStockCount > 0 || (user.permissions?.settings && criticalErrors > 0)) && (
             <button onClick={() => {
-              if (lowStockCount > 0) { window.location.hash = "inventory"; setActiveTab("inventory"); setSubPath(""); }
-              else { window.location.hash = "admin/errors"; setActiveTab("admin"); setSubPath("errors"); }
+              if (lowStockCount > 0) { navigate("/inventory", { replace: true }); }
+              else { navigate("/admin/errors", { replace: true }); }
             }} className="notif-badge" title={`${lowStockCount} low stock, ${criticalErrors} errors`}>
               <span>🔔</span>
               <span className="notif-count">{lowStockCount + criticalErrors}</span>
@@ -243,5 +241,3 @@ export default function App() {
     </ErrorBoundary>
   );
 }
-
-

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { useNavigate } from "react-router-dom";
 import { dbService } from "../firebase";
 import { useConfirmStore } from "../stores/confirmStore";
 import { useCartStore } from "../stores/cartStore";
@@ -15,6 +16,7 @@ import DashboardWidgets from "./DashboardWidgets";
 import ShortcutsModal from "./ShortcutsModal";
 
 export default function POSView({ user }) {
+  const navigate = useNavigate();
   const confirm = useConfirmStore((s) => s.confirm);
   const openMobileCart = useCartStore((s) => s.openMobileCart);
   const closeMobileCart = useCartStore((s) => s.closeMobileCart);
@@ -342,7 +344,7 @@ export default function POSView({ user }) {
         </div>
       </div>
 
-      <DashboardWidgets onNavigate={(tab) => { window.location.hash = tab; }} />
+      <DashboardWidgets onNavigate={(tab) => { navigate("/" + tab, { replace: true }); }} />
 
       {cart.length > 0 && createPortal(
         <>
