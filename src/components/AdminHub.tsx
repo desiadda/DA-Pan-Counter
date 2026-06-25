@@ -1,13 +1,13 @@
 import { useState, lazy, Suspense, useEffect } from "react";
 import ErrorBoundary from "./ErrorBoundary";
 import { SkeletonTable } from "./Skeleton";
-import AdminSettings from "./AdminSettings";
-import ErrorLogView from "./ErrorLogView";
 
 const ReportsView = lazy(() => import("./ReportsView"));
 const ExpensesView = lazy(() => import("./ExpensesView"));
 const UserManager = lazy(() => import("./UserManager"));
 const COHView = lazy(() => import("./COHView"));
+const AdminSettings = lazy(() => import("./AdminSettings"));
+const ErrorLogView = lazy(() => import("./ErrorLogView"));
 
 export default function AdminHub({ subPath, onNavigate, user }) {
   const parts = subPath ? subPath.split("/") : [];
@@ -108,11 +108,23 @@ export default function AdminHub({ subPath, onNavigate, user }) {
   }
 
   if (activeView === "store") {
-    return <AdminSettings onBack={handleBack} />;
+    return (
+      <div style={styles.container}>
+        <Suspense fallback={<SkeletonTable rows={3} />}>
+          <AdminSettings onBack={handleBack} />
+        </Suspense>
+      </div>
+    );
   }
 
   if (activeView === "errors") {
-    return <ErrorLogView onBack={handleBack} />;
+    return (
+      <div style={styles.container}>
+        <Suspense fallback={<SkeletonTable rows={3} />}>
+          <ErrorLogView onBack={handleBack} />
+        </Suspense>
+      </div>
+    );
   }
 
   return (

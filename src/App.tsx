@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, lazy, Suspense } from "react"
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuthStore } from "./stores/authStore";
 import { useCartStore } from "./stores/cartStore";
+import { useUIStore } from "./stores/uiStore";
 import ErrorBoundary from "./components/ErrorBoundary";
 import AuthView from "./components/AuthView";
 import AdminHub from "./components/AdminHub";
@@ -64,8 +65,10 @@ function AppContent() {
   };
   const [activeTab, setActiveTab] = useState(getTabFromPath());
   const [subPath, setSubPath] = useState(getSubPath());
-  const [showCOH, setShowCOH] = useState(false);
-  const [showShift, setShowShift] = useState(false);
+  const showCOH = useUIStore((s) => s.showCOH);
+  const showShift = useUIStore((s) => s.showShift);
+  const setShowCOH = useUIStore((s) => s.setShowCOH);
+  const setShowShift = useUIStore((s) => s.setShowShift);
   const [criticalErrors, setCriticalErrors] = useState(getCriticalUnreadCount());
   const [lowStockCount, setLowStockCount] = useState(dbService.getLowStockCount());
   const activeTabRef = useRef(activeTab);
@@ -183,7 +186,7 @@ function AppContent() {
           </button>
 
           <LanguageSwitcher />
-          <button onClick={() => { const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'; document.documentElement.setAttribute('data-theme', next); localStorage.setItem('pan_theme', next); }} className="logout-btn" title="Toggle Dark Mode">
+          <button onClick={() => { const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'; document.documentElement.setAttribute('data-theme', next); document.documentElement.classList.toggle('dark', next === 'dark'); localStorage.setItem('pan_theme', next); }} className="logout-btn" title="Toggle Dark Mode">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
           </button>
 
@@ -227,9 +230,9 @@ function AppContent() {
         })}
       </nav>
 
-      {showCOH && <COHPanel user={user} users={allUsers} onClose={() => setShowCOH(false)} />}
-      {showShift && <ShiftPanel user={user} onClose={() => setShowShift(false)} />}
-      {mobileCartProps && <CartBottomSheet {...mobileCartProps} onClose={closeMobileCart} onCheckout={handleCheckout} />}
+      {showCOH && <ErrorBoundary><COHPanel user={user} users={allUsers} onClose={() => setShowCOH(false)} /></ErrorBoundary>}
+      {showShift && <ErrorBoundary><ShiftPanel user={user} onClose={() => setShowShift(false)} /></ErrorBoundary>}
+      {mobileCartProps && <ErrorBoundary><CartBottomSheet {...mobileCartProps} onClose={closeMobileCart} onCheckout={handleCheckout} /></ErrorBoundary>}
     </AppShell>
   );
 }

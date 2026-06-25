@@ -18,6 +18,7 @@ export const useUIStore = create<UIState>((set, get) => ({
     const next = get().theme === "light" ? "dark" : "light"
     localStorage.setItem("pan_theme", next)
     document.documentElement.setAttribute("data-theme", next)
+    document.documentElement.classList.toggle("dark", next === "dark")
     set({ theme: next })
   },
 
