@@ -243,12 +243,14 @@ body {
 }
 
 /* Modal and Drawers */
+#app-modal-layer > * {
+  pointer-events: auto;
+}
 #app-modal-layer [style*="position: fixed"] {
   position: absolute !important;
 }
 .modal-overlay {
   position: absolute;
-  pointer-events: auto;
   top: 0;
   left: 0;
   right: 0;
@@ -383,7 +385,6 @@ body {
 /* Mobile FAB — Floating Action Button */
 .mobile-cart-fab {
   display: none;
-  pointer-events: auto;
   position: fixed;
   bottom: 76px;
   right: 16px;
@@ -420,7 +421,6 @@ body {
 /* Mobile Cart Bar — Sticky Bottom */
 .mobile-cart-bar {
   display: none;
-  pointer-events: auto;
   position: fixed;
   bottom: 64px;
   left: 16px;
