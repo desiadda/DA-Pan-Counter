@@ -2,16 +2,23 @@ import { createContext, useContext, useState, useEffect } from "react";
 import { dbService } from "../firebase";
 import { useConfirm } from "./ConfirmContext";
 import { logError } from "../db/errorLog";
+import { processSyncQueue, getQueueLength } from "../db/sync";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [pendingSync, setPendingSync] = useState(0);
   const confirm = useConfirm();
 
   useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
+    const handleOnline = async () => {
+      setIsOnline(true);
+      const synced = await processSyncQueue();
+      if (synced > 0) console.log(`Synced ${synced} pending items`);
+      setPendingSync(getQueueLength());
+    };
     const handleOffline = () => setIsOnline(false);
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
@@ -25,6 +32,9 @@ export function AuthProvider({ children }) {
       logError("AUTH", err.message, err.stack);
       console.error("Failed to get current user:", err);
     }
+
+    processSyncQueue().then(n => { if (n > 0) console.log(`Synced ${n} pending items on start`); });
+    setPendingSync(getQueueLength());
 
     return () => {
       window.removeEventListener("online", handleOnline);
@@ -55,7 +65,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, setUser: handleAuthSuccess, logout: handleLogout, isOnline }}>
+    <AuthContext.Provider value={{ user, setUser: handleAuthSuccess, logout: handleLogout, isOnline, pendingSync }}>
       {children}
     </AuthContext.Provider>
   );
