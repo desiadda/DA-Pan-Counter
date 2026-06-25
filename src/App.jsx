@@ -160,23 +160,23 @@ function AppContent() {
             <span className="status-text">{dbService.isFirebase() ? (isOnline ? "Cloud Sync" : "Cloud Offline") : "Local Storage"}</span>
           </span>
 
-          <button onClick={() => setShowCOH(true)} style={styles.cohBadge} title="Cash on Hand">
+          <button onClick={() => setShowCOH(true)} className="coh-badge" title="Cash on Hand">
             <span>💰</span>
-            <span style={styles.cohAmount}>฿{cohBalance.toFixed(0)}</span>
-            {cohPending > 0 && <span style={styles.cohPendingDot}>{cohPending}</span>}
+            <span className="coh-amount">฿{cohBalance.toFixed(0)}</span>
+            {cohPending > 0 && <span className="coh-pending-dot">{cohPending}</span>}
           </button>
 
           {(lowStockCount > 0 || (user.permissions?.settings && criticalErrors > 0)) && (
             <button onClick={() => {
               if (lowStockCount > 0) { window.location.hash = "inventory"; setActiveTab("inventory"); setSubPath(""); }
               else { window.location.hash = "admin/errors"; setActiveTab("admin"); setSubPath("errors"); }
-            }} style={styles.notifBadge} title={`${lowStockCount} low stock, ${criticalErrors} errors`}>
+            }} className="notif-badge" title={`${lowStockCount} low stock, ${criticalErrors} errors`}>
               <span>🔔</span>
-              <span style={styles.notifCount}>{lowStockCount + criticalErrors}</span>
+              <span className="notif-count">{lowStockCount + criticalErrors}</span>
             </button>
           )}
 
-          <button onClick={() => setShowShift(true)} style={styles.shiftBadge} className="header-shift-btn" title="Shift Management">
+          <button onClick={() => setShowShift(true)} className="shift-badge header-shift-btn" title="Shift Management">
             <span>🛑</span>
           </button>
 
@@ -187,7 +187,7 @@ function AppContent() {
             <span className="header-role-text"> {user.name}</span>
           </span>
 
-          <button onClick={logout} style={styles.logoutHeaderBtn} title="Log Out">
+          <button onClick={logout} className="logout-btn" title="Log Out">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
             </svg>
@@ -195,7 +195,7 @@ function AppContent() {
         </div>
       </header>
 
-      <main style={{ flex: 1, overflowY: "auto" }}>
+      <main className="main-content">
         <ErrorBoundary>
           <Suspense fallback={activeTab === "pos" ? <SkeletonCard count={6} /> : <SkeletonTable rows={5} />}>
             {renderMainContent()}
@@ -247,84 +247,4 @@ export default function App() {
   );
 }
 
-const styles = {
-  logoutHeaderBtn: {
-    background: "none",
-    border: "none",
-    color: "#64748b",
-    cursor: "pointer",
-    padding: "0.35rem",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: "8px",
-  },
-  cohBadge: {
-    background: "#f0fdf4",
-    border: "1px solid #bbf7d0",
-    borderRadius: "8px",
-    padding: "0.25rem 0.5rem",
-    display: "flex",
-    alignItems: "center",
-    gap: "0.25rem",
-    cursor: "pointer",
-    fontFamily: "inherit",
-    fontSize: "0.8rem",
-    fontWeight: 700,
-    color: "#15803d",
-    position: "relative",
-  },
-  cohAmount: { fontSize: "0.8rem", fontWeight: 800 },
-  shiftBadge: {
-    background: "#fef2f2",
-    border: "1px solid #fecaca",
-    borderRadius: "8px",
-    padding: "0.25rem 0.5rem",
-    display: "flex",
-    alignItems: "center",
-    cursor: "pointer",
-    fontFamily: "inherit",
-    fontSize: "0.8rem",
-    fontWeight: 700,
-    color: "#dc2626",
-  },
-  cohPendingDot: {
-    position: "absolute",
-    top: "-4px", right: "-4px",
-    backgroundColor: "#dc2626",
-    color: "#fff",
-    fontSize: "0.6rem",
-    fontWeight: 700,
-    width: "16px", height: "16px",
-    borderRadius: "50%",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  notifBadge: {
-    background: "#fff7ed",
-    border: "1px solid #fed7aa",
-    borderRadius: "8px",
-    padding: "0.25rem 0.5rem",
-    display: "flex",
-    alignItems: "center",
-    gap: "0.25rem",
-    cursor: "pointer",
-    fontFamily: "inherit",
-    fontSize: "0.8rem",
-    fontWeight: 700,
-    color: "#c2410c",
-    position: "relative",
-  },
-  notifCount: {
-    backgroundColor: "#ea580c",
-    color: "#fff",
-    borderRadius: "50%",
-    width: "18px", height: "18px",
-    fontSize: "0.65rem",
-    fontWeight: 700,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-};
+
