@@ -65,10 +65,6 @@ async function migrateOldPins() {
 
 export const login = async (email, password) => {
   try {
-    if (isFirebaseEnabled) {
-      return await signInWithEmailAndPassword(auth, email, password);
-    }
-
     await migrateOldPins();
 
     const users = getUsers();
@@ -82,6 +78,9 @@ export const login = async (email, password) => {
           permissions: u.permissions,
         };
         localStorage.setItem(LS_KEYS.USER, JSON.stringify(user));
+        if (isFirebaseEnabled) {
+          try { await signInWithEmailAndPassword(auth, user.email, password); } catch (_) {}
+        }
         return user;
       }
     }
@@ -96,10 +95,9 @@ export const login = async (email, password) => {
 
 export const logout = async () => {
   try {
+    localStorage.removeItem(LS_KEYS.USER);
     if (isFirebaseEnabled) {
-      await signOut(auth);
-    } else {
-      localStorage.removeItem(LS_KEYS.USER);
+      try { await signOut(auth); } catch (_) {}
     }
   } catch (err) {
     logError("AUTH", err.message, err.stack);
@@ -110,9 +108,6 @@ export const logout = async () => {
 
 export const getCurrentUser = () => {
   try {
-    if (isFirebaseEnabled) {
-      return auth?.currentUser || null;
-    }
     const u = localStorage.getItem(LS_KEYS.USER);
     return u ? JSON.parse(u) : null;
   } catch (err) {
@@ -124,9 +119,6 @@ export const getCurrentUser = () => {
 
 export const onAuthStateChangedListener = (callback) => {
   try {
-    if (isFirebaseEnabled) {
-      return onAuthStateChanged(auth, callback);
-    }
     const u = localStorage.getItem(LS_KEYS.USER);
     callback(u ? JSON.parse(u) : null);
     return () => {};
