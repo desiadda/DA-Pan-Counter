@@ -1532,6 +1532,13 @@ textarea.input-field {
   gap: 0.75rem;
 }
 
+@media (max-width: 640px) {
+  .product-grid {
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 0.5rem;
+  }
+}
+
 .product-card {
   background: var(--card-bg);
   border: 1px solid var(--border);
@@ -1544,6 +1551,13 @@ textarea.input-field {
   position: relative;
   box-shadow: var(--shadow-sm);
   transition: all var(--duration-fast) var(--ease-out);
+}
+
+@media (max-width: 640px) {
+  .product-card {
+    padding: 0.5rem;
+    gap: 0.25rem;
+  }
 }
 
 .product-card:hover {
@@ -1581,10 +1595,23 @@ textarea.input-field {
   min-height: 2.2em;
 }
 
+@media (max-width: 640px) {
+  .product-name {
+    font-size: 0.72rem;
+    min-height: 2.6em;
+  }
+}
+
 .product-price {
   font-size: 1rem;
   font-weight: 800;
   color: var(--primary);
+}
+
+@media (max-width: 640px) {
+  .product-price {
+    font-size: 0.85rem;
+  }
 }
 
 .product-stock-bar {
@@ -1618,6 +1645,13 @@ textarea.input-field {
   font-weight: 700;
   padding: 2px 6px;
   border-radius: 4px;
+}
+
+@media (max-width: 640px) {
+  .price-tag {
+    font-size: 0.62rem;
+    padding: 1px 4px;
+  }
 }
 
 .price-tag-primary { background: var(--primary-light); color: var(--primary); }
