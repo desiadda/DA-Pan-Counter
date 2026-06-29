@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { dbService } from "../firebase";
 import { useConfirmStore } from "../stores/confirmStore";
+import { useUIStore } from "../stores/uiStore";
 import { hashPin } from "../db/hash";
 import { SkeletonList, SkeletonTable } from "./Skeleton";
 import BillViewModal from "./BillViewModal";
@@ -10,6 +11,8 @@ import { logError } from "../db/errorLog";
 
 export default function ReportsView({ initialSubTab, onSubTabChange, user }) {
   const confirm = useConfirmStore((s) => s.confirm);
+  const theme = useUIStore((s) => s.theme);
+  const toggleTheme = useUIStore((s) => s.toggleTheme);
   const [transactions, setTransactions] = useState([]);
   const [products, setProducts] = useState([]);
   const [customers, setCustomers] = useState([]);
@@ -712,7 +715,7 @@ export default function ReportsView({ initialSubTab, onSubTabChange, user }) {
           <div style={styles.reportCard}>
             <h3 style={styles.cardHeader}>Appearance</h3>
             <label style={{fontSize: "0.9rem", fontWeight: "600", color: "#1e293b", display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer"}}>
-              <input type="checkbox" checked={document.documentElement.getAttribute("data-theme") === "dark"} onChange={(e) => { try { if (e.target.checked) { document.documentElement.setAttribute("data-theme", "dark"); localStorage.setItem("pan_dark_mode", "true"); } else { document.documentElement.removeAttribute("data-theme"); localStorage.setItem("pan_dark_mode", "false"); } } catch (err) { logError("SETTINGS", err.message, err.stack); console.error(err); } }} />
+              <input type="checkbox" checked={theme === "dark"} onChange={toggleTheme} />
               Dark Mode
             </label>
           </div>

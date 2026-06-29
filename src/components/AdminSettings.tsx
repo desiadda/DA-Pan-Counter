@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { dbService } from "../firebase";
 import { hashPin } from "../db/hash";
 import { useConfirmStore } from "../stores/confirmStore";
+import { useUIStore } from "../stores/uiStore";
 import { getErrors, getCategories, getUnreadCount, markAsRead, markAllAsRead, deleteError, clearErrors } from "../db/errorLog";
 import { logError } from "../db/errorLog";
 
@@ -20,6 +21,8 @@ const getStore = () => {
 
 export default function AdminSettings({ onBack }) {
   const confirm = useConfirmStore((s) => s.confirm);
+  const theme = useUIStore((s) => s.theme);
+  const toggleTheme = useUIStore((s) => s.toggleTheme);
 
   // Store
   const [store, setStore] = useState(getStore);
@@ -164,7 +167,7 @@ export default function AdminSettings({ onBack }) {
       <div style={styles.card}>
         <h3 style={styles.cardHeader}>Appearance</h3>
         <label style={{fontSize: "0.9rem", fontWeight: "600", color: "#1e293b", display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer"}}>
-          <input type="checkbox" checked={document.documentElement.getAttribute("data-theme") === "dark"} onChange={(e) => { try { if (e.target.checked) { document.documentElement.setAttribute("data-theme", "dark"); LS.setItem("pan_dark_mode", "true"); } else { document.documentElement.removeAttribute("data-theme"); LS.setItem("pan_dark_mode", "false"); } } catch (err) { logError("SETTINGS", err.message, err.stack); console.error(err); } }} />
+          <input type="checkbox" checked={theme === "dark"} onChange={toggleTheme} />
           Dark Mode
         </label>
       </div>

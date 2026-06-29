@@ -101,16 +101,22 @@ function AppContent() {
     };
   }, []);
 
+  const canAccessTab = useCallback((key: string) => {
+    if (key === "pos") return true;
+    if (key === "menu" || key === "admin") return !!(user?.permissions?.reports || user?.permissions?.expenses || user?.permissions?.settings);
+    return !!user?.permissions?.[key];
+  }, [user]);
+
   const handleTabClick = useCallback((tab) => {
     const permKey = tab.perm || tab.key;
-    if (user && (permKey === "pos" ? true : user.permissions?.[permKey] === true)) {
+    if (user && canAccessTab(permKey)) {
       setActiveTab(tab.key);
       setSubPath("");
       navigate("/" + tab.key, { replace: true });
     } else {
       alert("Access Denied! You don't have permission for this section.");
     }
-  }, [navigate, user]);
+  }, [navigate, user, canAccessTab]);
 
   const handleSubNavigate = useCallback((path) => {
     setSubPath(path);
@@ -136,12 +142,6 @@ function AppContent() {
         return <POSView user={user} />;
     }
   }, [activeTab, subPath, user, handleSubNavigate]);
-
-  const canAccessTab = (key: string) => {
-    if (key === "pos") return true;
-    if (key === "menu" || key === "admin") return user?.permissions?.reports || user?.permissions?.expenses || user?.permissions?.settings;
-    return user?.permissions?.[key] === true;
-  };
 
   if (!user) {
     return <AuthView onAuthSuccess={setUser} />;

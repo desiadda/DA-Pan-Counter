@@ -23,7 +23,7 @@ Paan shop POS system with billing, inventory, khata (credit accounts), reports, 
 | `useCartStore` | `stores/cartStore.ts` | cart, addItem, updateQty, clear, subtotal, total, mobileCartOpen, openMobileCart, closeMobileCart, handleCheckout |
 | `useConfirmStore` | `stores/confirmStore.ts` | confirm(message, opts) → Promise\<boolean\> |
 | `useLangStore` | `stores/langStore.ts` | lang, setLang, translate, availableLangs |
-| `useUIStore` | `stores/uiStore.ts` | theme (not yet used by App.jsx) |
+| `useUIStore` | `stores/uiStore.ts` | theme, toggleTheme, showCOH, showShift |
 
 ### Auth & Roles
 - Users stored in `pan_users` localStorage array
