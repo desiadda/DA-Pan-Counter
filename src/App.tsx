@@ -137,6 +137,12 @@ function AppContent() {
     }
   }, [activeTab, subPath, user, handleSubNavigate]);
 
+  const canAccessTab = (key: string) => {
+    if (key === "pos") return true;
+    if (key === "menu" || key === "admin") return user?.permissions?.reports || user?.permissions?.expenses || user?.permissions?.settings;
+    return user?.permissions?.[key] === true;
+  };
+
   if (!user) {
     return <AuthView onAuthSuccess={setUser} />;
   }
