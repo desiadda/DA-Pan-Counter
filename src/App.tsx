@@ -69,6 +69,7 @@ function AppContent() {
   const showShift = useUIStore((s) => s.showShift);
   const setShowCOH = useUIStore((s) => s.setShowCOH);
   const setShowShift = useUIStore((s) => s.setShowShift);
+  const toggleTheme = useUIStore((s) => s.toggleTheme);
   const [criticalErrors, setCriticalErrors] = useState(getCriticalUnreadCount());
   const [lowStockCount, setLowStockCount] = useState(dbService.getLowStockCount());
   const activeTabRef = useRef(activeTab);
@@ -100,30 +101,16 @@ function AppContent() {
     };
   }, []);
 
-  if (!user) {
-    return <AuthView onAuthSuccess={setUser} />;
-  }
-
-  const allUsers = getUsers();
-  const cohBalance = dbService.getBalance(user.id);
-  const cohPending = dbService.getPendingCount(user.id);
-
-  const canAccessTab = (key) => {
-    if (key === "pos") return true;
-    if (key === "menu" || key === "admin") return user.permissions?.reports || user.permissions?.expenses || user.permissions?.settings;
-    return user.permissions?.[key] === true;
-  };
-
   const handleTabClick = useCallback((tab) => {
     const permKey = tab.perm || tab.key;
-    if (canAccessTab(permKey)) {
+    if (user && (permKey === "pos" ? true : user.permissions?.[permKey] === true)) {
       setActiveTab(tab.key);
       setSubPath("");
       navigate("/" + tab.key, { replace: true });
     } else {
       alert("Access Denied! You don't have permission for this section.");
     }
-  }, [navigate]);
+  }, [navigate, user]);
 
   const handleSubNavigate = useCallback((path) => {
     setSubPath(path);
@@ -149,6 +136,14 @@ function AppContent() {
         return <POSView user={user} />;
     }
   }, [activeTab, subPath, user, handleSubNavigate]);
+
+  if (!user) {
+    return <AuthView onAuthSuccess={setUser} />;
+  }
+
+  const allUsers = getUsers();
+  const cohBalance = dbService.getBalance(user.id);
+  const cohPending = dbService.getPendingCount(user.id);
 
   return (
     <AppShell>
@@ -186,7 +181,7 @@ function AppContent() {
           </button>
 
           <LanguageSwitcher />
-          <button onClick={() => { const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'; document.documentElement.setAttribute('data-theme', next); document.documentElement.classList.toggle('dark', next === 'dark'); localStorage.setItem('pan_theme', next); }} className="logout-btn" title="Toggle Dark Mode">
+          <button onClick={toggleTheme} className="logout-btn" title="Toggle Dark Mode">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
           </button>
 
