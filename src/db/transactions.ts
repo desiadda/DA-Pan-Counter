@@ -55,7 +55,7 @@ export const addTransaction = async (transaction) => {
     });
 
     if (transaction.paymentMode === "Cash") {
-      adjustBalance(transaction.cashierId || "system", transaction.totalAmount, `Cash sale: Bill ${transaction.id}`, transaction.cashierName || "System");
+      await adjustBalance(transaction.cashierId || "system", transaction.totalAmount, `Cash sale: Bill ${transaction.id}`, transaction.cashierName || "System");
     }
 
     if (isFirebaseEnabled) {
@@ -107,7 +107,7 @@ export const deleteTransaction = async (transactionId) => {
     }
 
     if (targetTx.paymentMode === "Cash") {
-      adjustBalance(targetTx.cashierId || "system", -targetTx.totalAmount, `Voided cash bill: ${transactionId}`, targetTx.cashierName || "System");
+      await adjustBalance(targetTx.cashierId || "system", -targetTx.totalAmount, `Voided cash bill: ${transactionId}`, targetTx.cashierName || "System");
     }
     window.dispatchEvent(new CustomEvent("stock-changed"));
   } catch (err) {
@@ -131,7 +131,7 @@ export const returnTransaction = async (originalTx, returnItems, reason, userId,
     setLocalData(LS_KEYS.PRODUCTS, products);
 
     if (originalTx.paymentMode === "Cash") {
-      adjustBalance(userId || "system", -returnAmount, `Return refund: ${returnAmount} from Bill ${originalTx.id}`, userName || "System");
+      await adjustBalance(userId || "system", -returnAmount, `Return refund: ${returnAmount} from Bill ${originalTx.id}`, userName || "System");
     }
     if (originalTx.paymentMode === "Udhaar" && originalTx.customerId) {
       const customers = getLocalCustomers();
@@ -173,9 +173,9 @@ export const updateTransactionPaymentMode = async (transactionId, newMode, chang
     if (tx.paymentMode === newMode) return;
 
     if (tx.paymentMode === "Cash") {
-      adjustBalance(tx.cashierId || "system", -tx.totalAmount, `Changed from Cash to ${newMode}: Bill ${transactionId}`, changedBy || "System");
+      await adjustBalance(tx.cashierId || "system", -tx.totalAmount, `Changed from Cash to ${newMode}: Bill ${transactionId}`, changedBy || "System");
     } else if (newMode === "Cash") {
-      adjustBalance(tx.cashierId || "system", tx.totalAmount, `Changed from ${tx.paymentMode} to Cash: Bill ${transactionId}`, changedBy || "System");
+      await adjustBalance(tx.cashierId || "system", tx.totalAmount, `Changed from ${tx.paymentMode} to Cash: Bill ${transactionId}`, changedBy || "System");
     }
 
     tx.paymentMode = newMode;
