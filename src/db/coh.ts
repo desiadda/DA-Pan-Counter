@@ -2,47 +2,22 @@ import { doc, setDoc, getDoc, onSnapshot, collection } from "firebase/firestore"
 import { db, isFirebaseEnabled } from "./config";
 import { LS_KEYS } from "../constants";
 import { logError } from "./errorLog";
+import { getLocalData, setLocalData } from "./storage";
 
 function getBalancesRaw() {
-  try {
-    const raw = localStorage.getItem(LS_KEYS.COH_BALANCES);
-    return raw ? JSON.parse(raw) : {};
-  } catch (err) {
-    logError("COH", err.message, err.stack);
-    console.error("getBalancesRaw: Error reading COH balances", err);
-    return {};
-  }
+  return getLocalData(LS_KEYS.COH_BALANCES, {});
 }
 
 function saveBalancesRaw(data) {
-  try {
-    localStorage.setItem(LS_KEYS.COH_BALANCES, JSON.stringify(data));
-  } catch (err) {
-    logError("COH", err.message, err.stack);
-    console.error("saveBalancesRaw: Error saving COH balances", err);
-    throw new Error(`Storage error (स्टोरेज समस्या): COH balances save failed. ${err.message}. कृपया पुनः प्रयास करें।`);
-  }
+  setLocalData(LS_KEYS.COH_BALANCES, data);
 }
 
 function getTransactionsRaw() {
-  try {
-    const raw = localStorage.getItem(LS_KEYS.COH_TRANSACTIONS);
-    return raw ? JSON.parse(raw) : [];
-  } catch (err) {
-    logError("COH", err.message, err.stack);
-    console.error("getTransactionsRaw: Error reading COH transactions", err);
-    return [];
-  }
+  return getLocalData(LS_KEYS.COH_TRANSACTIONS, []);
 }
 
 function saveTransactionsRaw(list) {
-  try {
-    localStorage.setItem(LS_KEYS.COH_TRANSACTIONS, JSON.stringify(list));
-  } catch (err) {
-    logError("COH", err.message, err.stack);
-    console.error("saveTransactionsRaw: Error saving COH transactions", err);
-    throw new Error(`Storage error (स्टोरेज समस्या): COH transactions save failed. ${err.message}. कृपया पुनः प्रयास करें।`);
-  }
+  setLocalData(LS_KEYS.COH_TRANSACTIONS, list);
 }
 
 let cohListenerActive = false;

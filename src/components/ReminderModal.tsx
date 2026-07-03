@@ -1,7 +1,5 @@
 import { useState } from "react";
-import { getLocalData, setLocalData } from "../db/storage";
-import { LS_KEYS } from "../constants";
-
+import { dbService } from "../firebase";
 import ModalPortal from "./ModalPortal";
 
 export default function ReminderModal({ customers, onClose }) {
@@ -73,7 +71,7 @@ export default function ReminderModal({ customers, onClose }) {
         <div style={styles.list}>
           {debtors.map(c => {
             const isSelected = selected[c.id];
-            const lastReminder = getLocalData(LS_KEYS.CUSTOMERS, []).find(x => x.id === c.id)?.lastReminder;
+            const lastReminder = c.lastReminder;
             return (
               <div key={c.id} style={{ ...styles.customerCard, ...(isSelected ? styles.selected : {}) }}>
                 <div style={styles.customerInfo}>
@@ -122,15 +120,14 @@ export default function ReminderModal({ customers, onClose }) {
               {copiedId === "bulk" ? "✓ Copied!" : "📋 Copy All Selected"}
             </button>
             <button
-              onClick={() => {
-                debtors.filter(c => selected[c.id]).forEach(c => {
-                  const customers = getLocalData(LS_KEYS.CUSTOMERS, []);
-                  const idx = customers.findIndex(x => x.id === c.id);
-                  if (idx !== -1) {
-                    customers[idx].lastReminder = Date.now();
-                    setLocalData(LS_KEYS.CUSTOMERS, customers);
-                  }
+              onClick={async () => {
+                const promises = debtors.filter(c => selected[c.id]).map(c => {
+                  return dbService.saveCustomer({
+                    ...c,
+                    lastReminder: Date.now()
+                  });
                 });
+                await Promise.all(promises);
                 alert(`Reminder marked for ${selectedCount} customer(s)!`);
               }}
               className="btn btn-outline"

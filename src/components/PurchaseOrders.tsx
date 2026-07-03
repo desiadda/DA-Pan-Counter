@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { dbService } from "../firebase";
-import { getLocalProducts } from "../db/storage";
 
 export default function PurchaseOrders() {
   const [orders, setOrders] = useState([]);
@@ -18,9 +17,12 @@ export default function PurchaseOrders() {
   }, []);
 
   const load = async () => {
-    const list = await dbService.getPurchaseOrders();
-    setOrders(list || []);
-    setProducts(getLocalProducts());
+    const [ordersList, productsList] = await Promise.all([
+      dbService.getPurchaseOrders(),
+      dbService.getProducts()
+    ]);
+    setOrders(ordersList || []);
+    setProducts(productsList || []);
   };
 
   return (

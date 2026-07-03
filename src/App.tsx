@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef, useCallback, lazy, Suspense } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { collection, onSnapshot } from "firebase/firestore";
+import { db } from "./db/config";
+import { useDBStore } from "./stores/dbStore";
 import { useAuthStore } from "./stores/authStore";
 import { useCartStore } from "./stores/cartStore";
 import { useUIStore } from "./stores/uiStore";
@@ -29,68 +32,65 @@ const navItems = [
   {
     key: "inventory",
     label: "Inventory",
-    icon: <><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><polyline points="3.27 6.96 12 12.01 20.73 6.96" /><line x1="12" y1="22.08" x2="12" y2="12" /></>,
+    icon: <><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" /></>,
     perm: "stock",
   },
   {
-    key: "credit",
+    key: "khata",
     label: "Credit Accounts",
-    icon: <><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></>,
+    icon: <><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20M4 19.5L4 5A2.5 2.5 0 0 1 6.5 2.5H20M14 6h3M14 11h3" /></>,
     perm: "khata",
   },
   {
-    key: "admin",
+    key: "menu",
     label: "Menu",
-    icon: <><circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" /></>,
-    perm: "menu",
+    icon: <><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" /></>,
   },
 ];
 
 function AppContent() {
   const user = useAuthStore((s) => s.user);
-  const setUser = useAuthStore((s) => s.setUser);
-  const logout = useAuthStore((s) => s.logout);
+  const activeTab = useAuthStore((s) => s.activeTab);
+  const setActiveTab = useAuthStore((s) => s.setActiveTab);
+  const subPath = useAuthStore((s) => s.subPath);
+  const setSubPath = useAuthStore((s) => s.setSubPath);
+  const logoutUser = useAuthStore((s) => s.logout);
   const isOnline = useAuthStore((s) => s.isOnline);
-  const init = useAuthStore((s) => s.init);
+  const theme = useUIStore((s) => s.theme);
+  const toggleTheme = useUIStore((s) => s.toggleTheme);
+  const showCOH = useUIStore((s) => s.showCOH);
+  const setShowCOH = (show: boolean) => useUIStore.setState({ showCOH: show });
+  const showShift = useUIStore((s) => s.showShift);
+  const setShowShift = (show: boolean) => useUIStore.setState({ showShift: show });
+
   const navigate = useNavigate();
   const location = useLocation();
 
-  const getTabFromPath = () => {
-    const path = location.pathname.replace("/", "").split("/")[0];
-    const normalized = path === "khata" ? "credit" : path;
-    return ["pos", "inventory", "credit", "admin"].includes(normalized) ? normalized : "pos";
-  };
-  const getSubPath = () => {
-    const parts = location.pathname.split("/");
-    return parts.slice(2).join("/");
-  };
-  const [activeTab, setActiveTab] = useState(getTabFromPath());
-  const [subPath, setSubPath] = useState(getSubPath());
-  const showCOH = useUIStore((s) => s.showCOH);
-  const showShift = useUIStore((s) => s.showShift);
-  const setShowCOH = useUIStore((s) => s.setShowCOH);
-  const setShowShift = useUIStore((s) => s.setShowShift);
-  const toggleTheme = useUIStore((s) => s.toggleTheme);
+  const [cohBalance, setCohBalance] = useState(0);
+  const [cohPending, setCohPending] = useState(0);
+  const [lowStockCount, setLowStockCount] = useState(0);
   const [criticalErrors, setCriticalErrors] = useState(getCriticalUnreadCount());
-  const [lowStockCount, setLowStockCount] = useState(dbService.getLowStockCount());
+  const [allUsers, setAllUsers] = useState<any[]>([]);
+
   const activeTabRef = useRef(activeTab);
-  activeTabRef.current = activeTab;
-
-  const [cohBalance, setCohBalance] = useState(user ? dbService.getBalance(user.id) : 0);
-  const [cohPending, setCohPending] = useState(user ? dbService.getPendingCount(user.id) : 0);
-  const [allUsers, setAllUsers] = useState(getUsers());
-
   useEffect(() => {
-    if (user?.id) {
-      setCohBalance(dbService.getBalance(user.id));
-      setCohPending(dbService.getPendingCount(user.id));
-      setAllUsers(getUsers());
-    }
-  }, [user?.id]);
+    activeTabRef.current = activeTab;
+  }, [activeTab]);
 
-  useEffect(() => {
-    return init();
-  }, [init]);
+  const getTabFromPath = () => {
+    const path = location.pathname;
+    if (path.startsWith("/pos")) return "pos";
+    if (path.startsWith("/inventory")) return "inventory";
+    if (path.startsWith("/khata")) return "khata";
+    if (path.startsWith("/menu")) return "menu";
+    return "pos";
+  };
+
+  const getSubPath = () => {
+    const path = location.pathname;
+    const parts = path.split("/").filter(Boolean);
+    return parts.length > 1 ? parts[1] : "";
+  };
 
   useEffect(() => {
     setActiveTab(getTabFromPath());
@@ -114,18 +114,29 @@ function AppContent() {
 
     dbService.initCOHListener();
     dbService.initUsersListener();
-    dbService.initProductsListener();
-    dbService.initTransactionsListener();
-    dbService.initCustomersListener();
-    dbService.initExpensesListener();
-    dbService.initSuppliersListener();
-    dbService.initPurchasesListener();
-    dbService.initShiftsListener();
     dbService.migrateLocalDataToFirestore();
+
+    // Direct Firestore real-time bindings
+    const unsubProducts = onSnapshot(collection(db, "products"), (snap) => {
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      useDBStore.getState().setProducts(list);
+      setLowStockCount(list.filter((p: any) => p.stock <= (p.lowStockLimit || 0)).length);
+    });
+
+    const unsubCustomers = onSnapshot(collection(db, "customers"), (snap) => {
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      useDBStore.getState().setCustomers(list);
+    });
+
+    const unsubTransactions = onSnapshot(collection(db, "transactions"), (snap) => {
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      list.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+      useDBStore.getState().setTransactions(list);
+    });
+
     const onError = () => setCriticalErrors(getCriticalUnreadCount());
     window.addEventListener("error-logged", onError);
-    const refreshStock = () => setLowStockCount(dbService.getLowStockCount());
-    window.addEventListener("stock-changed", refreshStock);
+    
     const refreshCOH = () => {
       if (user?.id) {
         setCohBalance(dbService.getBalance(user.id));

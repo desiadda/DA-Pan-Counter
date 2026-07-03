@@ -1,9 +1,9 @@
 import { isFirebaseEnabled, saveConfig, clearConfig, getConfig, migrateLocalDataToFirestore } from "./config";
-import { getProducts, getLowStockCount, getLowStockProducts, saveProduct, deleteProduct, initProductsListener } from "./products";
-import { getTransactions, addTransaction, deleteTransaction, returnTransaction, updateTransactionPaymentMode, initTransactionsListener } from "./transactions";
-import { getCustomers, saveCustomer, updateUdhaarBalance, initCustomersListener } from "./customers";
+import { getProducts, getLowStockCount, getLowStockProducts, saveProduct, deleteProduct } from "./products";
+import { getTransactions, addTransaction, deleteTransaction, returnTransaction, updateTransactionPaymentMode } from "./transactions";
+import { getCustomers, saveCustomer, updateUdhaarBalance } from "./customers";
 import { login, logout, getCurrentUser, onAuthStateChangedListener, initUsersListener } from "./auth";
-import { getExpenses, addExpense, deleteExpense, EXPENSE_CATEGORIES, initExpensesListener } from "./expenses";
+import { getExpenses, addExpense, deleteExpense, EXPENSE_CATEGORIES } from "./expenses";
 import {
   getBalance, getAllBalances, adjustBalance,
   initiateTransfer, approveTransfer, rejectTransfer,
@@ -11,9 +11,9 @@ import {
   getHistoryForUser, getAllTransactions, initCOHListener,
 } from "./coh";
 import { recordPriceChange, getPriceHistory, getAllPriceHistory, clearPriceHistory } from "./priceHistory";
-import { getPurchaseOrders, savePurchaseOrder, receivePurchaseOrder, cancelPurchaseOrder, initPurchasesListener } from "./purchases";
-import { getSuppliers, saveSupplier, deleteSupplier, initSuppliersListener } from "./suppliers";
-import { getOpenShift, getAllShifts, openShift, closeShift, getTodayShiftSummary, initShiftsListener } from "./shifts";
+import { getPurchaseOrders, savePurchaseOrder, receivePurchaseOrder, cancelPurchaseOrder } from "./purchases";
+import { getSuppliers, saveSupplier, deleteSupplier } from "./suppliers";
+import { getOpenShift, getAllShifts, openShift, closeShift, getTodayShiftSummary } from "./shifts";
 
 export const dbService = {
   isFirebase: () => isFirebaseEnabled,
@@ -69,12 +69,5 @@ export const dbService = {
   getSuppliers,
   saveSupplier,
   deleteSupplier,
-  initProductsListener,
-  initTransactionsListener,
-  initCustomersListener,
-  initExpensesListener,
-  initSuppliersListener,
-  initPurchasesListener,
-  initShiftsListener,
   migrateLocalDataToFirestore,
 };

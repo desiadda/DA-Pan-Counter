@@ -1,40 +1,34 @@
-import { collection, doc, setDoc, addDoc, getDocs, onSnapshot, getDoc } from "firebase/firestore";
+import { collection, doc, setDoc, getDocs, getDoc, query, where, limit } from "firebase/firestore";
 import { db, isFirebaseEnabled } from "./config";
-import { getLocalData, setLocalData } from "./storage";
 import { logError } from "./errorLog";
 
-const LS_KEY = "pan_shifts";
-
-let shiftsListenerActive = false;
-
-export function initShiftsListener() {
-  if (!isFirebaseEnabled || shiftsListenerActive) return;
-  shiftsListenerActive = true;
-
-  onSnapshot(collection(db, "shifts"), (snapshot) => {
-    const list = [];
-    snapshot.forEach(doc => {
-      list.push({ id: doc.id, ...doc.data() });
-    });
-    setLocalData(LS_KEY, list);
-    window.dispatchEvent(new CustomEvent("shifts-changed"));
-  });
-}
-
-export const getOpenShift = (userId) => {
+export const getOpenShift = async (userId) => {
   try {
-    const shifts = getLocalData(LS_KEY, []);
-    return shifts.find(s => s.userId === userId && s.status === "open") || null;
+    if (!isFirebaseEnabled) return null;
+    const q = query(
+      collection(db, "shifts"),
+      where("userId", "==", userId),
+      where("status", "==", "open"),
+      limit(1)
+    );
+    const snap = await getDocs(q);
+    if (snap.empty) return null;
+    return { id: snap.docs[0].id, ...snap.docs[0].data() };
   } catch (err) {
     logError("STORAGE", err.message, err.stack);
     return null;
   }
 };
 
-export const getAllShifts = (userId) => {
+export const getAllShifts = async (userId) => {
   try {
-    const shifts = getLocalData(LS_KEY, []);
-    return userId ? shifts.filter(s => s.userId === userId) : shifts;
+    if (!isFirebaseEnabled) return [];
+    let q = collection(db, "shifts") as any;
+    if (userId) {
+      q = query(collection(db, "shifts"), where("userId", "==", userId));
+    }
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
   } catch (err) {
     logError("STORAGE", err.message, err.stack);
     return [];
@@ -43,8 +37,7 @@ export const getAllShifts = (userId) => {
 
 export const openShift = async (userId, userName, startingCash) => {
   try {
-    const shifts = getLocalData(LS_KEY, []);
-    const existing = shifts.find(s => s.userId === userId && s.status === "open");
+    const existing = await getOpenShift(userId);
     if (existing) return existing;
 
     const id = "shift_" + Date.now();
@@ -74,13 +67,14 @@ export const openShift = async (userId, userName, startingCash) => {
 
 export const closeShift = async (userId, actualCash) => {
   try {
-    const shifts = getLocalData(LS_KEY, []);
-    const shift = shifts.find(s => s.userId === userId && s.status === "open");
+    const shift = (await getOpenShift(userId)) as any;
     if (!shift) throw new Error("No open shift found");
 
-    const transactions = getLocalData("pan_transactions", []);
-    const sinceOpen = transactions.filter(t => t.timestamp >= shift.openTime && t.cashierId === userId);
-    const cashSales = sinceOpen.filter(t => t.paymentMode === "Cash").reduce((sum, t) => sum + (t.totalAmount || 0), 0);
+    const q = query(collection(db, "transactions"), where("cashierId", "==", userId));
+    const snap = await getDocs(q);
+    const transactions = snap.docs.map(d => d.data());
+    const sinceOpen = transactions.filter((t: any) => t.timestamp >= shift.openTime);
+    const cashSales = sinceOpen.filter((t: any) => t.paymentMode === "Cash").reduce((sum: number, t: any) => sum + (t.totalAmount || 0), 0);
 
     const actual = parseFloat(actualCash) || 0;
     const expected = shift.startingCash + cashSales;
@@ -94,18 +88,24 @@ export const closeShift = async (userId, actualCash) => {
       await setDoc(doc(db, "shifts", shift.id), shift);
     }
     return shift;
-  } catch (err) {
+  } catch (err: any) {
     logError("STORAGE", err.message, err.stack);
     throw new Error(err.message || "Failed to close shift");
   }
 };
 
-export const getTodayShiftSummary = (userId) => {
+export const getTodayShiftSummary = async (userId) => {
   try {
+    if (!isFirebaseEnabled) return null;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const shifts = getLocalData(LS_KEY, []);
-    const todayShifts = shifts.filter(s => s.userId === userId && s.openTime >= today.getTime());
+    const q = query(
+      collection(db, "shifts"),
+      where("userId", "==", userId),
+      where("openTime", ">=", today.getTime())
+    );
+    const snap = await getDocs(q);
+    const todayShifts = snap.docs.map(d => d.data());
     if (todayShifts.length === 0) return null;
     const last = todayShifts[todayShifts.length - 1];
     const openCount = todayShifts.filter(s => s.status === "open").length;

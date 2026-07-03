@@ -1,26 +1,7 @@
-import { collection, doc, writeBatch, getDocs, onSnapshot, deleteDoc, setDoc } from "firebase/firestore";
+import { collection, doc, writeBatch, getDocs, deleteDoc, setDoc, getDoc } from "firebase/firestore";
 import { db, isFirebaseEnabled } from "./config";
-import { getLocalProducts, getLocalTransactions, setLocalData, getLocalCustomers } from "./storage";
-import { LS_KEYS } from "../constants";
 import { adjustBalance } from "./coh";
 import { logError } from "./errorLog";
-
-let transactionsListenerActive = false;
-
-export function initTransactionsListener() {
-  if (!isFirebaseEnabled || transactionsListenerActive) return;
-  transactionsListenerActive = true;
-
-  onSnapshot(collection(db, "transactions"), (snapshot) => {
-    const list = [];
-    snapshot.forEach(doc => {
-      list.push({ id: doc.id, ...doc.data() });
-    });
-    list.sort((a, b) => b.timestamp - a.timestamp);
-    setLocalData(LS_KEYS.TRANSACTIONS, list);
-    window.dispatchEvent(new CustomEvent("stock-changed"));
-  });
-}
 
 async function syncTransaction(transaction) {
   const batch = writeBatch(db);
@@ -44,13 +25,12 @@ export const getTransactions = async () => {
       const snap = await getDocs(collection(db, "transactions"));
       const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       list.sort((a, b) => b.timestamp - a.timestamp);
-      setLocalData(LS_KEYS.TRANSACTIONS, list);
       return list;
     }
-    return getLocalTransactions();
+    return [];
   } catch (err) {
     logError("TRANSACTION", err.message, err.stack);
-    return getLocalTransactions();
+    return [];
   }
 };
 
@@ -76,16 +56,16 @@ export const addTransaction = async (transaction) => {
 
 export const deleteTransaction = async (transactionId) => {
   try {
-    const transactions = getLocalTransactions();
-    const targetTx = transactions.find(t => t.id === transactionId);
-    if (!targetTx) return;
-
     if (isFirebaseEnabled) {
-      await deleteDoc(doc(db, "transactions", transactionId));
-    }
+      const docSnap = await getDoc(doc(db, "transactions", transactionId));
+      if (!docSnap.exists()) return;
+      const targetTx = docSnap.data();
 
-    if (targetTx.paymentMode === "Cash") {
-      await adjustBalance(targetTx.cashierId || "system", -targetTx.totalAmount, `Voided cash bill: ${transactionId}`, targetTx.cashierName || "System");
+      await deleteDoc(doc(db, "transactions", transactionId));
+
+      if (targetTx.paymentMode === "Cash") {
+        await adjustBalance(targetTx.cashierId || "system", -targetTx.totalAmount, `Voided cash bill: ${transactionId}`, targetTx.cashierName || "System");
+      }
     }
   } catch (err) {
     logError("TRANSACTION", err.message, err.stack);
@@ -122,22 +102,23 @@ export const returnTransaction = async (originalTx, returnItems, reason, userId,
 
 export const updateTransactionPaymentMode = async (transactionId, newMode, changedBy) => {
   try {
-    const transactions = getLocalTransactions();
-    const tx = transactions.find(t => t.id === transactionId);
-    if (!tx) throw new Error("Transaction not found (लेन-देन नहीं मिला).");
-    if (tx.paymentMode === newMode) return;
-
-    if (tx.paymentMode === "Cash") {
-      await adjustBalance(tx.cashierId || "system", -tx.totalAmount, `Changed from Cash to ${newMode}: Bill ${transactionId}`, changedBy || "System");
-    } else if (newMode === "Cash") {
-      await adjustBalance(tx.cashierId || "system", tx.totalAmount, `Changed from ${tx.paymentMode} to Cash: Bill ${transactionId}`, changedBy || "System");
-    }
-
-    tx.paymentMode = newMode;
-    tx.editedAt = Date.now();
-    tx.editedBy = changedBy || "System";
-
     if (isFirebaseEnabled) {
+      const docRef = doc(db, "transactions", transactionId);
+      const docSnap = await getDoc(docRef);
+      if (!docSnap.exists()) throw new Error("Transaction not found (लेन-देन नहीं मिला).");
+      const tx = { id: docSnap.id, ...docSnap.data() };
+      if (tx.paymentMode === newMode) return;
+
+      if (tx.paymentMode === "Cash") {
+        await adjustBalance(tx.cashierId || "system", -tx.totalAmount, `Changed from Cash to ${newMode}: Bill ${transactionId}`, changedBy || "System");
+      } else if (newMode === "Cash") {
+        await adjustBalance(tx.cashierId || "system", tx.totalAmount, `Changed from ${tx.paymentMode} to Cash: Bill ${transactionId}`, changedBy || "System");
+      }
+
+      tx.paymentMode = newMode;
+      tx.editedAt = Date.now();
+      tx.editedBy = changedBy || "System";
+
       await setDoc(doc(db, "transactions", transactionId), tx);
     }
   } catch (err) {

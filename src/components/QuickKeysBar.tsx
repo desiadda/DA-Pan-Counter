@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { getLocalData, setLocalData } from "../db/storage";
-import { LS_KEYS } from "../constants";
+import { doc, onSnapshot, setDoc } from "firebase/firestore";
+import { db } from "../db/config";
 
 const MAX_SLOTS = 9;
 
@@ -10,15 +10,25 @@ export default function QuickKeysBar({ products, onAddToCart }) {
   const popupRef = useRef(null);
 
   useEffect(() => {
-    const saved = getLocalData(LS_KEYS.QUICK_KEYS, {});
-    setMappings(saved);
+    const unsub = onSnapshot(doc(db, "settings", "quick_keys"), (docSnap) => {
+      if (docSnap.exists()) {
+        setMappings(docSnap.data() || {});
+      } else {
+        setMappings({});
+      }
+    });
+    return () => unsub();
   }, []);
 
-  const saveMapping = (slot, productId, isPack) => {
+  const saveMapping = async (slot, productId, isPack) => {
     const updated = { ...mappings, [slot]: productId ? { productId, isPack: !!isPack } : null };
     if (!productId) delete updated[slot];
     setMappings(updated);
-    setLocalData(LS_KEYS.QUICK_KEYS, updated);
+    try {
+      await setDoc(doc(db, "settings", "quick_keys"), updated);
+    } catch (err) {
+      console.error("Failed to save quick keys", err);
+    }
   };
 
   const handleSlotClick = (slot) => {

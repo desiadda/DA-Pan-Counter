@@ -1,50 +1,68 @@
-import { getLocalData, setLocalData } from "./storage";
-import { LS_KEYS } from "../constants";
+import { collection, addDoc, getDocs, query, where, deleteDoc, doc, writeBatch } from "firebase/firestore";
+import { db, isFirebaseEnabled } from "./config";
 import { logError } from "./errorLog";
 
-export const recordPriceChange = (productId, productName, field, oldValue, newValue, userId, userName) => {
+export const recordPriceChange = async (productId, productName, field, oldValue, newValue, userId, userName) => {
   try {
     if (oldValue === newValue) return;
-    const history = getLocalData(LS_KEYS.PRICE_HISTORY, []);
-    history.unshift({
-      id: "ph_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
-      productId,
-      productName,
-      field,
-      oldValue,
-      newValue,
-      userId: userId || "system",
-      userName: userName || "System",
-      timestamp: Date.now(),
-    });
-    setLocalData(LS_KEYS.PRICE_HISTORY, history.slice(0, 500));
+    if (isFirebaseEnabled) {
+      await addDoc(collection(db, "price_history"), {
+        productId,
+        productName,
+        field,
+        oldValue,
+        newValue,
+        userId: userId || "system",
+        userName: userName || "System",
+        timestamp: Date.now(),
+      });
+    }
   } catch (err) {
     logError("STORAGE", err.message, err.stack);
   }
 };
 
-export const getPriceHistory = (productId) => {
+export const getPriceHistory = async (productId) => {
   try {
-    const history = getLocalData(LS_KEYS.PRICE_HISTORY, []);
-    return history.filter(h => h.productId === productId);
+    if (isFirebaseEnabled) {
+      const q = query(collection(db, "price_history"), where("productId", "==", productId));
+      const snap = await getDocs(q);
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      list.sort((a, b) => b.timestamp - a.timestamp);
+      return list;
+    }
+    return [];
   } catch (err) {
     logError("STORAGE", err.message, err.stack);
     return [];
   }
 };
 
-export const getAllPriceHistory = () => {
+export const getAllPriceHistory = async () => {
   try {
-    return getLocalData(LS_KEYS.PRICE_HISTORY, []);
+    if (isFirebaseEnabled) {
+      const snap = await getDocs(collection(db, "price_history"));
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      list.sort((a, b) => b.timestamp - a.timestamp);
+      return list;
+    }
+    return [];
   } catch (err) {
     logError("STORAGE", err.message, err.stack);
     return [];
   }
 };
 
-export const clearPriceHistory = () => {
+export const clearPriceHistory = async () => {
   try {
-    setLocalData(LS_KEYS.PRICE_HISTORY, []);
+    if (isFirebaseEnabled) {
+      const snap = await getDocs(collection(db, "price_history"));
+      const batch = writeBatch(db);
+      snap.docs.forEach(docSnap => {
+        batch.delete(doc(db, "price_history", docSnap.id));
+      });
+      await batch.commit();
+    }
   } catch (err) {
     logError("STORAGE", err.message, err.stack);
   }

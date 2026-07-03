@@ -1,24 +1,6 @@
-import { collection, getDocs, doc, setDoc, updateDoc, onSnapshot, getDoc } from "firebase/firestore";
+import { collection, getDocs, doc, setDoc, updateDoc, getDoc } from "firebase/firestore";
 import { db, isFirebaseEnabled } from "./config";
-import { getLocalCustomers, setLocalData } from "./storage";
-import { LS_KEYS } from "../constants";
 import { logError } from "./errorLog";
-
-let customersListenerActive = false;
-
-export function initCustomersListener() {
-  if (!isFirebaseEnabled || customersListenerActive) return;
-  customersListenerActive = true;
-
-  onSnapshot(collection(db, "customers"), (snapshot) => {
-    const list = [];
-    snapshot.forEach(doc => {
-      list.push({ id: doc.id, ...doc.data() });
-    });
-    setLocalData(LS_KEYS.CUSTOMERS, list);
-    window.dispatchEvent(new CustomEvent("customers-changed"));
-  });
-}
 
 async function syncCustomerToFirebase(customer) {
   const { id, ...data } = customer;
@@ -39,14 +21,12 @@ export const getCustomers = async () => {
   try {
     if (isFirebaseEnabled) {
       const snap = await getDocs(collection(db, "customers"));
-      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      setLocalData(LS_KEYS.CUSTOMERS, list);
-      return list;
+      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
     }
-    return getLocalCustomers();
+    return [];
   } catch (err) {
     logError("TRANSACTION", err.message, err.stack);
-    return getLocalCustomers();
+    return [];
   }
 };
 

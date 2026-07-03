@@ -7,7 +7,13 @@ export default function PriceHistoryModal({ product, onClose }) {
   const [history, setHistory] = useState([]);
 
   useEffect(() => {
-    if (product) setHistory(getPriceHistory(product.id));
+    const load = async () => {
+      if (product) {
+        const data = await getPriceHistory(product.id);
+        setHistory(data);
+      }
+    };
+    load();
   }, [product?.id]);
 
   if (!product) return null;

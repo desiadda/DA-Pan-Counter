@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { getLocalTransactions, getLocalData } from "../db/storage";
-import { LS_KEYS, DEFAULT_PRODUCTS } from "../constants";
+import { collection, onSnapshot } from "firebase/firestore";
+import { db } from "../db/config";
 
 export default function DashboardWidgets({ onNavigate }) {
   const [widgets, setWidgets] = useState({
@@ -11,31 +11,45 @@ export default function DashboardWidgets({ onNavigate }) {
   });
 
   useEffect(() => {
-    refresh();
-    const h = () => refresh();
-    window.addEventListener("stock-changed", h);
-    window.addEventListener("hashchange", h);
+    let active = true;
+    let localProducts = [];
+    let localCustomers = [];
+    let localTransactions = [];
+
+    const calculate = () => {
+      if (!active) return;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayTx = localTransactions.filter(t => t.timestamp >= today.getTime());
+      const sales = todayTx.reduce((sum, t) => t.paymentMode !== "Udhaar" ? sum + (t.totalAmount || 0) : sum, 0);
+      const khataDue = localCustomers.reduce((sum, c) => sum + (c.balance || 0), 0);
+      const low = localProducts.filter(p => p.stock <= p.lowStockLimit).length;
+
+      setWidgets({ todaySales: sales, todayCount: todayTx.length, pendingKhata: khataDue, lowStock: low });
+    };
+
+    const unsubProducts = onSnapshot(collection(db, "products"), (snap) => {
+      localProducts = snap.docs.map(d => d.data());
+      calculate();
+    });
+
+    const unsubCustomers = onSnapshot(collection(db, "customers"), (snap) => {
+      localCustomers = snap.docs.map(d => d.data());
+      calculate();
+    });
+
+    const unsubTransactions = onSnapshot(collection(db, "transactions"), (snap) => {
+      localTransactions = snap.docs.map(d => d.data());
+      calculate();
+    });
+
     return () => {
-      window.removeEventListener("stock-changed", h);
-      window.removeEventListener("hashchange", h);
+      active = false;
+      unsubProducts();
+      unsubCustomers();
+      unsubTransactions();
     };
   }, []);
-
-  const refresh = () => {
-    const transactions = getLocalTransactions();
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayTx = transactions.filter(t => t.timestamp >= today.getTime());
-    const sales = todayTx.reduce((sum, t) => t.paymentMode !== "Udhaar" ? sum + (t.totalAmount || 0) : sum, 0);
-
-    const customers = getLocalData(LS_KEYS.CUSTOMERS, []);
-    const khataDue = customers.reduce((sum, c) => sum + (c.balance || 0), 0);
-
-    const products = getLocalData(LS_KEYS.PRODUCTS, null) || DEFAULT_PRODUCTS;
-    const low = products.filter(p => p.stock <= p.lowStockLimit).length;
-
-    setWidgets({ todaySales: sales, todayCount: todayTx.length, pendingKhata: khataDue, lowStock: low });
-  };
 
   const items = [
     { label: "Today's Sales", value: `฿${widgets.todaySales.toFixed(0)}`, color: "#047857", bg: "#f0fdf4", icon: "💰" },
