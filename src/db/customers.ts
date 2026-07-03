@@ -1,8 +1,24 @@
-import { collection, getDocs, doc, setDoc, updateDoc } from "firebase/firestore";
+import { collection, getDocs, doc, setDoc, updateDoc, onSnapshot, getDoc } from "firebase/firestore";
 import { db, isFirebaseEnabled } from "./config";
 import { getLocalCustomers, setLocalData } from "./storage";
 import { LS_KEYS } from "../constants";
 import { logError } from "./errorLog";
+
+let customersListenerActive = false;
+
+export function initCustomersListener() {
+  if (!isFirebaseEnabled || customersListenerActive) return;
+  customersListenerActive = true;
+
+  onSnapshot(collection(db, "customers"), (snapshot) => {
+    const list = [];
+    snapshot.forEach(doc => {
+      list.push({ id: doc.id, ...doc.data() });
+    });
+    setLocalData(LS_KEYS.CUSTOMERS, list);
+    window.dispatchEvent(new CustomEvent("customers-changed"));
+  });
+}
 
 async function syncCustomerToFirebase(customer) {
   const { id, ...data } = customer;
@@ -36,22 +52,14 @@ export const getCustomers = async () => {
 
 export const saveCustomer = async (customer) => {
   try {
-    const customers = getLocalCustomers();
-    if (customer.id) {
-      const idx = customers.findIndex(c => c.id === customer.id);
-      if (idx !== -1) customers[idx] = customer;
-    } else {
-      customer.id = "c_" + Date.now();
+    if (!customer.id) {
       customer.balance = customer.balance || 0;
       customer.ledger = customer.ledger || [];
-      customers.push(customer);
     }
 
     if (isFirebaseEnabled) {
       await syncCustomerToFirebase(customer);
     }
-
-    setLocalData(LS_KEYS.CUSTOMERS, customers);
   } catch (err) {
     logError("TRANSACTION", err.message, err.stack);
     throw new Error(`Save error (सेव समस्या): ${err.message}. कृपया पुनः प्रयास करें।`);
@@ -60,17 +68,22 @@ export const saveCustomer = async (customer) => {
 
 export const updateUdhaarBalance = async (customerId, amountChange, ledgerEntry) => {
   try {
-    const customers = getLocalCustomers();
-    const idx = customers.findIndex(c => c.id === customerId);
-    if (idx === -1) return;
-    customers[idx].balance = (customers[idx].balance || 0) + amountChange;
-    customers[idx].ledger = [...(customers[idx].ledger || []), ledgerEntry];
+    let currentBal = 0;
+    let currentLedger = [];
 
     if (isFirebaseEnabled) {
-      await syncUdhaarToFirebase(customerId, customers[idx].balance, customers[idx].ledger);
+      const docRef = doc(db, "customers", customerId);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        currentBal = data.balance || 0;
+        currentLedger = data.ledger || [];
+      }
+      
+      const newBal = currentBal + amountChange;
+      const newLedger = [...currentLedger, ledgerEntry];
+      await syncUdhaarToFirebase(customerId, newBal, newLedger);
     }
-
-    setLocalData(LS_KEYS.CUSTOMERS, customers);
   } catch (err) {
     logError("TRANSACTION", err.message, err.stack);
     throw new Error(`Khata update error (खाता अपडेट समस्या): ${err.message}. कृपया पुनः प्रयास करें।`);

@@ -1,9 +1,25 @@
-import { collection, getDocs, doc, setDoc, addDoc, deleteDoc } from "firebase/firestore";
+import { collection, getDocs, doc, setDoc, addDoc, deleteDoc, onSnapshot } from "firebase/firestore";
 import { db, isFirebaseEnabled } from "./config";
 import { getLocalProducts, setLocalData } from "./storage";
 import { LS_KEYS } from "../constants";
 import { logError } from "./errorLog";
 import { recordPriceChange } from "./priceHistory";
+
+let productsListenerActive = false;
+
+export function initProductsListener() {
+  if (!isFirebaseEnabled || productsListenerActive) return;
+  productsListenerActive = true;
+
+  onSnapshot(collection(db, "products"), (snapshot) => {
+    const list = [];
+    snapshot.forEach(doc => {
+      list.push({ id: doc.id, ...doc.data() });
+    });
+    setLocalData(LS_KEYS.PRODUCTS, list);
+    window.dispatchEvent(new CustomEvent("stock-changed"));
+  });
+}
 
 async function syncProductToFirebase(product) {
   const { id, ...data } = product;
@@ -55,7 +71,6 @@ export const getProducts = async () => {
 export const saveProduct = async (product) => {
   try {
     const products = getLocalProducts();
-    let isNew = false;
     if (product.id) {
       const idx = products.findIndex(p => p.id === product.id);
       if (idx !== -1) {
@@ -72,20 +87,14 @@ export const saveProduct = async (product) => {
           if (parseFloat(old.sellingPricePack||0) !== parseFloat(product.sellingPricePack||0))
             recordPriceChange(product.id, product.name, "sellingPricePack", old.sellingPricePack||0, product.sellingPricePack, userId, userName);
         }
-        products[idx] = product;
       }
     } else {
       product.id = "p_" + Date.now();
-      isNew = true;
-      products.push(product);
     }
 
     if (isFirebaseEnabled) {
       await syncProductToFirebase(product);
     }
-
-    setLocalData(LS_KEYS.PRODUCTS, products);
-    window.dispatchEvent(new CustomEvent("stock-changed"));
   } catch (err) {
     logError("INVENTORY", err.message, err.stack);
     throw new Error(`Save error (सेव समस्या): ${err.message}. कृपया पुनः प्रयास करें।`);
@@ -97,9 +106,6 @@ export const deleteProduct = async (productId) => {
     if (isFirebaseEnabled) {
       await deleteProductFromFirebase(productId);
     }
-    const products = getLocalProducts().filter(p => p.id !== productId);
-    setLocalData(LS_KEYS.PRODUCTS, products);
-    window.dispatchEvent(new CustomEvent("stock-changed"));
   } catch (err) {
     logError("INVENTORY", err.message, err.stack);
     throw new Error(`Delete error (डिलीट समस्या): ${err.message}. कृपया पुनः प्रयास करें।`);

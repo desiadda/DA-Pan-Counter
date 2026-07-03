@@ -1,10 +1,26 @@
-import { collection, getDocs, doc, addDoc, deleteDoc } from "firebase/firestore";
+import { collection, getDocs, doc, addDoc, deleteDoc, onSnapshot } from "firebase/firestore";
 import { db, isFirebaseEnabled } from "./config";
 import { logError } from "./errorLog";
 
 const LS_KEY = "pan_expenses";
 const EXPENSE_CATEGORIES = ["Rent", "Electricity", "Salary", "Supplies", "Maintenance", "Other"];
 export { EXPENSE_CATEGORIES };
+
+let expensesListenerActive = false;
+
+export function initExpensesListener() {
+  if (!isFirebaseEnabled || expensesListenerActive) return;
+  expensesListenerActive = true;
+
+  onSnapshot(collection(db, "expenses"), (snapshot) => {
+    const list = [];
+    snapshot.forEach(doc => {
+      list.push({ id: doc.id, ...doc.data() });
+    });
+    localStorage.setItem(LS_KEY, JSON.stringify(list));
+    window.dispatchEvent(new CustomEvent("expenses-changed"));
+  });
+}
 
 const getLocalExpenses = () => {
   try {
@@ -42,17 +58,11 @@ export const getExpenses = async () => {
 
 export const addExpense = async (expense) => {
   try {
-    const expenses = getLocalExpenses();
-    expense.id = "exp_" + Date.now();
-    expenses.unshift(expense);
-
     if (isFirebaseEnabled) {
       const fireId = await syncExpenseToFirebase(expense);
-      expense.id = fireId;
+      return fireId;
     }
-
-    localStorage.setItem(LS_KEY, JSON.stringify(expenses));
-    return expense.id;
+    throw new Error("Cannot add expense: Firebase is not initialized.");
   } catch (err) {
     logError("EXPENSE", err.message, err.stack);
     throw new Error(`Expense error (खर्च समस्या): ${err.message}. कृपया पुनः प्रयास करें।`);
@@ -64,8 +74,6 @@ export const deleteExpense = async (expenseId) => {
     if (isFirebaseEnabled) {
       await deleteExpenseFromFirebase(expenseId);
     }
-    const expenses = getLocalExpenses().filter(e => e.id !== expenseId);
-    localStorage.setItem(LS_KEY, JSON.stringify(expenses));
   } catch (err) {
     logError("EXPENSE", err.message, err.stack);
     throw new Error(`Delete error (डिलीट समस्या): ${err.message}. कृपया पुनः प्रयास करें।`);

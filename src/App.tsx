@@ -100,6 +100,13 @@ function AppContent() {
   useEffect(() => {
     dbService.initCOHListener();
     dbService.initUsersListener();
+    dbService.initProductsListener();
+    dbService.initTransactionsListener();
+    dbService.initCustomersListener();
+    dbService.initExpensesListener();
+    dbService.initSuppliersListener();
+    dbService.initPurchasesListener();
+    dbService.initShiftsListener();
     const onError = () => setCriticalErrors(getCriticalUnreadCount());
     window.addEventListener("error-logged", onError);
     const refreshStock = () => setLowStockCount(dbService.getLowStockCount());

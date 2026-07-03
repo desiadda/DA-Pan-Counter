@@ -1,9 +1,26 @@
-import { collection, doc, writeBatch, getDocs } from "firebase/firestore";
+import { collection, doc, writeBatch, getDocs, onSnapshot, deleteDoc, setDoc } from "firebase/firestore";
 import { db, isFirebaseEnabled } from "./config";
 import { getLocalProducts, getLocalTransactions, setLocalData, getLocalCustomers } from "./storage";
 import { LS_KEYS } from "../constants";
 import { adjustBalance } from "./coh";
 import { logError } from "./errorLog";
+
+let transactionsListenerActive = false;
+
+export function initTransactionsListener() {
+  if (!isFirebaseEnabled || transactionsListenerActive) return;
+  transactionsListenerActive = true;
+
+  onSnapshot(collection(db, "transactions"), (snapshot) => {
+    const list = [];
+    snapshot.forEach(doc => {
+      list.push({ id: doc.id, ...doc.data() });
+    });
+    list.sort((a, b) => b.timestamp - a.timestamp);
+    setLocalData(LS_KEYS.TRANSACTIONS, list);
+    window.dispatchEvent(new CustomEvent("stock-changed"));
+  });
+}
 
 async function syncTransaction(transaction) {
   const batch = writeBatch(db);
@@ -26,6 +43,7 @@ export const getTransactions = async () => {
     if (isFirebaseEnabled) {
       const snap = await getDocs(collection(db, "transactions"));
       const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      list.sort((a, b) => b.timestamp - a.timestamp);
       setLocalData(LS_KEYS.TRANSACTIONS, list);
       return list;
     }
@@ -38,21 +56,7 @@ export const getTransactions = async () => {
 
 export const addTransaction = async (transaction) => {
   try {
-    const transactions = getLocalTransactions();
     transaction.id = "tx_" + Date.now();
-    transactions.unshift(transaction);
-
-    const products = getLocalProducts();
-    transaction.items.forEach(item => {
-      const prod = products.find(p => p.id === (item.realProductId || item.productId));
-      if (prod) {
-        if (item.isPack) {
-          prod.stock = Math.max(0, prod.stock - item.quantity * (prod.packSize || 20));
-        } else {
-          prod.stock = Math.max(0, prod.stock - item.quantity);
-        }
-      }
-    });
 
     if (transaction.paymentMode === "Cash") {
       await adjustBalance(transaction.cashierId || "system", transaction.totalAmount, `Cash sale: Bill ${transaction.id}`, transaction.cashierName || "System");
@@ -63,10 +67,6 @@ export const addTransaction = async (transaction) => {
       transaction.id = fireId;
     }
 
-    setLocalData(LS_KEYS.TRANSACTIONS, transactions);
-    setLocalData(LS_KEYS.PRODUCTS, products);
-
-    window.dispatchEvent(new CustomEvent("stock-changed"));
     return transaction.id;
   } catch (err) {
     logError("TRANSACTION", err.message, err.stack);
@@ -80,36 +80,13 @@ export const deleteTransaction = async (transactionId) => {
     const targetTx = transactions.find(t => t.id === transactionId);
     if (!targetTx) return;
 
-    const newTransactions = transactions.filter(t => t.id !== transactionId);
-    setLocalData(LS_KEYS.TRANSACTIONS, newTransactions);
-
-    const products = getLocalProducts();
-    targetTx.items.forEach(item => {
-      const prod = products.find(p => p.id === (item.realProductId || item.productId));
-      if (prod) {
-        const addSticks = item.isPack ? item.quantity * (item.packSize || 20) : item.quantity;
-        prod.stock = (prod.stock || 0) + addSticks;
-      }
-    });
-    setLocalData(LS_KEYS.PRODUCTS, products);
-
-    if (targetTx.paymentMode === "Udhaar" && targetTx.customerId) {
-      const customers = getLocalCustomers();
-      const idx = customers.findIndex(c => c.id === targetTx.customerId);
-      if (idx !== -1) {
-        customers[idx].balance = Math.max(0, (customers[idx].balance || 0) - targetTx.totalAmount);
-        customers[idx].ledger = [...(customers[idx].ledger || []), {
-          date: Date.now(), type: "Void Bill", amount: -targetTx.totalAmount,
-          description: `Bill ${transactionId} was voided.`,
-        }];
-        setLocalData(LS_KEYS.CUSTOMERS, customers);
-      }
+    if (isFirebaseEnabled) {
+      await deleteDoc(doc(db, "transactions", transactionId));
     }
 
     if (targetTx.paymentMode === "Cash") {
       await adjustBalance(targetTx.cashierId || "system", -targetTx.totalAmount, `Voided cash bill: ${transactionId}`, targetTx.cashierName || "System");
     }
-    window.dispatchEvent(new CustomEvent("stock-changed"));
   } catch (err) {
     logError("TRANSACTION", err.message, err.stack);
     throw new Error(`Delete error (डिलीट समस्या): ${err.message}. कृपया पुनः प्रयास करें।`);
@@ -118,35 +95,12 @@ export const deleteTransaction = async (transactionId) => {
 
 export const returnTransaction = async (originalTx, returnItems, reason, userId, userName) => {
   try {
-    const products = getLocalProducts();
     const returnAmount = returnItems.reduce((sum, item) => sum + (item.sellingPrice * item.returnQty), 0);
-
-    returnItems.forEach(item => {
-      const prod = products.find(p => p.id === (item.realProductId || item.productId));
-      if (prod) {
-        const restQty = item.isPack ? item.returnQty * (item.packSize || 20) : item.returnQty;
-        prod.stock = (prod.stock || 0) + restQty;
-      }
-    });
-    setLocalData(LS_KEYS.PRODUCTS, products);
 
     if (originalTx.paymentMode === "Cash") {
       await adjustBalance(userId || "system", -returnAmount, `Return refund: ${returnAmount} from Bill ${originalTx.id}`, userName || "System");
     }
-    if (originalTx.paymentMode === "Udhaar" && originalTx.customerId) {
-      const customers = getLocalCustomers();
-      const idx = customers.findIndex(c => c.id === originalTx.customerId);
-      if (idx !== -1) {
-        customers[idx].balance = Math.max(0, (customers[idx].balance || 0) - returnAmount);
-        customers[idx].ledger = [...(customers[idx].ledger || []), {
-          date: Date.now(), type: "Return", amount: -returnAmount,
-          description: `Return of items from Bill ${originalTx.id}: ${reason}`,
-        }];
-        setLocalData(LS_KEYS.CUSTOMERS, customers);
-      }
-    }
 
-    const transactions = getLocalTransactions();
     const returnTx = {
       id: "ret_" + Date.now(), originalBillId: originalTx.id, type: "return", timestamp: Date.now(),
       items: returnItems.map(item => ({ ...item, quantity: item.returnQty })),
@@ -154,10 +108,11 @@ export const returnTransaction = async (originalTx, returnItems, reason, userId,
       cashierId: userId || originalTx.cashierId, cashierName: userName || originalTx.cashierName,
       originalPaymentMode: originalTx.paymentMode,
     };
-    transactions.unshift(returnTx);
-    setLocalData(LS_KEYS.TRANSACTIONS, transactions);
 
-    window.dispatchEvent(new CustomEvent("stock-changed"));
+    if (isFirebaseEnabled) {
+      await setDoc(doc(db, "transactions", returnTx.id), returnTx);
+    }
+
     return returnTx;
   } catch (err) {
     logError("TRANSACTION", err.message, err.stack);
@@ -181,7 +136,10 @@ export const updateTransactionPaymentMode = async (transactionId, newMode, chang
     tx.paymentMode = newMode;
     tx.editedAt = Date.now();
     tx.editedBy = changedBy || "System";
-    setLocalData(LS_KEYS.TRANSACTIONS, transactions);
+
+    if (isFirebaseEnabled) {
+      await setDoc(doc(db, "transactions", transactionId), tx);
+    }
   } catch (err) {
     logError("TRANSACTION", err.message, err.stack);
     throw new Error(`Update error (अपडेट समस्या): ${err.message}. कृपया पुनः प्रयास करें।`);

@@ -1,7 +1,25 @@
+import { collection, doc, setDoc, addDoc, getDocs, onSnapshot, getDoc } from "firebase/firestore";
+import { db, isFirebaseEnabled } from "./config";
 import { getLocalData, setLocalData } from "./storage";
 import { logError } from "./errorLog";
 
 const LS_KEY = "pan_shifts";
+
+let shiftsListenerActive = false;
+
+export function initShiftsListener() {
+  if (!isFirebaseEnabled || shiftsListenerActive) return;
+  shiftsListenerActive = true;
+
+  onSnapshot(collection(db, "shifts"), (snapshot) => {
+    const list = [];
+    snapshot.forEach(doc => {
+      list.push({ id: doc.id, ...doc.data() });
+    });
+    setLocalData(LS_KEY, list);
+    window.dispatchEvent(new CustomEvent("shifts-changed"));
+  });
+}
 
 export const getOpenShift = (userId) => {
   try {
@@ -23,14 +41,15 @@ export const getAllShifts = (userId) => {
   }
 };
 
-export const openShift = (userId, userName, startingCash) => {
+export const openShift = async (userId, userName, startingCash) => {
   try {
     const shifts = getLocalData(LS_KEY, []);
     const existing = shifts.find(s => s.userId === userId && s.status === "open");
     if (existing) return existing;
 
+    const id = "shift_" + Date.now();
     const shift = {
-      id: "shift_" + Date.now(),
+      id,
       userId,
       userName,
       openTime: Date.now(),
@@ -42,8 +61,10 @@ export const openShift = (userId, userName, startingCash) => {
       status: "open",
       notes: "",
     };
-    shifts.push(shift);
-    setLocalData(LS_KEY, shifts);
+
+    if (isFirebaseEnabled) {
+      await setDoc(doc(db, "shifts", id), shift);
+    }
     return shift;
   } catch (err) {
     logError("STORAGE", err.message, err.stack);
@@ -51,7 +72,7 @@ export const openShift = (userId, userName, startingCash) => {
   }
 };
 
-export const closeShift = (userId, actualCash) => {
+export const closeShift = async (userId, actualCash) => {
   try {
     const shifts = getLocalData(LS_KEY, []);
     const shift = shifts.find(s => s.userId === userId && s.status === "open");
@@ -60,8 +81,6 @@ export const closeShift = (userId, actualCash) => {
     const transactions = getLocalData("pan_transactions", []);
     const sinceOpen = transactions.filter(t => t.timestamp >= shift.openTime && t.cashierId === userId);
     const cashSales = sinceOpen.filter(t => t.paymentMode === "Cash").reduce((sum, t) => sum + (t.totalAmount || 0), 0);
-    const cashInflows = sinceOpen.filter(t => t.paymentMode === "Cash" && t.receivedAmount).reduce((sum, t) => sum + parseFloat(t.changeAmount || 0), 0);
-    const cashReceived = sinceOpen.filter(t => t.paymentMode === "Cash").reduce((sum, t) => sum + parseFloat(t.receivedAmount || t.totalAmount || 0), 0);
 
     const actual = parseFloat(actualCash) || 0;
     const expected = shift.startingCash + cashSales;
@@ -71,7 +90,9 @@ export const closeShift = (userId, actualCash) => {
     shift.difference = +(actual - expected).toFixed(2);
     shift.status = "closed";
 
-    setLocalData(LS_KEY, shifts);
+    if (isFirebaseEnabled) {
+      await setDoc(doc(db, "shifts", shift.id), shift);
+    }
     return shift;
   } catch (err) {
     logError("STORAGE", err.message, err.stack);

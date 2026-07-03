@@ -11,15 +11,22 @@ export default function ShiftPanel({ user, onClose }) {
   const [msg, setMsg] = useState("");
 
   useEffect(() => {
-    const s = getOpenShift(user.id);
-    setShift(s);
-    setSummary(getTodayShiftSummary(user.id));
-    if (s) setMode("view");
+    const refresh = () => {
+      const s = getOpenShift(user.id);
+      setShift(s);
+      setSummary(getTodayShiftSummary(user.id));
+      if (s) setMode("view");
+    };
+    refresh();
+    window.addEventListener("shifts-changed", refresh);
+    return () => {
+      window.removeEventListener("shifts-changed", refresh);
+    };
   }, [user.id]);
 
-  const handleOpen = () => {
+  const handleOpen = async () => {
     try {
-      const s = openShift(user.id, user.name, parseFloat(startingCash) || 0);
+      const s = await openShift(user.id, user.name, parseFloat(startingCash) || 0);
       setShift(s);
       setMode("view");
       setMsg("Shift opened successfully!");
@@ -29,10 +36,10 @@ export default function ShiftPanel({ user, onClose }) {
     }
   };
 
-  const handleClose = () => {
+  const handleClose = async () => {
     if (closingCash === "") { alert("Enter actual cash count"); return; }
     try {
-      const s = closeShift(user.id, closingCash);
+      const s = await closeShift(user.id, closingCash);
       setShift(s);
       setMsg("Shift closed successfully!");
       setSummary(getTodayShiftSummary(user.id));

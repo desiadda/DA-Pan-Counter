@@ -1,9 +1,25 @@
-import { collection, doc, setDoc, addDoc, deleteDoc, getDocs } from "firebase/firestore";
+import { collection, doc, setDoc, addDoc, deleteDoc, getDocs, onSnapshot } from "firebase/firestore";
 import { db, isFirebaseEnabled } from "./config";
 import { getLocalData, setLocalData } from "./storage";
 import { logError } from "./errorLog";
 
 const LS_KEY = "pan_suppliers";
+
+let suppliersListenerActive = false;
+
+export function initSuppliersListener() {
+  if (!isFirebaseEnabled || suppliersListenerActive) return;
+  suppliersListenerActive = true;
+
+  onSnapshot(collection(db, "suppliers"), (snapshot) => {
+    const list = [];
+    snapshot.forEach(doc => {
+      list.push({ id: doc.id, ...doc.data() });
+    });
+    setLocalData(LS_KEY, list);
+    window.dispatchEvent(new CustomEvent("suppliers-changed"));
+  });
+}
 
 async function syncSupplierToFirebase(supplier) {
   const { id, ...data } = supplier;
@@ -36,21 +52,13 @@ export const getSuppliers = async () => {
 
 export const saveSupplier = async (supplier) => {
   try {
-    const list = getLocalData(LS_KEY, []);
-    if (supplier.id) {
-      const idx = list.findIndex(s => s.id === supplier.id);
-      if (idx !== -1) list[idx] = supplier;
-    } else {
-      supplier.id = "sup_" + Date.now();
+    if (!supplier.id) {
       supplier.createdAt = Date.now();
-      list.push(supplier);
     }
 
     if (isFirebaseEnabled) {
       await syncSupplierToFirebase(supplier);
     }
-
-    setLocalData(LS_KEY, list);
     return supplier;
   } catch (err) {
     logError("STORAGE", err.message, err.stack);
@@ -63,8 +71,6 @@ export const deleteSupplier = async (id) => {
     if (isFirebaseEnabled) {
       await deleteSupplierFromFirebase(id);
     }
-    const list = getLocalData(LS_KEY, []).filter(s => s.id !== id);
-    setLocalData(LS_KEY, list);
   } catch (err) {
     logError("STORAGE", err.message, err.stack);
     throw new Error("Failed to delete supplier");
