@@ -9,8 +9,9 @@ export default function PurchaseOrders() {
 
   useEffect(() => { load(); }, []);
 
-  const load = () => {
-    setOrders(dbService.getPurchaseOrders());
+  const load = async () => {
+    const list = await dbService.getPurchaseOrders();
+    setOrders(list || []);
     setProducts(getLocalProducts());
   };
 
@@ -58,10 +59,10 @@ export default function PurchaseOrders() {
                 <div style={styles.actions}>
                   {order.status === "pending" && (
                     <>
-                      <button onClick={() => { dbService.receivePurchaseOrder(order.id); load(); }} className="btn btn-primary" style={{ padding: "2px 8px", fontSize: "0.7rem", borderRadius: "4px" }}>
+                      <button onClick={async () => { await dbService.receivePurchaseOrder(order.id); load(); }} className="btn btn-primary" style={{ padding: "2px 8px", fontSize: "0.7rem", borderRadius: "4px" }}>
                         Receive
                       </button>
-                      <button onClick={() => { dbService.cancelPurchaseOrder(order.id); load(); }} className="btn btn-outline" style={{ padding: "2px 8px", fontSize: "0.7rem", borderRadius: "4px" }}>
+                      <button onClick={async () => { await dbService.cancelPurchaseOrder(order.id); load(); }} className="btn btn-outline" style={{ padding: "2px 8px", fontSize: "0.7rem", borderRadius: "4px" }}>
                         Cancel
                       </button>
                     </>
@@ -89,37 +90,37 @@ function PurchaseOrderForm({ products, onSave, onCancel }) {
     setItems(prev => prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev);
   };
 
-  const handleSubmit = () => {
-    if (!supplier.trim()) { alert("Enter supplier name"); return; }
-    const validItems = items.filter(i => i.productId && i.quantity > 0);
-    if (validItems.length === 0) { alert("Add at least one item"); return; }
-    const total = validItems.reduce((sum, item) => {
-      const prod = products.find(p => p.id === item.productId);
-      return sum + ((item.isPack ? (prod?.costPricePack || 0) : (prod?.costPrice || 0)) * item.quantity);
-    }, 0);
-
-    const order = {
-      supplier: supplier.trim(),
-      items: validItems.map(item => {
+    const handleSubmit = async () => {
+      if (!supplier.trim()) { alert("Enter supplier name"); return; }
+      const validItems = items.filter(i => i.productId && i.quantity > 0);
+      if (validItems.length === 0) { alert("Add at least one item"); return; }
+      const total = validItems.reduce((sum, item) => {
         const prod = products.find(p => p.id === item.productId);
-        return {
-          productId: item.productId,
-          productName: prod?.name || "Unknown",
-          quantity: parseInt(item.quantity) || 0,
-          isPack: item.isPack || false,
-          packSize: prod?.packSize || 20,
-          costPrice: item.isPack ? (prod?.costPricePack || 0) : (prod?.costPrice || 0),
-        };
-      }),
-      total,
-      status: "pending",
-      createdAt: Date.now(),
-      notes: notes.trim(),
-      createdBy: JSON.parse(localStorage.getItem("pan_user") || "{}")?.name || "System",
+        return sum + ((item.isPack ? (prod?.costPricePack || 0) : (prod?.costPrice || 0)) * item.quantity);
+      }, 0);
+  
+      const order = {
+        supplier: supplier.trim(),
+        items: validItems.map(item => {
+          const prod = products.find(p => p.id === item.productId);
+          return {
+            productId: item.productId,
+            productName: prod?.name || "Unknown",
+            quantity: parseInt(item.quantity) || 0,
+            isPack: item.isPack || false,
+            packSize: prod?.packSize || 20,
+            costPrice: item.isPack ? (prod?.costPricePack || 0) : (prod?.costPrice || 0),
+          };
+        }),
+        total,
+        status: "pending",
+        createdAt: Date.now(),
+        notes: notes.trim(),
+        createdBy: JSON.parse(localStorage.getItem("pan_user") || "{}")?.name || "System",
+      };
+      await dbService.savePurchaseOrder(order);
+      onSave();
     };
-    dbService.savePurchaseOrder(order);
-    onSave();
-  };
 
   return (
     <div style={styles.formCard}>

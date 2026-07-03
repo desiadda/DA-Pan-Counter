@@ -1,26 +1,35 @@
-import { doc, setDoc, addDoc } from "firebase/firestore";
+import { collection, doc, setDoc, addDoc, getDocs } from "firebase/firestore";
 import { db, isFirebaseEnabled } from "./config";
-import { getLocalProducts, setLocalData } from "./storage";
+import { getLocalProducts, setLocalData, getLocalData } from "./storage";
 import { LS_KEYS } from "../constants";
 import { logError } from "./errorLog";
-import { addToSyncQueue } from "./sync";
-import { getLocalData } from "./storage";
 
 const LS_KEY = "pan_purchase_orders";
 
 function getLocalPurchases() { return getLocalData(LS_KEY, []); }
 
-function syncPurchaseToFirebase(order) {
+async function syncPurchaseToFirebase(order) {
   const { id, ...data } = order;
-  return id ? setDoc(doc(db, "purchases", id), data) : addDoc(collection(db, "purchases"), data);
+  if (id) {
+    await setDoc(doc(db, "purchases", id), data);
+  } else {
+    const ref = await addDoc(collection(db, "purchases"), data);
+    order.id = ref.id;
+  }
 }
 
 export const getPurchaseOrders = async () => {
   try {
+    if (isFirebaseEnabled) {
+      const snap = await getDocs(collection(db, "purchases"));
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setLocalData(LS_KEY, list);
+      return list;
+    }
     return getLocalPurchases();
   } catch (err) {
     logError("PURCHASE", err.message, err.stack);
-    return [];
+    return getLocalPurchases();
   }
 };
 
@@ -35,11 +44,12 @@ export const savePurchaseOrder = async (order) => {
       order.status = "pending";
       orders.unshift(order);
     }
-    setLocalData(LS_KEY, orders);
 
     if (isFirebaseEnabled) {
-      syncPurchaseToFirebase(order).catch(() => addToSyncQueue({ fn: () => syncPurchaseToFirebase(order) }));
+      await syncPurchaseToFirebase(order);
     }
+
+    setLocalData(LS_KEY, orders);
   } catch (err) {
     logError("PURCHASE", err.message, err.stack);
     throw new Error(`Save error: ${err.message}`);
@@ -60,15 +70,17 @@ export const receivePurchaseOrder = async (orderId) => {
         prod.stock = (prod.stock || 0) + (addQty || item.quantity || 0);
       }
     });
-    setLocalData(LS_KEYS.PRODUCTS, products);
 
     order.status = "received";
     order.receivedAt = Date.now();
-    setLocalData(LS_KEY, orders);
 
     if (isFirebaseEnabled) {
-      syncPurchaseToFirebase(order).catch(() => addToSyncQueue({ fn: () => syncPurchaseToFirebase(order) }));
+      await syncPurchaseToFirebase(order);
     }
+
+    setLocalData(LS_KEYS.PRODUCTS, products);
+    setLocalData(LS_KEY, orders);
+
     window.dispatchEvent(new CustomEvent("stock-changed"));
   } catch (err) {
     logError("PURCHASE", err.message, err.stack);
@@ -83,11 +95,12 @@ export const cancelPurchaseOrder = async (orderId) => {
     if (!order) return;
     order.status = "cancelled";
     order.cancelledAt = Date.now();
-    setLocalData(LS_KEY, orders);
 
     if (isFirebaseEnabled) {
-      syncPurchaseToFirebase(order).catch(() => addToSyncQueue({ fn: () => syncPurchaseToFirebase(order) }));
+      await syncPurchaseToFirebase(order);
     }
+
+    setLocalData(LS_KEY, orders);
   } catch (err) {
     logError("PURCHASE", err.message, err.stack);
     throw new Error(`Cancel error: ${err.message}`);
