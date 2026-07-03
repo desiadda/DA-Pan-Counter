@@ -226,6 +226,13 @@ function AppContent() {
         </div>
       </header>
 
+      {!isOnline && (
+        <div className="bg-red-500 text-white py-2 px-4 text-xs font-semibold text-center flex items-center justify-center gap-2">
+          <span>⚠️</span>
+          <span>You are offline (इंटरनेट कनेक्शन नहीं है). Please check your internet connection.</span>
+        </div>
+      )}
+
       <main className="main-content">
         <ErrorBoundary>
           <Suspense fallback={activeTab === "pos" ? <SkeletonCard count={6} /> : <SkeletonTable rows={5} />}>
