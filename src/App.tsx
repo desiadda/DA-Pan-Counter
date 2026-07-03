@@ -138,9 +138,9 @@ function AppContent() {
       case "pos":
         return <POSView user={user} />;
       case "inventory":
-        return <InventoryView />;
+        return <InventoryView subPath={subPath} onNavigate={handleSubNavigate} />;
       case "credit":
-        return <KhataView />;
+        return <KhataView subPath={subPath} onNavigate={handleSubNavigate} />;
       case "admin":
         return <AdminHub subPath={subPath} onNavigate={handleSubNavigate} user={user} />;
       default:

@@ -4,7 +4,7 @@ import { SkeletonList } from "./Skeleton";
 import { logError } from "../db/errorLog";
 import ReminderModal from "./ReminderModal";
 
-export default function KhataView() {
+export default function KhataView({ subPath, onNavigate }) {
   const [customers, setCustomers] = useState([]);
   const [selectedCust, setSelectedCust] = useState(null);
   const [payAmount, setPayAmount] = useState("");
@@ -13,6 +13,23 @@ export default function KhataView() {
   const [showReminders, setShowReminders] = useState(false);
 
   useEffect(() => { loadCustomers(); }, []);
+
+  useEffect(() => {
+    if (subPath === "reminders") {
+      setShowReminders(true);
+      setSelectedCust(null);
+    } else if (subPath && subPath.startsWith("customer/")) {
+      const custId = subPath.replace("customer/", "");
+      const found = customers.find(c => c.id === custId);
+      if (found) {
+        setSelectedCust(found);
+        setShowReminders(false);
+      }
+    } else {
+      setSelectedCust(null);
+      setShowReminders(false);
+    }
+  }, [subPath, customers]);
 
   const loadCustomers = async () => {
     setLoading(true);
@@ -30,10 +47,12 @@ export default function KhataView() {
   const handleSelectCustomer = (c) => {
     setSelectedCust(c);
     setPayAmount("");
+    onNavigate?.("customer/" + c.id);
   };
 
   const handleDeselect = () => {
     setSelectedCust(null);
+    onNavigate?.("");
     loadCustomers();
   };
 
@@ -115,7 +134,7 @@ export default function KhataView() {
       <div className="flex items-center justify-between">
         <h2 className="section-title" style={{ fontSize: "1.25rem" }}>Credit Accounts</h2>
         {!selectedCust && (
-          <button onClick={() => setShowReminders(true)} className="btn btn-outline btn-sm">📨 Remind</button>
+          <button onClick={() => onNavigate?.("reminders")} className="btn btn-outline btn-sm">📨 Remind</button>
         )}
       </div>
 
@@ -215,7 +234,7 @@ export default function KhataView() {
           )}
         </div>
       )}
-      {showReminders && <ReminderModal customers={customers} onClose={() => setShowReminders(false)} />}
+      {showReminders && <ReminderModal customers={customers} onClose={() => onNavigate?.("")} />}
     </div>
   );
 }

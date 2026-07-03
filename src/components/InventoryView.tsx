@@ -8,7 +8,7 @@ import PurchaseOrders from "./PurchaseOrders";
 import BulkPriceUpdate from "./BulkPriceUpdate";
 import SupplierDirectory from "./SupplierDirectory";
 
-export default function InventoryView() {
+export default function InventoryView({ subPath, onNavigate }) {
   const confirm = useConfirmStore((s) => s.confirm);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -31,7 +31,11 @@ export default function InventoryView() {
   const [stockPack, setStockPack] = useState("");
   const [looseStock, setLooseStock] = useState("");
   const [historyProduct, setHistoryProduct] = useState(null);
-  const [viewMode, setViewMode] = useState("stock");
+  const [viewMode, setViewMode] = useState(subPath || "stock");
+
+  useEffect(() => {
+    setViewMode(subPath || "stock");
+  }, [subPath]);
 
   useEffect(() => { loadProducts(); }, []);
 
@@ -186,7 +190,7 @@ export default function InventoryView() {
             { key: "suppliers", label: "📍 Suppliers" },
             { key: "bulk", label: "⚡ Bulk Price" },
           ].map(t => (
-            <button key={t.key} onClick={() => setViewMode(t.key)}
+            <button key={t.key} onClick={() => { setViewMode(t.key); onNavigate?.(t.key === "stock" ? "" : t.key); }}
               className={`tab-toggle ${viewMode === t.key ? "tab-toggle-active" : ""}`}>{t.label}</button>
           ))}
         </div>
