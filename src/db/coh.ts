@@ -1,3 +1,5 @@
+import { doc, setDoc, onSnapshot, collection } from "firebase/firestore";
+import { db, isFirebaseEnabled } from "./config";
 import { LS_KEYS } from "../constants";
 import { logError } from "./errorLog";
 
@@ -43,6 +45,32 @@ function saveTransactionsRaw(list) {
   }
 }
 
+let cohListenerActive = false;
+
+export function initCOHListener() {
+  if (!isFirebaseEnabled || cohListenerActive) return;
+  cohListenerActive = true;
+
+  onSnapshot(collection(db, "coh_balances"), (snapshot) => {
+    const balances = {};
+    snapshot.forEach(doc => {
+      balances[doc.id] = doc.data().balance || 0;
+    });
+    saveBalancesRaw(balances);
+    window.dispatchEvent(new CustomEvent("coh-changed"));
+  });
+
+  onSnapshot(collection(db, "coh_transactions"), (snapshot) => {
+    const txs = [];
+    snapshot.forEach(doc => {
+      txs.push({ id: doc.id, ...doc.data() });
+    });
+    txs.sort((a, b) => b.timestamp - a.timestamp);
+    saveTransactionsRaw(txs);
+    window.dispatchEvent(new CustomEvent("coh-changed"));
+  });
+}
+
 export function getBalance(userId) {
   try {
     const balances = getBalancesRaw();
@@ -68,28 +96,48 @@ export function getAllBalances(users) {
   }
 }
 
-export function adjustBalance(userId, amount, note, adminName) {
+export async function adjustBalance(userId, amount, note, adminName) {
   try {
     const balances = getBalancesRaw();
-    balances[userId] = (balances[userId] || 0) + amount;
-    saveBalancesRaw(balances);
+    const newBal = (balances[userId] || 0) + amount;
 
-    const txs = getTransactionsRaw();
-    txs.unshift({
-      id: "coh_" + Date.now(),
-      type: "adjustment",
-      fromUserId: "system",
-      fromUserName: adminName || "Admin",
-      toUserId: userId,
-      toUserName: "",
-      amount: Math.abs(amount),
-      sign: amount >= 0 ? "credit" : "debit",
-      note: note || "",
-      status: "approved",
-      timestamp: Date.now(),
-      approvedAt: Date.now(),
-    });
-    saveTransactionsRaw(txs);
+    if (isFirebaseEnabled) {
+      const txId = "coh_" + Date.now();
+      await setDoc(doc(db, "coh_balances", userId), { balance: newBal });
+      await setDoc(doc(db, "coh_transactions", txId), {
+        id: txId,
+        type: "adjustment",
+        fromUserId: "system",
+        fromUserName: adminName || "Admin",
+        toUserId: userId,
+        toUserName: "",
+        amount: Math.abs(amount),
+        sign: amount >= 0 ? "credit" : "debit",
+        note: note || "",
+        status: "approved",
+        timestamp: Date.now(),
+        approvedAt: Date.now(),
+      });
+    } else {
+      balances[userId] = newBal;
+      saveBalancesRaw(balances);
+      const txs = getTransactionsRaw();
+      txs.unshift({
+        id: "coh_" + Date.now(),
+        type: "adjustment",
+        fromUserId: "system",
+        fromUserName: adminName || "Admin",
+        toUserId: userId,
+        toUserName: "",
+        amount: Math.abs(amount),
+        sign: amount >= 0 ? "credit" : "debit",
+        note: note || "",
+        status: "approved",
+        timestamp: Date.now(),
+        approvedAt: Date.now(),
+      });
+      saveTransactionsRaw(txs);
+    }
   } catch (err) {
     logError("COH", err.message, err.stack);
     console.error("adjustBalance: Error adjusting COH balance", err);
@@ -97,14 +145,14 @@ export function adjustBalance(userId, amount, note, adminName) {
   }
 }
 
-export function initiateTransfer(fromUser, toUserId, toUserName, amount) {
+export async function initiateTransfer(fromUser, toUserId, toUserName, amount) {
   try {
     const balance = getBalance(fromUser.id);
     if (balance < amount) throw new Error("Insufficient COH balance (पर्याप्त COH शेष नहीं).");
 
-    const txs = getTransactionsRaw();
-    txs.unshift({
-      id: "coh_" + Date.now(),
+    const txId = "coh_" + Date.now();
+    const txData = {
+      id: txId,
       type: "transfer",
       fromUserId: fromUser.id,
       fromUserName: fromUser.name,
@@ -114,8 +162,15 @@ export function initiateTransfer(fromUser, toUserId, toUserName, amount) {
       status: "pending",
       timestamp: Date.now(),
       approvedAt: null,
-    });
-    saveTransactionsRaw(txs);
+    };
+
+    if (isFirebaseEnabled) {
+      await setDoc(doc(db, "coh_transactions", txId), txData);
+    } else {
+      const txs = getTransactionsRaw();
+      txs.unshift(txData);
+      saveTransactionsRaw(txs);
+    }
   } catch (err) {
     logError("COH", err.message, err.stack);
     console.error("initiateTransfer: Error initiating transfer", err);
@@ -123,20 +178,34 @@ export function initiateTransfer(fromUser, toUserId, toUserName, amount) {
   }
 }
 
-export function approveTransfer(txId) {
+export async function approveTransfer(txId) {
   try {
     const txs = getTransactionsRaw();
     const tx = txs.find(t => t.id === txId);
     if (!tx || tx.status !== "pending") throw new Error("Transfer not found or already processed (ट्रांसफर नहीं मिला या पहले ही प्रोसेस हो चुका).");
 
-    tx.status = "approved";
-    tx.approvedAt = Date.now();
-    saveTransactionsRaw(txs);
+    if (isFirebaseEnabled) {
+      const balances = getBalancesRaw();
+      const newFromBal = (balances[tx.fromUserId] || 0) - tx.amount;
+      const newToBal = (balances[tx.toUserId] || 0) + tx.amount;
 
-    const balances = getBalancesRaw();
-    balances[tx.fromUserId] = (balances[tx.fromUserId] || 0) - tx.amount;
-    balances[tx.toUserId] = (balances[tx.toUserId] || 0) + tx.amount;
-    saveBalancesRaw(balances);
+      await setDoc(doc(db, "coh_balances", tx.fromUserId), { balance: newFromBal });
+      await setDoc(doc(db, "coh_balances", tx.toUserId), { balance: newToBal });
+      await setDoc(doc(db, "coh_transactions", txId), {
+        ...tx,
+        status: "approved",
+        approvedAt: Date.now(),
+      });
+    } else {
+      tx.status = "approved";
+      tx.approvedAt = Date.now();
+      saveTransactionsRaw(txs);
+
+      const balances = getBalancesRaw();
+      balances[tx.fromUserId] = (balances[tx.fromUserId] || 0) - tx.amount;
+      balances[tx.toUserId] = (balances[tx.toUserId] || 0) + tx.amount;
+      saveBalancesRaw(balances);
+    }
   } catch (err) {
     logError("COH", err.message, err.stack);
     console.error("approveTransfer: Error approving transfer", err);
@@ -144,15 +213,23 @@ export function approveTransfer(txId) {
   }
 }
 
-export function rejectTransfer(txId) {
+export async function rejectTransfer(txId) {
   try {
     const txs = getTransactionsRaw();
     const tx = txs.find(t => t.id === txId);
     if (!tx || tx.status !== "pending") throw new Error("Transfer not found or already processed (ट्रांसफर नहीं मिला या पहले ही प्रोसेस हो चुका).");
 
-    tx.status = "rejected";
-    tx.approvedAt = Date.now();
-    saveTransactionsRaw(txs);
+    if (isFirebaseEnabled) {
+      await setDoc(doc(db, "coh_transactions", txId), {
+        ...tx,
+        status: "rejected",
+        approvedAt: Date.now(),
+      });
+    } else {
+      tx.status = "rejected";
+      tx.approvedAt = Date.now();
+      saveTransactionsRaw(txs);
+    }
   } catch (err) {
     logError("COH", err.message, err.stack);
     console.error("rejectTransfer: Error rejecting transfer", err);

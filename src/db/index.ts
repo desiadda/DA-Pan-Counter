@@ -8,7 +8,7 @@ import {
   getBalance, getAllBalances, adjustBalance,
   initiateTransfer, approveTransfer, rejectTransfer,
   getPendingForUser, getPendingCount,
-  getHistoryForUser, getAllTransactions,
+  getHistoryForUser, getAllTransactions, initCOHListener,
 } from "./coh";
 import { recordPriceChange, getPriceHistory, getAllPriceHistory, clearPriceHistory } from "./priceHistory";
 import { getPurchaseOrders, savePurchaseOrder, receivePurchaseOrder, cancelPurchaseOrder } from "./purchases";
@@ -55,6 +55,7 @@ export const dbService = {
   getPendingCount,
   getHistoryForUser,
   getAllTransactions: getAllTransactions,
+  initCOHListener,
   recordPriceChange,
   getPriceHistory,
   getAllPriceHistory,

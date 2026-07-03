@@ -76,6 +76,16 @@ function AppContent() {
   const activeTabRef = useRef(activeTab);
   activeTabRef.current = activeTab;
 
+  const [cohBalance, setCohBalance] = useState(user ? dbService.getBalance(user.id) : 0);
+  const [cohPending, setCohPending] = useState(user ? dbService.getPendingCount(user.id) : 0);
+
+  useEffect(() => {
+    if (user?.id) {
+      setCohBalance(dbService.getBalance(user.id));
+      setCohPending(dbService.getPendingCount(user.id));
+    }
+  }, [user?.id]);
+
   useEffect(() => {
     return init();
   }, [init]);
@@ -86,10 +96,18 @@ function AppContent() {
   }, [location.pathname]);
 
   useEffect(() => {
+    dbService.initCOHListener();
     const onError = () => setCriticalErrors(getCriticalUnreadCount());
     window.addEventListener("error-logged", onError);
     const refreshStock = () => setLowStockCount(dbService.getLowStockCount());
     window.addEventListener("stock-changed", refreshStock);
+    const refreshCOH = () => {
+      if (user?.id) {
+        setCohBalance(dbService.getBalance(user.id));
+        setCohPending(dbService.getPendingCount(user.id));
+      }
+    };
+    window.addEventListener("coh-changed", refreshCOH);
     const store = JSON.parse(localStorage.getItem("pan_store_settings") || "{}");
     if (store.logo) {
       let link = document.querySelector("link[rel~='icon']");
@@ -103,8 +121,9 @@ function AppContent() {
     return () => {
       window.removeEventListener("error-logged", onError);
       window.removeEventListener("stock-changed", refreshStock);
+      window.removeEventListener("coh-changed", refreshCOH);
     };
-  }, []);
+  }, [user?.id]);
 
   const canAccessTab = useCallback((key: string) => {
     if (key === "pos") return true;
@@ -153,8 +172,6 @@ function AppContent() {
   }
 
   const allUsers = getUsers();
-  const cohBalance = dbService.getBalance(user.id);
-  const cohPending = dbService.getPendingCount(user.id);
 
   return (
     <AppShell>

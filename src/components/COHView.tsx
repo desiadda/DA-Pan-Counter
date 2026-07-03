@@ -25,14 +25,20 @@ export default function COHView({ user }) {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    window.addEventListener("coh-changed", load);
+    return () => {
+      window.removeEventListener("coh-changed", load);
+    };
+  }, []);
 
-  const handleAdjust = () => {
+  const handleAdjust = async () => {
     setError("");
     const amt = parseFloat(adjustAmt);
     if (!adjustId || isNaN(amt) || amt === 0) { setError("Select user and enter a non-zero amount."); return; }
     try {
-      dbService.adjustBalance(adjustId, amt, adjustNote || "Manual adjustment", user?.name || "Admin");
+      await dbService.adjustBalance(adjustId, amt, adjustNote || "Manual adjustment", user?.name || "Admin");
       setAdjustAmt("");
       setAdjustNote("");
       setAdjustId(null);

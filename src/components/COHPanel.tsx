@@ -29,15 +29,21 @@ export default function COHPanel({ user, users, onClose }) {
     }
   };
 
-  useEffect(() => { load(); }, [user?.id]);
+  useEffect(() => {
+    load();
+    window.addEventListener("coh-changed", load);
+    return () => {
+      window.removeEventListener("coh-changed", load);
+    };
+  }, [user?.id]);
 
-  const handleTransfer = () => {
+  const handleTransfer = async () => {
     setError("");
     setMsg("");
     const amt = parseFloat(transferAmt);
     if (!transferTo || !amt || amt <= 0) { setError("Select user and enter valid amount."); return; }
     try {
-      dbService.initiateTransfer(user, transferTo, users.find(u => u.id === transferTo)?.name || "", amt);
+      await dbService.initiateTransfer(user, transferTo, users.find(u => u.id === transferTo)?.name || "", amt);
       setMsg(`Transfer of ฿${amt.toFixed(2)} sent for approval.`);
       setTransferAmt("");
       setTransferNote("");
@@ -45,9 +51,9 @@ export default function COHPanel({ user, users, onClose }) {
     } catch (e) { logError("COH", e.message, e.stack); setError(e.message); }
   };
 
-  const handleApprove = (txId) => {
+  const handleApprove = async (txId) => {
     try {
-      dbService.approveTransfer(txId);
+      await dbService.approveTransfer(txId);
       load();
     } catch (err) {
       logError("COH", err.message, err.stack);
@@ -56,9 +62,9 @@ export default function COHPanel({ user, users, onClose }) {
     }
   };
 
-  const handleReject = (txId) => {
+  const handleReject = async (txId) => {
     try {
-      dbService.rejectTransfer(txId);
+      await dbService.rejectTransfer(txId);
       load();
     } catch (err) {
       logError("COH", err.message, err.stack);
