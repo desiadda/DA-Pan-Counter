@@ -7,7 +7,15 @@ export default function PurchaseOrders() {
   const [products, setProducts] = useState([]);
   const [showForm, setShowForm] = useState(false);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    window.addEventListener("purchases-changed", load);
+    window.addEventListener("stock-changed", load);
+    return () => {
+      window.removeEventListener("purchases-changed", load);
+      window.removeEventListener("stock-changed", load);
+    };
+  }, []);
 
   const load = async () => {
     const list = await dbService.getPurchaseOrders();

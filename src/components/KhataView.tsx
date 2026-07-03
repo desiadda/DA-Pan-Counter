@@ -12,7 +12,13 @@ export default function KhataView({ subPath, onNavigate }) {
   const [loading, setLoading] = useState(false);
   const [showReminders, setShowReminders] = useState(false);
 
-  useEffect(() => { loadCustomers(); }, []);
+  useEffect(() => {
+    loadCustomers();
+    window.addEventListener("customers-changed", loadCustomers);
+    return () => {
+      window.removeEventListener("customers-changed", loadCustomers);
+    };
+  }, []);
 
   useEffect(() => {
     if (subPath === "reminders") {

@@ -37,7 +37,13 @@ export default function InventoryView({ subPath, onNavigate }) {
     setViewMode(subPath || "stock");
   }, [subPath]);
 
-  useEffect(() => { loadProducts(); }, []);
+  useEffect(() => {
+    loadProducts();
+    window.addEventListener("stock-changed", loadProducts);
+    return () => {
+      window.removeEventListener("stock-changed", loadProducts);
+    };
+  }, []);
 
   const loadProducts = async () => {
     setLoading(true);

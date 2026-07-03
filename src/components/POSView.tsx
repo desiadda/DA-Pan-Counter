@@ -56,6 +56,12 @@ export default function POSView({ user }) {
   useEffect(() => {
     loadProducts();
     loadCustomers();
+    window.addEventListener("stock-changed", loadProducts);
+    window.addEventListener("customers-changed", loadCustomers);
+    return () => {
+      window.removeEventListener("stock-changed", loadProducts);
+      window.removeEventListener("customers-changed", loadCustomers);
+    };
   }, []);
 
   useEffect(() => {
