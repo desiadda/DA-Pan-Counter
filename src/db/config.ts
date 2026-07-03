@@ -31,13 +31,16 @@ const config = getSavedFirebaseConfig() || HARDCODED_CONFIG;
 
 if (config && config.apiKey && config.projectId) {
   try {
+    let app;
     if (getApps().length === 0) {
-      const app = initializeApp(config);
-      db = getFirestore(app);
-      auth = getAuth(app);
-      isFirebaseEnabled = true;
+      app = initializeApp(config);
       console.log("Firebase initialized successfully using saved configuration.");
+    } else {
+      app = getApps()[0];
     }
+    db = getFirestore(app);
+    auth = getAuth(app);
+    isFirebaseEnabled = true;
   } catch (err) {
     console.error("Error initializing Firebase, falling back to LocalStorage:", err);
   }

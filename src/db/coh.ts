@@ -1,4 +1,4 @@
-import { doc, setDoc, onSnapshot, collection } from "firebase/firestore";
+import { doc, setDoc, getDoc, onSnapshot, collection } from "firebase/firestore";
 import { db, isFirebaseEnabled } from "./config";
 import { LS_KEYS } from "../constants";
 import { logError } from "./errorLog";
@@ -98,8 +98,18 @@ export function getAllBalances(users) {
 
 export async function adjustBalance(userId, amount, note, adminName) {
   try {
-    const balances = getBalancesRaw();
-    const newBal = (balances[userId] || 0) + amount;
+    let currentBal = 0;
+    if (isFirebaseEnabled) {
+      const docRef = doc(db, "coh_balances", userId);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        currentBal = docSnap.data().balance || 0;
+      }
+    } else {
+      const balances = getBalancesRaw();
+      currentBal = balances[userId] || 0;
+    }
+    const newBal = currentBal + amount;
 
     if (isFirebaseEnabled) {
       const txId = "coh_" + Date.now();
@@ -119,6 +129,7 @@ export async function adjustBalance(userId, amount, note, adminName) {
         approvedAt: Date.now(),
       });
     } else {
+      const balances = getBalancesRaw();
       balances[userId] = newBal;
       saveBalancesRaw(balances);
       const txs = getTransactionsRaw();
@@ -185,12 +196,19 @@ export async function approveTransfer(txId) {
     if (!tx || tx.status !== "pending") throw new Error("Transfer not found or already processed (ट्रांसफर नहीं मिला या पहले ही प्रोसेस हो चुका).");
 
     if (isFirebaseEnabled) {
-      const balances = getBalancesRaw();
-      const newFromBal = (balances[tx.fromUserId] || 0) - tx.amount;
-      const newToBal = (balances[tx.toUserId] || 0) + tx.amount;
+      const fromRef = doc(db, "coh_balances", tx.fromUserId);
+      const toRef = doc(db, "coh_balances", tx.toUserId);
 
-      await setDoc(doc(db, "coh_balances", tx.fromUserId), { balance: newFromBal });
-      await setDoc(doc(db, "coh_balances", tx.toUserId), { balance: newToBal });
+      const [fromSnap, toSnap] = await Promise.all([getDoc(fromRef), getDoc(toRef)]);
+
+      const currentFromBal = fromSnap.exists() ? (fromSnap.data().balance || 0) : 0;
+      const currentToBal = toSnap.exists() ? (toSnap.data().balance || 0) : 0;
+
+      const newFromBal = currentFromBal - tx.amount;
+      const newToBal = currentToBal + tx.amount;
+
+      await setDoc(fromRef, { balance: newFromBal });
+      await setDoc(toRef, { balance: newToBal });
       await setDoc(doc(db, "coh_transactions", txId), {
         ...tx,
         status: "approved",
