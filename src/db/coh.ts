@@ -191,8 +191,17 @@ export async function initiateTransfer(fromUser, toUserId, toUserName, amount) {
 
 export async function approveTransfer(txId) {
   try {
-    const txs = getTransactionsRaw();
-    const tx = txs.find(t => t.id === txId);
+    let tx;
+    if (isFirebaseEnabled) {
+      const txSnap = await getDoc(doc(db, "coh_transactions", txId));
+      if (txSnap.exists()) {
+        tx = { id: txSnap.id, ...txSnap.data() };
+      }
+    } else {
+      const txs = getTransactionsRaw();
+      tx = txs.find(t => t.id === txId);
+    }
+
     if (!tx || tx.status !== "pending") throw new Error("Transfer not found or already processed (ट्रांसफर नहीं मिला या पहले ही प्रोसेस हो चुका).");
 
     if (isFirebaseEnabled) {
@@ -215,9 +224,13 @@ export async function approveTransfer(txId) {
         approvedAt: Date.now(),
       });
     } else {
-      tx.status = "approved";
-      tx.approvedAt = Date.now();
-      saveTransactionsRaw(txs);
+      const txs = getTransactionsRaw();
+      const localTx = txs.find(t => t.id === txId);
+      if (localTx) {
+        localTx.status = "approved";
+        localTx.approvedAt = Date.now();
+        saveTransactionsRaw(txs);
+      }
 
       const balances = getBalancesRaw();
       balances[tx.fromUserId] = (balances[tx.fromUserId] || 0) - tx.amount;
@@ -233,8 +246,17 @@ export async function approveTransfer(txId) {
 
 export async function rejectTransfer(txId) {
   try {
-    const txs = getTransactionsRaw();
-    const tx = txs.find(t => t.id === txId);
+    let tx;
+    if (isFirebaseEnabled) {
+      const txSnap = await getDoc(doc(db, "coh_transactions", txId));
+      if (txSnap.exists()) {
+        tx = { id: txSnap.id, ...txSnap.data() };
+      }
+    } else {
+      const txs = getTransactionsRaw();
+      tx = txs.find(t => t.id === txId);
+    }
+
     if (!tx || tx.status !== "pending") throw new Error("Transfer not found or already processed (ट्रांसफर नहीं मिला या पहले ही प्रोसेस हो चुका).");
 
     if (isFirebaseEnabled) {
@@ -244,9 +266,13 @@ export async function rejectTransfer(txId) {
         approvedAt: Date.now(),
       });
     } else {
-      tx.status = "rejected";
-      tx.approvedAt = Date.now();
-      saveTransactionsRaw(txs);
+      const txs = getTransactionsRaw();
+      const localTx = txs.find(t => t.id === txId);
+      if (localTx) {
+        localTx.status = "rejected";
+        localTx.approvedAt = Date.now();
+        saveTransactionsRaw(txs);
+      }
     }
   } catch (err) {
     logError("COH", err.message, err.stack);
