@@ -183,9 +183,9 @@ function AppContent() {
         
         <div className="header-right">
           <span className={`status-badge ${dbService.isFirebase() ? (isOnline ? 'status-online' : 'status-offline') : 'status-offline'}`}
-                title={dbService.isFirebase() ? (isOnline ? "☁️ Firebase connected & syncing" : "☁️ Firebase configured but offline — using local") : "💾 Local storage mode"}>
+                title={dbService.isFirebase() ? (isOnline ? `☁️ Firebase connected (${dbService.getConfig()?.projectId})` : "☁️ Firebase offline") : "💾 Local storage mode"}>
             <span className="status-dot">{dbService.isFirebase() ? (isOnline ? "☁️" : "☁️") : "💾"}</span>
-            <span className="status-text">{dbService.isFirebase() ? (isOnline ? "Cloud Sync" : "Cloud Offline") : "Local Storage"}</span>
+            <span className="status-text">{dbService.isFirebase() ? (isOnline ? `Cloud (${dbService.getConfig()?.projectId || "Active"})` : "Cloud Offline") : "Local Storage"}</span>
           </span>
 
           <button onClick={() => setShowCOH(true)} className="coh-badge" title="Cash on Hand">
