@@ -13,6 +13,9 @@ export default function COHPanel({ user, users, onClose }) {
   const [transferNote, setTransferNote] = useState("");
   const [error, setError] = useState("");
   const [msg, setMsg] = useState("");
+  const [statementPeriod, setStatementPeriod] = useState("today");
+  const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0]);
+  const [endDate, setEndDate] = useState(new Date().toISOString().split("T")[0]);
 
   const load = () => {
     try {
@@ -64,6 +67,193 @@ export default function COHPanel({ user, users, onClose }) {
     }
   };
 
+  const getPeriodTimestamps = (period, customStart, customEnd) => {
+    const start = new Date();
+    const end = new Date();
+
+    if (period === "today") {
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+    } else if (period === "yesterday") {
+      start.setDate(start.getDate() - 1);
+      start.setHours(0, 0, 0, 0);
+      end.setDate(end.getDate() - 1);
+      end.setHours(23, 59, 59, 999);
+    } else if (period === "week") {
+      start.setDate(start.getDate() - 6);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+    } else if (period === "custom") {
+      if (customStart) {
+        const s = new Date(customStart);
+        s.setHours(0, 0, 0, 0);
+        start.setTime(s.getTime());
+      } else {
+        start.setDate(start.getDate() - 7);
+        start.setHours(0, 0, 0, 0);
+      }
+      if (customEnd) {
+        const e = new Date(customEnd);
+        e.setHours(23, 59, 59, 999);
+        end.setTime(e.getTime());
+      } else {
+        end.setHours(23, 59, 59, 999);
+      }
+    }
+
+    return { startTs: start.getTime(), endTs: end.getTime() };
+  };
+
+  const getStatementData = () => {
+    const { startTs, endTs } = getPeriodTimestamps(statementPeriod, startDate, endDate);
+    let openingBalance = balance;
+
+    history.forEach(tx => {
+      if (tx.status !== "approved") return;
+      if (tx.timestamp >= startTs) {
+        if (tx.fromUserId === user.id) {
+          openingBalance += tx.amount;
+        } else if (tx.toUserId === user.id) {
+          if (tx.type === "adjustment") {
+            if (tx.sign === "credit") {
+              openingBalance -= tx.amount;
+            } else {
+              openingBalance += tx.amount;
+            }
+          } else {
+            openingBalance -= tx.amount;
+          }
+        }
+      }
+    });
+
+    const txsInPeriod = history.filter(tx => {
+      if (tx.status !== "approved") return false;
+      return tx.timestamp >= startTs && tx.timestamp <= endTs;
+    });
+
+    let totalInflow = 0;
+    let totalOutflow = 0;
+
+    txsInPeriod.forEach(tx => {
+      if (tx.fromUserId === user.id) {
+        totalOutflow += tx.amount;
+      } else if (tx.toUserId === user.id) {
+        if (tx.type === "adjustment") {
+          if (tx.sign === "credit") {
+            totalInflow += tx.amount;
+          } else {
+            totalOutflow += tx.amount;
+          }
+        } else {
+          totalInflow += tx.amount;
+        }
+      }
+    });
+
+    const closingBalance = openingBalance + totalInflow - totalOutflow;
+
+    return {
+      openingBalance,
+      totalInflow,
+      totalOutflow,
+      closingBalance,
+      txs: txsInPeriod,
+      startTs,
+      endTs
+    };
+  };
+
+  const handlePrint = (data) => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+
+    const formattedTxs = data.txs.map(tx => `
+      <tr style="border-bottom: 1px solid #e2e8f0; font-size: 13px;">
+        <td style="padding: 8px 0;">${new Date(tx.timestamp).toLocaleString()}</td>
+        <td style="padding: 8px 0;">
+          ${tx.type === "adjustment" ? "Adjustment" : tx.fromUserId === user.id ? `Transfer to ${tx.toUserName || tx.toUserId}` : `Transfer from ${tx.fromUserName}`}
+          ${tx.note ? `<br/><small style="color: #64748b; font-style: italic;">Note: ${tx.note}</small>` : ""}
+        </td>
+        <td style="padding: 8px 0; text-align: right; font-weight: bold; color: ${tx.fromUserId === user.id ? '#dc2626' : '#047857'}">
+          ${tx.fromUserId === user.id ? "-" : "+"}฿${tx.amount.toFixed(2)}
+        </td>
+      </tr>
+    `).join("");
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Cash on Hand Statement - ${user.name}</title>
+          <style>
+            body { font-family: 'Inter', system-ui, sans-serif; color: #1e293b; padding: 20px; }
+            .header { text-align: center; margin-bottom: 30px; }
+            .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 30px; }
+            .meta-card { background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 8px; }
+            .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 40px; }
+            .summary-card { border: 1px solid #e2e8f0; padding: 15px; border-radius: 10px; text-align: center; }
+            .table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            .table th { border-bottom: 2px solid #cbd5e1; text-align: left; padding: 10px 0; font-size: 14px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h2 style="margin: 0; color: #047857;">🍃 Paan Counter</h2>
+            <h3 style="margin: 5px 0 0 0; color: #475569;">Cash on Hand Statement</h3>
+          </div>
+          <div class="meta-grid">
+            <div class="meta-card">
+              <strong>User:</strong> ${user.name}<br/>
+              <strong>Role:</strong> ${user.role}
+            </div>
+            <div class="meta-card" style="text-align: right;">
+              <strong>Statement Period:</strong><br/>
+              ${new Date(data.startTs).toLocaleDateString()} - ${new Date(data.endTs).toLocaleDateString()}
+            </div>
+          </div>
+          <div class="summary-grid">
+            <div class="summary-card" style="background: #f8fafc;">
+              <div style="font-size: 12px; color: #64748b;">Opening Balance</div>
+              <div style="font-size: 18px; font-weight: 800; margin-top: 5px;">฿${data.openingBalance.toFixed(2)}</div>
+            </div>
+            <div class="summary-card" style="background: #f0fdf4; border-color: #bbf7d0;">
+              <div style="font-size: 12px; color: #166534;">Total Inflow (+)</div>
+              <div style="font-size: 18px; font-weight: 800; margin-top: 5px; color: #15803d;">฿${data.totalInflow.toFixed(2)}</div>
+            </div>
+            <div class="summary-card" style="background: #fef2f2; border-color: #fecaca;">
+              <div style="font-size: 12px; color: #991b1b;">Total Outflow (-)</div>
+              <div style="font-size: 18px; font-weight: 800; margin-top: 5px; color: #b91c1c;">฿${data.totalOutflow.toFixed(2)}</div>
+            </div>
+            <div class="summary-card" style="background: #ecfdf5; border-color: #a7f3d0;">
+              <div style="font-size: 12px; color: #065f46;">Closing Balance</div>
+              <div style="font-size: 18px; font-weight: 800; margin-top: 5px; color: #047857;">฿${data.closingBalance.toFixed(2)}</div>
+            </div>
+          </div>
+          <h3>Transactions Log</h3>
+          <table class="table">
+            <thead>
+              <tr>
+                <th style="width: 25%;">Timestamp</th>
+                <th style="width: 55%;">Details</th>
+                <th style="width: 20%; text-align: right;">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${formattedTxs || `<tr><td colspan="3" style="text-align: center; padding: 20px; color: #94a3b8;">No transactions found in this period.</td></tr>`}
+            </tbody>
+          </table>
+          <script>
+            window.onload = () => {
+              window.print();
+              setTimeout(() => window.close(), 500);
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   const otherUsers = users.filter(u => u.id !== user.id);
   const formatDate = (ts) => new Date(ts).toLocaleString();
 
@@ -88,9 +278,9 @@ export default function COHPanel({ user, users, onClose }) {
         )}
 
         <div style={styles.tabs}>
-          {["balance", "transfer", "pending", "history"].map(t => (
+          {["balance", "transfer", "pending", "history", "statement"].map(t => (
             <button key={t} onClick={() => setTab(t)} style={{...styles.tab, ...(tab === t ? styles.activeTab : {})}}>
-              {t === "balance" ? "Balance" : t === "transfer" ? "Transfer" : t === "pending" ? `Pending${pending.length > 0 ? ` (${pending.length})` : ""}` : "History"}
+              {t === "balance" ? "Balance" : t === "transfer" ? "Transfer" : t === "pending" ? `Pending${pending.length > 0 ? ` (${pending.length})` : ""}` : t === "history" ? "History" : "Statement"}
             </button>
           ))}
         </div>
@@ -199,6 +389,108 @@ export default function COHPanel({ user, users, onClose }) {
             </div>
           </div>
         )}
+
+        {tab === "statement" && (() => {
+          const data = getStatementData();
+          return (
+            <div style={styles.section}>
+              <div style={{ display: "flex", gap: "4px", marginBottom: "0.25rem", overflowX: "auto" }}>
+                {["today", "yesterday", "week", "custom"].map(p => (
+                  <button
+                    key={p}
+                    onClick={() => setStatementPeriod(p)}
+                    style={{
+                      flex: 1,
+                      padding: "0.4rem 0.25rem",
+                      fontSize: "0.7rem",
+                      fontWeight: 700,
+                      borderRadius: "6px",
+                      border: "1px solid #cbd5e1",
+                      background: statementPeriod === p ? "var(--primary)" : "#f8fafc",
+                      color: statementPeriod === p ? "#fff" : "#475569",
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    {p === "today" ? "Today" : p === "yesterday" ? "Yesterday" : p === "week" ? "Last 7 Days" : "Custom"}
+                  </button>
+                ))}
+              </div>
+
+              {statementPeriod === "custom" && (
+                <div style={{ display: "flex", gap: "8px", marginBottom: "0.5rem" }}>
+                  <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "2px" }}>
+                    <span style={{ fontSize: "0.65rem", fontWeight: 700, color: "#64748b" }}>Start Date</span>
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={e => setStartDate(e.target.value)}
+                      style={{ padding: "0.35rem", fontSize: "0.75rem", borderRadius: "6px", border: "1px solid #cbd5e1", fontFamily: "inherit" }}
+                    />
+                  </div>
+                  <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "2px" }}>
+                    <span style={{ fontSize: "0.65rem", fontWeight: 700, color: "#64748b" }}>End Date</span>
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={e => setEndDate(e.target.value)}
+                      style={{ padding: "0.35rem", fontSize: "0.75rem", borderRadius: "6px", border: "1px solid #cbd5e1", fontFamily: "inherit" }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "8px", margin: "0.25rem 0" }}>
+                <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", padding: "0.5rem", borderRadius: "8px" }}>
+                  <div style={{ fontSize: "0.65rem", color: "#64748b" }}>Opening Balance</div>
+                  <div style={{ fontSize: "0.95rem", fontWeight: 800 }}>฿{data.openingBalance.toFixed(2)}</div>
+                </div>
+                <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", padding: "0.5rem", borderRadius: "8px" }}>
+                  <div style={{ fontSize: "0.65rem", color: "#166534" }}>Total Inflow (+)</div>
+                  <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "#15803d" }}>฿{data.totalInflow.toFixed(2)}</div>
+                </div>
+                <div style={{ background: "#fef2f2", border: "1px solid #fecaca", padding: "0.5rem", borderRadius: "8px" }}>
+                  <div style={{ fontSize: "0.65rem", color: "#991b1b" }}>Total Outflow (-)</div>
+                  <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "#b91c1c" }}>฿{data.totalOutflow.toFixed(2)}</div>
+                </div>
+                <div style={{ background: "#ecfdf5", border: "1px solid #a7f3d0", padding: "0.5rem", borderRadius: "8px" }}>
+                  <div style={{ fontSize: "0.65rem", color: "#065f46" }}>Closing Balance</div>
+                  <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "#047857" }}>฿{data.closingBalance.toFixed(2)}</div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => handlePrint(data)}
+                className="btn btn-primary"
+                style={{ padding: "0.5rem", fontSize: "0.85rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "4px" }}
+              >
+                🖨️ Print Statement
+              </button>
+
+              <div style={{ maxHeight: "250px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "6px", marginTop: "0.25rem" }}>
+                <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#475569" }}>Transactions Log</span>
+                {data.txs.map(tx => (
+                  <div key={tx.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.5rem", backgroundColor: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                    <div>
+                      <span style={{ fontWeight: 600, fontSize: "0.75rem" }}>
+                        {tx.type === "adjustment" ? "⚙️ Adjustment" : tx.fromUserId === user.id ? "📤 Sent" : "📥 Received"}
+                      </span>
+                      <span style={{ display: "block", fontSize: "0.6rem", color: "#94a3b8", marginTop: "1px" }}>
+                        {tx.fromUserId === user.id ? `To: ${tx.toUserName || tx.toUserId}` : `From: ${tx.fromUserName}`}
+                        {" · "}{formatDate(tx.timestamp)}
+                      </span>
+                      {tx.note && <span style={{ display: "block", fontSize: "0.65rem", color: "#64748b", fontStyle: "italic" }}>{tx.note}</span>}
+                    </div>
+                    <span style={{ fontWeight: 700, fontSize: "0.85rem", color: tx.fromUserId === user.id ? "#dc2626" : "#047857" }}>
+                      {tx.fromUserId === user.id ? "-" : "+"}฿{tx.amount.toFixed(2)}
+                    </span>
+                  </div>
+                ))}
+                {data.txs.length === 0 && <div style={styles.empty}>No transactions in this period.</div>}
+              </div>
+            </div>
+          );
+        })()}
       </div>
     </div>
     </ModalPortal>
