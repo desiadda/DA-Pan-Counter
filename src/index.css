@@ -765,14 +765,14 @@ h4 { font-size: 1rem; font-weight: 600; }
 /* ── POS Layout ── */
 .pos-layout {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
   align-items: start;
 }
 
 @media (min-width: 768px) {
   .pos-layout {
-    grid-template-columns: 1fr 360px;
+    grid-template-columns: minmax(0, 1fr) 360px;
   }
 }
 
@@ -1528,13 +1528,13 @@ textarea.input-field {
 /* ── Product Grid Cards ── */
 .product-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 0.75rem;
 }
 
 @media (max-width: 640px) {
   .product-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.75rem;
   }
 }
@@ -1551,6 +1551,7 @@ textarea.input-field {
   position: relative;
   box-shadow: var(--shadow-sm);
   transition: all var(--duration-fast) var(--ease-out);
+  min-width: 0;
 }
 
 @media (max-width: 640px) {
@@ -1579,12 +1580,18 @@ textarea.input-field {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 4px;
+  min-width: 0;
 }
 
 .product-category {
   font-size: 0.62rem;
   color: var(--text-muted);
   font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
 }
 
 .product-name {
