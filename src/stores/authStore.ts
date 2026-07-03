@@ -1,6 +1,5 @@
 import { create } from "zustand"
 import { dbService } from "../firebase"
-import { processSyncQueue, getQueueLength } from "../db/sync"
 import { logError } from "../db/errorLog"
 
 interface User {
@@ -41,12 +40,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   init: () => {
-    const handleOnline = async () => {
-      set({ isOnline: true })
-      const synced = await processSyncQueue()
-      if (synced > 0) console.log(`Synced ${synced} pending items`)
-      set({ pendingSync: getQueueLength() })
-    }
+    const handleOnline = () => set({ isOnline: true })
     const handleOffline = () => set({ isOnline: false })
     window.addEventListener("online", handleOnline)
     window.addEventListener("offline", handleOffline)
@@ -57,11 +51,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch (err: any) {
       logError("AUTH", err.message, err.stack)
     }
-
-    processSyncQueue().then((n) => {
-      if (n > 0) console.log(`Synced ${n} items on start`)
-    })
-    set({ pendingSync: getQueueLength() })
 
     return () => {
       window.removeEventListener("online", handleOnline)
