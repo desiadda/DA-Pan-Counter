@@ -50,6 +50,8 @@ const navItems = [
 
 function AppContent() {
   const user = useAuthStore((s) => s.user);
+  const setUser = useAuthStore((s) => s.setUser);
+  const init = useAuthStore((s) => s.init);
   const activeTab = useAuthStore((s) => s.activeTab);
   const setActiveTab = useAuthStore((s) => s.setActiveTab);
   const subPath = useAuthStore((s) => s.subPath);
@@ -157,12 +159,18 @@ function AppContent() {
       link.href = store.logo;
     }
     return () => {
+      unsubProducts();
+      unsubCustomers();
+      unsubTransactions();
       window.removeEventListener("error-logged", onError);
-      window.removeEventListener("stock-changed", refreshStock);
       window.removeEventListener("coh-changed", refreshCOH);
       window.removeEventListener("users-changed", refreshUsers);
     };
   }, [user?.id]);
+
+  useEffect(() => {
+    return init();
+  }, [init]);
 
   const canAccessTab = useCallback((key: string) => {
     if (key === "pos") return true;
