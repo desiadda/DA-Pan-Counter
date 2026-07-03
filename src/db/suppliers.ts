@@ -1,26 +1,40 @@
-import { collection, doc, setDoc, addDoc, deleteDoc } from "firebase/firestore";
+import { collection, doc, setDoc, addDoc, deleteDoc, getDocs } from "firebase/firestore";
 import { db, isFirebaseEnabled } from "./config";
 import { getLocalData, setLocalData } from "./storage";
 import { logError } from "./errorLog";
-import { addToSyncQueue } from "./sync";
 
 const LS_KEY = "pan_suppliers";
 
-function syncSupplierToFirebase(supplier) {
+async function syncSupplierToFirebase(supplier) {
   const { id, ...data } = supplier;
-  return id ? setDoc(doc(db, "suppliers", id), data) : addDoc(collection(db, "suppliers"), data);
+  if (id) {
+    await setDoc(doc(db, "suppliers", id), data);
+  } else {
+    const ref = await addDoc(collection(db, "suppliers"), data);
+    supplier.id = ref.id;
+  }
 }
 
-function deleteSupplierFromFirebase(id) {
-  return deleteDoc(doc(db, "suppliers", id));
+async function deleteSupplierFromFirebase(id) {
+  await deleteDoc(doc(db, "suppliers", id));
 }
 
-export const getSuppliers = () => {
-  try { return getLocalData(LS_KEY, []); }
-  catch (err) { logError("STORAGE", err.message, err.stack); return []; }
+export const getSuppliers = async () => {
+  try {
+    if (isFirebaseEnabled) {
+      const snap = await getDocs(collection(db, "suppliers"));
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setLocalData(LS_KEY, list);
+      return list;
+    }
+    return getLocalData(LS_KEY, []);
+  } catch (err) {
+    logError("STORAGE", err.message, err.stack);
+    return getLocalData(LS_KEY, []);
+  }
 };
 
-export const saveSupplier = (supplier) => {
+export const saveSupplier = async (supplier) => {
   try {
     const list = getLocalData(LS_KEY, []);
     if (supplier.id) {
@@ -31,11 +45,12 @@ export const saveSupplier = (supplier) => {
       supplier.createdAt = Date.now();
       list.push(supplier);
     }
-    setLocalData(LS_KEY, list);
 
     if (isFirebaseEnabled) {
-      syncSupplierToFirebase(supplier).catch(() => addToSyncQueue({ fn: () => syncSupplierToFirebase(supplier) }));
+      await syncSupplierToFirebase(supplier);
     }
+
+    setLocalData(LS_KEY, list);
     return supplier;
   } catch (err) {
     logError("STORAGE", err.message, err.stack);
@@ -43,13 +58,13 @@ export const saveSupplier = (supplier) => {
   }
 };
 
-export const deleteSupplier = (id) => {
+export const deleteSupplier = async (id) => {
   try {
+    if (isFirebaseEnabled) {
+      await deleteSupplierFromFirebase(id);
+    }
     const list = getLocalData(LS_KEY, []).filter(s => s.id !== id);
     setLocalData(LS_KEY, list);
-    if (isFirebaseEnabled) {
-      deleteSupplierFromFirebase(id).catch(() => addToSyncQueue({ fn: () => deleteSupplierFromFirebase(id) }));
-    }
   } catch (err) {
     logError("STORAGE", err.message, err.stack);
     throw new Error("Failed to delete supplier");

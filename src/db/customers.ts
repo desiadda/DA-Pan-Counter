@@ -1,26 +1,36 @@
-import { doc, setDoc, updateDoc } from "firebase/firestore";
+import { collection, getDocs, doc, setDoc, updateDoc } from "firebase/firestore";
 import { db, isFirebaseEnabled } from "./config";
 import { getLocalCustomers, setLocalData } from "./storage";
 import { LS_KEYS } from "../constants";
 import { logError } from "./errorLog";
-import { addToSyncQueue } from "./sync";
 
-function syncCustomerToFirebase(customer) {
+async function syncCustomerToFirebase(customer) {
   const { id, ...data } = customer;
-  if (id) return setDoc(doc(db, "customers", id), data);
-  return setDoc(doc(collection(db, "customers")), { ...data, id: "c_" + Date.now() });
+  if (id) {
+    await setDoc(doc(db, "customers", id), data);
+  } else {
+    const ref = doc(collection(db, "customers"));
+    customer.id = ref.id;
+    await setDoc(ref, { ...data, id: ref.id });
+  }
 }
 
-function syncUdhaarToFirebase(customerId, balance, ledger) {
-  return updateDoc(doc(db, "customers", customerId), { balance, ledger });
+async function syncUdhaarToFirebase(customerId, balance, ledger) {
+  await updateDoc(doc(db, "customers", customerId), { balance, ledger });
 }
 
 export const getCustomers = async () => {
   try {
+    if (isFirebaseEnabled) {
+      const snap = await getDocs(collection(db, "customers"));
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setLocalData(LS_KEYS.CUSTOMERS, list);
+      return list;
+    }
     return getLocalCustomers();
   } catch (err) {
     logError("TRANSACTION", err.message, err.stack);
-    return [];
+    return getLocalCustomers();
   }
 };
 
@@ -36,11 +46,12 @@ export const saveCustomer = async (customer) => {
       customer.ledger = customer.ledger || [];
       customers.push(customer);
     }
-    setLocalData(LS_KEYS.CUSTOMERS, customers);
 
     if (isFirebaseEnabled) {
-      syncCustomerToFirebase(customer).catch(() => addToSyncQueue({ fn: () => syncCustomerToFirebase(customer) }));
+      await syncCustomerToFirebase(customer);
     }
+
+    setLocalData(LS_KEYS.CUSTOMERS, customers);
   } catch (err) {
     logError("TRANSACTION", err.message, err.stack);
     throw new Error(`Save error (सेव समस्या): ${err.message}. कृपया पुनः प्रयास करें।`);
@@ -54,12 +65,12 @@ export const updateUdhaarBalance = async (customerId, amountChange, ledgerEntry)
     if (idx === -1) return;
     customers[idx].balance = (customers[idx].balance || 0) + amountChange;
     customers[idx].ledger = [...(customers[idx].ledger || []), ledgerEntry];
-    setLocalData(LS_KEYS.CUSTOMERS, customers);
 
     if (isFirebaseEnabled) {
-      syncUdhaarToFirebase(customerId, customers[idx].balance, customers[idx].ledger)
-        .catch(() => addToSyncQueue({ fn: () => syncUdhaarToFirebase(customerId, customers[idx].balance, customers[idx].ledger) }));
+      await syncUdhaarToFirebase(customerId, customers[idx].balance, customers[idx].ledger);
     }
+
+    setLocalData(LS_KEYS.CUSTOMERS, customers);
   } catch (err) {
     logError("TRANSACTION", err.message, err.stack);
     throw new Error(`Khata update error (खाता अपडेट समस्या): ${err.message}. कृपया पुनः प्रयास करें।`);

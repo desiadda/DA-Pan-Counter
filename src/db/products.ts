@@ -1,19 +1,22 @@
-import { doc, setDoc, addDoc, deleteDoc } from "firebase/firestore";
+import { collection, getDocs, doc, setDoc, addDoc, deleteDoc } from "firebase/firestore";
 import { db, isFirebaseEnabled } from "./config";
 import { getLocalProducts, setLocalData } from "./storage";
 import { LS_KEYS } from "../constants";
 import { logError } from "./errorLog";
 import { recordPriceChange } from "./priceHistory";
-import { addToSyncQueue } from "./sync";
 
-function syncProductToFirebase(product) {
+async function syncProductToFirebase(product) {
   const { id, ...data } = product;
-  if (id) return setDoc(doc(db, "products", id), data);
-  return addDoc(collection(db, "products"), { ...data, id: "p_" + Date.now() });
+  if (id) {
+    await setDoc(doc(db, "products", id), data);
+  } else {
+    const ref = await addDoc(collection(db, "products"), { ...data, id: "p_" + Date.now() });
+    product.id = ref.id;
+  }
 }
 
-function deleteProductFromFirebase(productId) {
-  return deleteDoc(doc(db, "products", productId));
+async function deleteProductFromFirebase(productId) {
+  await deleteDoc(doc(db, "products", productId));
 }
 
 export const getLowStockCount = () => {
@@ -36,10 +39,16 @@ export const getLowStockProducts = () => {
 
 export const getProducts = async () => {
   try {
+    if (isFirebaseEnabled) {
+      const snap = await getDocs(collection(db, "products"));
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setLocalData(LS_KEYS.PRODUCTS, list);
+      return list;
+    }
     return getLocalProducts();
   } catch (err) {
     logError("INVENTORY", err.message, err.stack);
-    return [];
+    return getLocalProducts();
   }
 };
 
@@ -70,11 +79,12 @@ export const saveProduct = async (product) => {
       isNew = true;
       products.push(product);
     }
-    setLocalData(LS_KEYS.PRODUCTS, products);
 
     if (isFirebaseEnabled) {
-      syncProductToFirebase(product).catch(() => addToSyncQueue({ fn: () => syncProductToFirebase(product) }));
+      await syncProductToFirebase(product);
     }
+
+    setLocalData(LS_KEYS.PRODUCTS, products);
     window.dispatchEvent(new CustomEvent("stock-changed"));
   } catch (err) {
     logError("INVENTORY", err.message, err.stack);
@@ -84,11 +94,11 @@ export const saveProduct = async (product) => {
 
 export const deleteProduct = async (productId) => {
   try {
+    if (isFirebaseEnabled) {
+      await deleteProductFromFirebase(productId);
+    }
     const products = getLocalProducts().filter(p => p.id !== productId);
     setLocalData(LS_KEYS.PRODUCTS, products);
-    if (isFirebaseEnabled) {
-      deleteProductFromFirebase(productId).catch(() => addToSyncQueue({ fn: () => deleteProductFromFirebase(productId) }));
-    }
     window.dispatchEvent(new CustomEvent("stock-changed"));
   } catch (err) {
     logError("INVENTORY", err.message, err.stack);

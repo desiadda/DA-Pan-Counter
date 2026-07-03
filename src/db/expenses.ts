@@ -1,7 +1,6 @@
-import { addDoc, deleteDoc } from "firebase/firestore";
+import { collection, getDocs, doc, addDoc, deleteDoc } from "firebase/firestore";
 import { db, isFirebaseEnabled } from "./config";
 import { logError } from "./errorLog";
-import { addToSyncQueue } from "./sync";
 
 const LS_KEY = "pan_expenses";
 const EXPENSE_CATEGORIES = ["Rent", "Electricity", "Salary", "Supplies", "Maintenance", "Other"];
@@ -17,20 +16,27 @@ const getLocalExpenses = () => {
   }
 };
 
-function syncExpenseToFirebase(expense) {
-  return addDoc(collection(db, "expenses"), expense);
+async function syncExpenseToFirebase(expense) {
+  const ref = await addDoc(collection(db, "expenses"), expense);
+  return ref.id;
 }
 
-function deleteExpenseFromFirebase(id) {
-  return deleteDoc(doc(db, "expenses", id));
+async function deleteExpenseFromFirebase(id) {
+  await deleteDoc(doc(db, "expenses", id));
 }
 
 export const getExpenses = async () => {
   try {
+    if (isFirebaseEnabled) {
+      const snap = await getDocs(collection(db, "expenses"));
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      localStorage.setItem(LS_KEY, JSON.stringify(list));
+      return list;
+    }
     return getLocalExpenses();
   } catch (err) {
     logError("EXPENSE", err.message, err.stack);
-    return [];
+    return getLocalExpenses();
   }
 };
 
@@ -39,11 +45,13 @@ export const addExpense = async (expense) => {
     const expenses = getLocalExpenses();
     expense.id = "exp_" + Date.now();
     expenses.unshift(expense);
-    localStorage.setItem(LS_KEY, JSON.stringify(expenses));
 
     if (isFirebaseEnabled) {
-      syncExpenseToFirebase(expense).catch(() => addToSyncQueue({ fn: () => syncExpenseToFirebase(expense) }));
+      const fireId = await syncExpenseToFirebase(expense);
+      expense.id = fireId;
     }
+
+    localStorage.setItem(LS_KEY, JSON.stringify(expenses));
     return expense.id;
   } catch (err) {
     logError("EXPENSE", err.message, err.stack);
@@ -53,12 +61,11 @@ export const addExpense = async (expense) => {
 
 export const deleteExpense = async (expenseId) => {
   try {
+    if (isFirebaseEnabled) {
+      await deleteExpenseFromFirebase(expenseId);
+    }
     const expenses = getLocalExpenses().filter(e => e.id !== expenseId);
     localStorage.setItem(LS_KEY, JSON.stringify(expenses));
-
-    if (isFirebaseEnabled) {
-      deleteExpenseFromFirebase(expenseId).catch(() => addToSyncQueue({ fn: () => deleteExpenseFromFirebase(expenseId) }));
-    }
   } catch (err) {
     logError("EXPENSE", err.message, err.stack);
     throw new Error(`Delete error (डिलीट समस्या): ${err.message}. कृपया पुनः प्रयास करें।`);

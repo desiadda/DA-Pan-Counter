@@ -1,12 +1,11 @@
-import { collection, doc, writeBatch } from "firebase/firestore";
+import { collection, doc, writeBatch, getDocs } from "firebase/firestore";
 import { db, isFirebaseEnabled } from "./config";
 import { getLocalProducts, getLocalTransactions, setLocalData, getLocalCustomers } from "./storage";
 import { LS_KEYS } from "../constants";
 import { adjustBalance } from "./coh";
 import { logError } from "./errorLog";
-import { addToSyncQueue } from "./sync";
 
-function syncTransaction(transaction) {
+async function syncTransaction(transaction) {
   const batch = writeBatch(db);
   const newTxRef = doc(collection(db, "transactions"));
   batch.set(newTxRef, transaction);
@@ -18,15 +17,22 @@ function syncTransaction(transaction) {
       batch.update(prodRef, { stock: Math.max(0, item.currentStock - item.quantity) });
     }
   }
-  return batch.commit().then(() => newTxRef.id);
+  await batch.commit();
+  return newTxRef.id;
 }
 
 export const getTransactions = async () => {
   try {
+    if (isFirebaseEnabled) {
+      const snap = await getDocs(collection(db, "transactions"));
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setLocalData(LS_KEYS.TRANSACTIONS, list);
+      return list;
+    }
     return getLocalTransactions();
   } catch (err) {
     logError("TRANSACTION", err.message, err.stack);
-    return [];
+    return getLocalTransactions();
   }
 };
 
@@ -35,7 +41,6 @@ export const addTransaction = async (transaction) => {
     const transactions = getLocalTransactions();
     transaction.id = "tx_" + Date.now();
     transactions.unshift(transaction);
-    setLocalData(LS_KEYS.TRANSACTIONS, transactions);
 
     const products = getLocalProducts();
     transaction.items.forEach(item => {
@@ -48,15 +53,19 @@ export const addTransaction = async (transaction) => {
         }
       }
     });
-    setLocalData(LS_KEYS.PRODUCTS, products);
 
     if (transaction.paymentMode === "Cash") {
       adjustBalance(transaction.cashierId || "system", transaction.totalAmount, `Cash sale: Bill ${transaction.id}`, transaction.cashierName || "System");
     }
 
     if (isFirebaseEnabled) {
-      syncTransaction(transaction).catch(() => addToSyncQueue({ fn: () => syncTransaction(transaction) }));
+      const fireId = await syncTransaction(transaction);
+      transaction.id = fireId;
     }
+
+    setLocalData(LS_KEYS.TRANSACTIONS, transactions);
+    setLocalData(LS_KEYS.PRODUCTS, products);
+
     window.dispatchEvent(new CustomEvent("stock-changed"));
     return transaction.id;
   } catch (err) {
