@@ -268,6 +268,12 @@ export default function ReportsView({ initialSubTab, onSubTabChange, user }) {
   ];
   const [activeSubTab, setActiveSubTab] = useState(initialSubTab || "overview");
 
+  useEffect(() => {
+    if (initialSubTab) {
+      setActiveSubTab(initialSubTab);
+    }
+  }, [initialSubTab]);
+
   // ── Helpers for summary stats ──
   const totalQtySold = productSales.reduce((s, p) => s + p.qty, 0);
 

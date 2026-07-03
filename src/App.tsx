@@ -112,7 +112,7 @@ function AppContent() {
     if (user && canAccessTab(permKey)) {
       setActiveTab(tab.key);
       setSubPath("");
-      navigate("/" + tab.key, { replace: true });
+      navigate("/" + tab.key);
     } else {
       alert("Access Denied! You don't have permission for this section.");
     }
@@ -120,7 +120,7 @@ function AppContent() {
 
   const handleSubNavigate = useCallback((path) => {
     setSubPath(path);
-    navigate("/" + activeTabRef.current + (path ? "/" + path : ""), { replace: true });
+    navigate("/" + activeTabRef.current + (path ? "/" + path : ""));
   }, [navigate]);
 
   const mobileCartOpen = useCartStore((s) => s.mobileCartOpen);
