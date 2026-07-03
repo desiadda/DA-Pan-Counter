@@ -52,32 +52,18 @@ function AppContent() {
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
   const init = useAuthStore((s) => s.init);
-  const activeTab = useAuthStore((s) => s.activeTab);
-  const setActiveTab = useAuthStore((s) => s.setActiveTab);
-  const subPath = useAuthStore((s) => s.subPath);
-  const setSubPath = useAuthStore((s) => s.setSubPath);
   const logoutUser = useAuthStore((s) => s.logout);
   const isOnline = useAuthStore((s) => s.isOnline);
   const theme = useUIStore((s) => s.theme);
   const toggleTheme = useUIStore((s) => s.toggleTheme);
-  const showCOH = useUIStore((s) => s.showCOH);
-  const setShowCOH = (show: boolean) => useUIStore.setState({ showCOH: show });
-  const showShift = useUIStore((s) => s.showShift);
-  const setShowShift = (show: boolean) => useUIStore.setState({ showShift: show });
 
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [cohBalance, setCohBalance] = useState(0);
-  const [cohPending, setCohPending] = useState(0);
-  const [lowStockCount, setLowStockCount] = useState(0);
-  const [criticalErrors, setCriticalErrors] = useState(getCriticalUnreadCount());
-  const [allUsers, setAllUsers] = useState<any[]>([]);
-
-  const activeTabRef = useRef(activeTab);
-  useEffect(() => {
-    activeTabRef.current = activeTab;
-  }, [activeTab]);
+  const showCOH = useUIStore((s) => s.showCOH);
+  const setShowCOH = (show: boolean) => useUIStore.setState({ showCOH: show });
+  const showShift = useUIStore((s) => s.showShift);
+  const setShowShift = (show: boolean) => useUIStore.setState({ showShift: show });
 
   const getTabFromPath = () => {
     const path = location.pathname;
@@ -93,6 +79,20 @@ function AppContent() {
     const parts = path.split("/").filter(Boolean);
     return parts.length > 1 ? parts[1] : "";
   };
+
+  const [activeTab, setActiveTab] = useState(getTabFromPath());
+  const [subPath, setSubPath] = useState(getSubPath());
+
+  const [cohBalance, setCohBalance] = useState(0);
+  const [cohPending, setCohPending] = useState(0);
+  const [lowStockCount, setLowStockCount] = useState(0);
+  const [criticalErrors, setCriticalErrors] = useState(getCriticalUnreadCount());
+  const [allUsers, setAllUsers] = useState<any[]>([]);
+
+  const activeTabRef = useRef(activeTab);
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+  }, [activeTab]);
 
   useEffect(() => {
     setActiveTab(getTabFromPath());
