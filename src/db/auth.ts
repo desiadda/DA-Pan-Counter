@@ -3,6 +3,7 @@ import { db, isFirebaseEnabled } from "./config";
 import { LS_KEYS, ADMIN_PERMISSIONS, DEFAULT_PERMISSIONS } from "../constants";
 import { hashPin, verifyPin, isPlainPin } from "./hash";
 import { logError } from "./errorLog";
+import { getLocalData, setLocalData } from "./storage";
 
 let usersListenerActive = false;
 
@@ -15,20 +16,13 @@ export function initUsersListener() {
     snapshot.forEach(doc => {
       list.push({ id: doc.id, ...doc.data() });
     });
-    localStorage.setItem(LS_KEYS.USERS, JSON.stringify(list));
+    setLocalData(LS_KEYS.USERS, list);
     window.dispatchEvent(new CustomEvent("users-changed"));
   });
 }
 
 function getUsers() {
-  try {
-    const raw = localStorage.getItem(LS_KEYS.USERS);
-    return raw ? JSON.parse(raw) : [];
-  } catch (err) {
-    logError("AUTH", err.message, err.stack);
-    console.error("getUsers: Error reading users from localStorage", err);
-    return [];
-  }
+  return getLocalData(LS_KEYS.USERS, []);
 }
 
 async function saveUsers(users) {
@@ -44,7 +38,7 @@ async function saveUsers(users) {
         }
       }
     }
-    localStorage.setItem(LS_KEYS.USERS, JSON.stringify(users));
+    setLocalData(LS_KEYS.USERS, users);
   } catch (err) {
     logError("AUTH", err.message, err.stack);
     console.error("saveUsers: Error saving users to localStorage", err);

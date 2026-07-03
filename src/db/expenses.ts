@@ -1,6 +1,7 @@
 import { collection, getDocs, doc, addDoc, deleteDoc, onSnapshot } from "firebase/firestore";
 import { db, isFirebaseEnabled } from "./config";
 import { logError } from "./errorLog";
+import { getLocalData, setLocalData } from "./storage";
 
 const LS_KEY = "pan_expenses";
 const EXPENSE_CATEGORIES = ["Rent", "Electricity", "Salary", "Supplies", "Maintenance", "Other"];
@@ -17,19 +18,13 @@ export function initExpensesListener() {
     snapshot.forEach(doc => {
       list.push({ id: doc.id, ...doc.data() });
     });
-    localStorage.setItem(LS_KEY, JSON.stringify(list));
+    setLocalData(LS_KEY, list);
     window.dispatchEvent(new CustomEvent("expenses-changed"));
   });
 }
 
 const getLocalExpenses = () => {
-  try {
-    const data = localStorage.getItem(LS_KEY);
-    return data ? JSON.parse(data) : [];
-  } catch (err) {
-    logError("EXPENSE", err.message, err.stack);
-    return [];
-  }
+  return getLocalData(LS_KEY, []);
 };
 
 async function syncExpenseToFirebase(expense) {
@@ -46,7 +41,7 @@ export const getExpenses = async () => {
     if (isFirebaseEnabled) {
       const snap = await getDocs(collection(db, "expenses"));
       const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      localStorage.setItem(LS_KEY, JSON.stringify(list));
+      setLocalData(LS_KEY, list);
       return list;
     }
     return getLocalExpenses();

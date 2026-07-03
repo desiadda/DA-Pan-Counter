@@ -1,55 +1,38 @@
-import { LS_KEYS, DEFAULT_PRODUCTS } from "../constants";
-import { logError } from "./errorLog";
+import { LS_KEYS } from "../constants";
 
-export const getLocalData = (key, fallback = null) => {
-  try {
-    const data = localStorage.getItem(key);
-    if (data === null) return fallback;
-    return JSON.parse(data);
-  } catch (err) {
-    logError("STORAGE", err.message, err.stack);
-    console.error(`getLocalData: Error reading key "${key}" from localStorage`, err);
-    return fallback;
-  }
+// Volatile runtime memory storage (cleared on page reload, completely online-only)
+const MEMORY_DB: Record<string, any> = {
+  [LS_KEYS.PRODUCTS]: [],
+  [LS_KEYS.CUSTOMERS]: [],
+  [LS_KEYS.TRANSACTIONS]: [],
+  [LS_KEYS.COH_BALANCES]: {},
+  [LS_KEYS.COH_TRANSACTIONS]: [],
+  "pan_expenses": [],
+  "pan_suppliers": [],
+  "pan_purchase_orders": [],
+  "pan_shifts": [],
+  "pan_users": []
 };
 
-export const setLocalData = (key, data) => {
-  try {
-    localStorage.setItem(key, JSON.stringify(data));
-  } catch (err) {
-    logError("STORAGE", err.message, err.stack);
-    console.error(`setLocalData: Error saving key "${key}" to localStorage`, err);
-    throw new Error(`Storage error (स्टोरेज समस्या): ${err.message}. कृपया पुनः प्रयास करें।`);
+export const getLocalData = (key: string, fallback: any = null) => {
+  if (key in MEMORY_DB) {
+    return MEMORY_DB[key] ?? fallback;
   }
+  return fallback;
+};
+
+export const setLocalData = (key: string, data: any) => {
+  MEMORY_DB[key] = data;
 };
 
 export const getLocalProducts = () => {
-  try {
-    const data = getLocalData(LS_KEYS.PRODUCTS, null);
-    return data ? data : [...DEFAULT_PRODUCTS];
-  } catch (err) {
-    logError("STORAGE", err.message, err.stack);
-    console.error("getLocalProducts: Error loading products", err);
-    return [...DEFAULT_PRODUCTS];
-  }
+  return MEMORY_DB[LS_KEYS.PRODUCTS] || [];
 };
 
 export const getLocalTransactions = () => {
-  try {
-    return getLocalData(LS_KEYS.TRANSACTIONS, []);
-  } catch (err) {
-    logError("STORAGE", err.message, err.stack);
-    console.error("getLocalTransactions: Error loading transactions", err);
-    return [];
-  }
+  return MEMORY_DB[LS_KEYS.TRANSACTIONS] || [];
 };
 
 export const getLocalCustomers = () => {
-  try {
-    return getLocalData(LS_KEYS.CUSTOMERS, []);
-  } catch (err) {
-    logError("STORAGE", err.message, err.stack);
-    console.error("getLocalCustomers: Error loading customers", err);
-    return [];
-  }
+  return MEMORY_DB[LS_KEYS.CUSTOMERS] || [];
 };
