@@ -51,6 +51,7 @@ function AppContent() {
   const setUser = useAuthStore((s) => s.setUser);
   const logout = useAuthStore((s) => s.logout);
   const isOnline = useAuthStore((s) => s.isOnline);
+  const init = useAuthStore((s) => s.init);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -74,6 +75,10 @@ function AppContent() {
   const [lowStockCount, setLowStockCount] = useState(dbService.getLowStockCount());
   const activeTabRef = useRef(activeTab);
   activeTabRef.current = activeTab;
+
+  useEffect(() => {
+    return init();
+  }, [init]);
 
   useEffect(() => {
     setActiveTab(getTabFromPath());
