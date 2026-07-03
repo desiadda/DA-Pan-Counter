@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, collection, getDocs, writeBatch, doc } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { LS_KEYS } from "../constants";
 
@@ -59,3 +59,48 @@ export const clearConfig = () => {
 export const getConfig = () => {
   return getSavedFirebaseConfig() || HARDCODED_CONFIG;
 };
+
+export async function migrateLocalDataToFirestore() {
+  if (!isFirebaseEnabled || !db) return;
+  try {
+    const productsSnap = await getDocs(collection(db, "products"));
+    if (productsSnap.empty) {
+      console.log("Firestore products collection is empty. Initiating automatic self-healing cloud migration...");
+
+      // 1. Migrate Products
+      const localProds = JSON.parse(localStorage.getItem(LS_KEYS.PRODUCTS) || "[]");
+      if (localProds.length > 0) {
+        const batch = writeBatch(db);
+        localProds.forEach(p => {
+          batch.set(doc(db, "products", p.id), p);
+        });
+        await batch.commit();
+        console.log(`Migrated ${localProds.length} products to Firestore.`);
+      }
+
+      // 2. Migrate Customers
+      const localCusts = JSON.parse(localStorage.getItem(LS_KEYS.CUSTOMERS) || "[]");
+      if (localCusts.length > 0) {
+        const batch = writeBatch(db);
+        localCusts.forEach(c => {
+          batch.set(doc(db, "customers", c.id), c);
+        });
+        await batch.commit();
+        console.log(`Migrated ${localCusts.length} customers to Firestore.`);
+      }
+
+      // 3. Migrate Users
+      const localUsers = JSON.parse(localStorage.getItem(LS_KEYS.USERS) || "[]");
+      if (localUsers.length > 0) {
+        const batch = writeBatch(db);
+        localUsers.forEach(u => {
+          batch.set(doc(db, "users", u.id), u);
+        });
+        await batch.commit();
+        console.log(`Migrated ${localUsers.length} users to Firestore.`);
+      }
+    }
+  } catch (err) {
+    console.error("Self-healing cloud migration failed:", err);
+  }
+}

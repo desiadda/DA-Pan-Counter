@@ -107,6 +107,7 @@ function AppContent() {
     dbService.initSuppliersListener();
     dbService.initPurchasesListener();
     dbService.initShiftsListener();
+    dbService.migrateLocalDataToFirestore();
     const onError = () => setCriticalErrors(getCriticalUnreadCount());
     window.addEventListener("error-logged", onError);
     const refreshStock = () => setLowStockCount(dbService.getLowStockCount());

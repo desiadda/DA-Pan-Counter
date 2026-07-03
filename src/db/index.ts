@@ -1,4 +1,4 @@
-import { isFirebaseEnabled, saveConfig, clearConfig, getConfig } from "./config";
+import { isFirebaseEnabled, saveConfig, clearConfig, getConfig, migrateLocalDataToFirestore } from "./config";
 import { getProducts, getLowStockCount, getLowStockProducts, saveProduct, deleteProduct, initProductsListener } from "./products";
 import { getTransactions, addTransaction, deleteTransaction, returnTransaction, updateTransactionPaymentMode, initTransactionsListener } from "./transactions";
 import { getCustomers, saveCustomer, updateUdhaarBalance, initCustomersListener } from "./customers";
@@ -76,4 +76,5 @@ export const dbService = {
   initSuppliersListener,
   initPurchasesListener,
   initShiftsListener,
+  migrateLocalDataToFirestore,
 };
