@@ -98,6 +98,20 @@ function AppContent() {
   }, [location.pathname]);
 
   useEffect(() => {
+    // Clear all offline database caches on launch to prevent old offline data rendering
+    const dbKeys = [
+      "pan_products",
+      "pan_customers",
+      "pan_transactions",
+      "pan_coh_balances",
+      "pan_coh_transactions",
+      "pan_expenses",
+      "pan_suppliers",
+      "pan_purchase_orders",
+      "pan_shifts"
+    ];
+    dbKeys.forEach(k => localStorage.removeItem(k));
+
     dbService.initCOHListener();
     dbService.initUsersListener();
     dbService.initProductsListener();
