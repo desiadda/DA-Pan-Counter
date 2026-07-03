@@ -78,11 +78,13 @@ function AppContent() {
 
   const [cohBalance, setCohBalance] = useState(user ? dbService.getBalance(user.id) : 0);
   const [cohPending, setCohPending] = useState(user ? dbService.getPendingCount(user.id) : 0);
+  const [allUsers, setAllUsers] = useState(getUsers());
 
   useEffect(() => {
     if (user?.id) {
       setCohBalance(dbService.getBalance(user.id));
       setCohPending(dbService.getPendingCount(user.id));
+      setAllUsers(getUsers());
     }
   }, [user?.id]);
 
@@ -97,6 +99,7 @@ function AppContent() {
 
   useEffect(() => {
     dbService.initCOHListener();
+    dbService.initUsersListener();
     const onError = () => setCriticalErrors(getCriticalUnreadCount());
     window.addEventListener("error-logged", onError);
     const refreshStock = () => setLowStockCount(dbService.getLowStockCount());
@@ -108,6 +111,8 @@ function AppContent() {
       }
     };
     window.addEventListener("coh-changed", refreshCOH);
+    const refreshUsers = () => setAllUsers(getUsers());
+    window.addEventListener("users-changed", refreshUsers);
     const store = JSON.parse(localStorage.getItem("pan_store_settings") || "{}");
     if (store.logo) {
       let link = document.querySelector("link[rel~='icon']");
@@ -122,6 +127,7 @@ function AppContent() {
       window.removeEventListener("error-logged", onError);
       window.removeEventListener("stock-changed", refreshStock);
       window.removeEventListener("coh-changed", refreshCOH);
+      window.removeEventListener("users-changed", refreshUsers);
     };
   }, [user?.id]);
 
@@ -171,7 +177,7 @@ function AppContent() {
     return <AuthView onAuthSuccess={setUser} />;
   }
 
-  const allUsers = getUsers();
+  // allUsers is now a state variable
 
   return (
     <AppShell>

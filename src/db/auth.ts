@@ -1,6 +1,24 @@
+import { doc, setDoc, deleteDoc, getDocs, collection, onSnapshot } from "firebase/firestore";
+import { db, isFirebaseEnabled } from "./config";
 import { LS_KEYS, ADMIN_PERMISSIONS, DEFAULT_PERMISSIONS } from "../constants";
 import { hashPin, verifyPin, isPlainPin } from "./hash";
 import { logError } from "./errorLog";
+
+let usersListenerActive = false;
+
+export function initUsersListener() {
+  if (!isFirebaseEnabled || usersListenerActive) return;
+  usersListenerActive = true;
+
+  onSnapshot(collection(db, "users"), (snapshot) => {
+    const list = [];
+    snapshot.forEach(doc => {
+      list.push({ id: doc.id, ...doc.data() });
+    });
+    localStorage.setItem(LS_KEYS.USERS, JSON.stringify(list));
+    window.dispatchEvent(new CustomEvent("users-changed"));
+  });
+}
 
 function getUsers() {
   try {
@@ -13,8 +31,19 @@ function getUsers() {
   }
 }
 
-function saveUsers(users) {
+async function saveUsers(users) {
   try {
+    if (isFirebaseEnabled) {
+      for (const u of users) {
+        await setDoc(doc(db, "users", u.id), u);
+      }
+      const snap = await getDocs(collection(db, "users"));
+      for (const docSnap of snap.docs) {
+        if (!users.some(u => u.id === docSnap.id)) {
+          await deleteDoc(doc(db, "users", docSnap.id));
+        }
+      }
+    }
     localStorage.setItem(LS_KEYS.USERS, JSON.stringify(users));
   } catch (err) {
     logError("AUTH", err.message, err.stack);

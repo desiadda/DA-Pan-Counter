@@ -2,7 +2,7 @@ import { isFirebaseEnabled, saveConfig, clearConfig, getConfig } from "./config"
 import { getProducts, getLowStockCount, getLowStockProducts, saveProduct, deleteProduct } from "./products";
 import { getTransactions, addTransaction, deleteTransaction, returnTransaction, updateTransactionPaymentMode } from "./transactions";
 import { getCustomers, saveCustomer, updateUdhaarBalance } from "./customers";
-import { login, logout, getCurrentUser, onAuthStateChangedListener } from "./auth";
+import { login, logout, getCurrentUser, onAuthStateChangedListener, initUsersListener } from "./auth";
 import { getExpenses, addExpense, deleteExpense, EXPENSE_CATEGORIES } from "./expenses";
 import {
   getBalance, getAllBalances, adjustBalance,
@@ -45,6 +45,7 @@ export const dbService = {
   logout,
   getCurrentUser,
   onAuthStateChangedListener,
+  initUsersListener,
   getBalance,
   getAllBalances,
   adjustBalance,

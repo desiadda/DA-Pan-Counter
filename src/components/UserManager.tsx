@@ -22,7 +22,13 @@ export default function UserManager() {
 
   const load = () => { try { setUsers(getUsers()); } catch (err) { logError("AUTH", err.message, err.stack); alert("❌ " + (err.message || "Failed to load users")); console.error(err); } };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    window.addEventListener("users-changed", load);
+    return () => {
+      window.removeEventListener("users-changed", load);
+    };
+  }, []);
 
   const resetForm = () => {
     setForm({ name: "", pin: "", permissions: { ...DEFAULT_PERMISSIONS } });
@@ -69,7 +75,7 @@ export default function UserManager() {
         });
       }
 
-      saveUsers(list);
+      await saveUsers(list);
       load();
       setShowForm(false);
       resetForm();
@@ -80,11 +86,11 @@ export default function UserManager() {
     }
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (id === "u1") { setError("Cannot delete the default Admin user."); return; }
     try {
       const list = getUsers().filter(u => u.id !== id);
-      saveUsers(list);
+      await saveUsers(list);
       load();
     } catch (err) {
       logError("AUTH", err.message, err.stack);
