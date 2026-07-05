@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { dbService } from "../firebase";
 import { useConfirmStore } from "../stores/confirmStore";
 import { useCartStore } from "../stores/cartStore";
+import { useDBStore } from "../stores/dbStore";
 import { playSaleSound } from "../utils/sound";
 import ProductGrid from "./ProductGrid";
 import CartSidebar from "./CartSidebar";
@@ -20,9 +21,10 @@ export default function POSView({ user }) {
   const confirm = useConfirmStore((s) => s.confirm);
   const openMobileCart = useCartStore((s) => s.openMobileCart);
   const closeMobileCart = useCartStore((s) => s.closeMobileCart);
-  const [products, setProducts] = useState([]);
+  
+  const products = useDBStore((s) => s.products);
+  const customers = useDBStore((s) => s.customers);
   const [cart, setCart] = useState([]);
-  const [customers, setCustomers] = useState([]);
 
   const [showCheckout, setShowCheckout] = useState(false);
   const [variantProduct, setVariantProduct] = useState(null);
@@ -54,17 +56,6 @@ export default function POSView({ user }) {
   };
 
   useEffect(() => {
-    loadProducts();
-    loadCustomers();
-    window.addEventListener("stock-changed", loadProducts);
-    window.addEventListener("customers-changed", loadCustomers);
-    return () => {
-      window.removeEventListener("stock-changed", loadProducts);
-      window.removeEventListener("customers-changed", loadCustomers);
-    };
-  }, []);
-
-  useEffect(() => {
     const handleKey = (e) => {
       const num = parseInt(e.key);
       if (num >= 1 && num <= 9) {
@@ -78,28 +69,6 @@ export default function POSView({ user }) {
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, [products]);
-
-  const loadProducts = async () => {
-    try {
-      const list = await dbService.getProducts();
-      setProducts(list);
-    } catch (err) {
-      logError("TRANSACTION", err.message, err.stack);
-      alert("❌ " + (err.message || "Failed to load products"));
-      console.error(err);
-    }
-  };
-
-  const loadCustomers = async () => {
-    try {
-      const list = await dbService.getCustomers();
-      setCustomers(list);
-    } catch (err) {
-      logError("TRANSACTION", err.message, err.stack);
-      alert("❌ " + (err.message || "Failed to load customers"));
-      console.error(err);
-    }
-  };
 
   const addToCart = (product, forcedVariant = null) => {
     if (product.isCigarette && !forcedVariant) {

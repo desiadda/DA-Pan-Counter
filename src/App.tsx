@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, lazy, Suspense } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { collection, onSnapshot } from "firebase/firestore";
-import { db } from "./db/config";
+import { db, isFirebaseEnabled } from "./db/config";
 import { useDBStore } from "./stores/dbStore";
 import { useAuthStore } from "./stores/authStore";
 import { useCartStore } from "./stores/cartStore";
@@ -52,10 +52,15 @@ function AppContent() {
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
   const init = useAuthStore((s) => s.init);
-  const logoutUser = useAuthStore((s) => s.logout);
+  const logout = useAuthStore((s) => s.logout);
   const isOnline = useAuthStore((s) => s.isOnline);
   const theme = useUIStore((s) => s.theme);
   const toggleTheme = useUIStore((s) => s.toggleTheme);
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    document.documentElement.classList.toggle("dark", theme === "dark");
+  }, [theme]);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -119,22 +124,28 @@ function AppContent() {
     dbService.migrateLocalDataToFirestore();
 
     // Direct Firestore real-time bindings
-    const unsubProducts = onSnapshot(collection(db, "products"), (snap) => {
-      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      useDBStore.getState().setProducts(list);
-      setLowStockCount(list.filter((p: any) => p.stock <= (p.lowStockLimit || 0)).length);
-    });
+    let unsubProducts = () => {};
+    let unsubCustomers = () => {};
+    let unsubTransactions = () => {};
 
-    const unsubCustomers = onSnapshot(collection(db, "customers"), (snap) => {
-      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      useDBStore.getState().setCustomers(list);
-    });
+    if (isFirebaseEnabled && db) {
+      unsubProducts = onSnapshot(collection(db, "products"), (snap) => {
+        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        useDBStore.getState().setProducts(list);
+        setLowStockCount(list.filter((p: any) => p.stock <= (p.lowStockLimit || 0)).length);
+      });
 
-    const unsubTransactions = onSnapshot(collection(db, "transactions"), (snap) => {
-      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      list.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-      useDBStore.getState().setTransactions(list);
-    });
+      unsubCustomers = onSnapshot(collection(db, "customers"), (snap) => {
+        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        useDBStore.getState().setCustomers(list);
+      });
+
+      unsubTransactions = onSnapshot(collection(db, "transactions"), (snap) => {
+        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        list.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        useDBStore.getState().setTransactions(list);
+      });
+    }
 
     const onError = () => setCriticalErrors(getCriticalUnreadCount());
     window.addEventListener("error-logged", onError);

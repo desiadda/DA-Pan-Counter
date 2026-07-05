@@ -16,6 +16,7 @@ export default function COHPanel({ user, users, onClose }) {
   const [statementPeriod, setStatementPeriod] = useState("today");
   const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0]);
   const [endDate, setEndDate] = useState(new Date().toISOString().split("T")[0]);
+  const [submitting, setSubmitting] = useState(false);
 
   const load = () => {
     try {
@@ -38,38 +39,53 @@ export default function COHPanel({ user, users, onClose }) {
   }, [user?.id]);
 
   const handleTransfer = async () => {
+    if (submitting) return;
     setError("");
     setMsg("");
     const amt = parseFloat(transferAmt);
     if (!transferTo || !amt || amt <= 0) { setError("Select user and enter valid amount."); return; }
     try {
+      setSubmitting(true);
       await dbService.initiateTransfer(user, transferTo, users.find(u => u.id === transferTo)?.name || "", amt);
       setMsg(`Transfer of ฿${amt.toFixed(2)} sent for approval.`);
       setTransferAmt("");
       setTransferNote("");
       load();
-    } catch (e) { logError("COH", e.message, e.stack); setError(e.message); }
+    } catch (e) { 
+      logError("COH", e.message, e.stack); 
+      setError(e.message); 
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleApprove = async (txId) => {
+    if (submitting) return;
     try {
+      setSubmitting(true);
       await dbService.approveTransfer(txId);
       load();
     } catch (err) {
       logError("COH", err.message, err.stack);
       alert("❌ " + (err.message || "Failed to approve transfer"));
       console.error(err);
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleReject = async (txId) => {
+    if (submitting) return;
     try {
+      setSubmitting(true);
       await dbService.rejectTransfer(txId);
       load();
     } catch (err) {
       logError("COH", err.message, err.stack);
       alert("❌ " + (err.message || "Failed to reject transfer"));
       console.error(err);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -336,8 +352,8 @@ export default function COHPanel({ user, users, onClose }) {
               <input type="number" value={transferAmt} onChange={e => setTransferAmt(e.target.value)} className="input-field" placeholder="0.00" min="0" step="0.01" />
             </div>
 
-            <button onClick={handleTransfer} className="btn btn-primary" style={{ padding: "0.6rem", fontSize: "0.9rem" }}>
-              Send for Approval
+            <button onClick={handleTransfer} disabled={submitting} className="btn btn-primary" style={{ padding: "0.6rem", fontSize: "0.9rem" }}>
+              {submitting ? "Sending..." : "Send for Approval"}
             </button>
           </div>
         )}
@@ -355,8 +371,12 @@ export default function COHPanel({ user, users, onClose }) {
                     <div style={{ fontWeight: 800, color: "#047857", fontSize: "1.1rem", marginTop: "0.25rem" }}>฿{tx.amount.toFixed(2)}</div>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
-                    <button onClick={() => handleApprove(tx.id)} className="btn btn-primary" style={{ padding: "0.4rem 0.75rem", fontSize: "0.8rem" }}>✓ Approve</button>
-                    <button onClick={() => handleReject(tx.id)} className="btn btn-danger" style={{ padding: "0.4rem 0.75rem", fontSize: "0.8rem" }}>✕ Reject</button>
+                    <button onClick={() => handleApprove(tx.id)} disabled={submitting} className="btn btn-primary" style={{ padding: "0.4rem 0.75rem", fontSize: "0.8rem" }}>
+                      {submitting ? "Processing..." : "✓ Approve"}
+                    </button>
+                    <button onClick={() => handleReject(tx.id)} disabled={submitting} className="btn btn-danger" style={{ padding: "0.4rem 0.75rem", fontSize: "0.8rem" }}>
+                      ✕ Reject
+                    </button>
                   </div>
                 </div>
               ))

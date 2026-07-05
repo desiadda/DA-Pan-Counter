@@ -25,7 +25,7 @@ export default function ReturnModal({ tx, onClose, onReturned }) {
   const returnAmount = returnItems.reduce((sum, i) => sum + (i.sellingPrice * i.returnQty), 0);
 
   const handleReturn = async () => {
-    if (returnItems.length === 0) { alert("Select at least one item to return."); return; }
+    if (returnItems.length === 0 || processing) return;
     setProcessing(true);
     try {
       const user = JSON.parse(localStorage.getItem("pan_user") || "{}");

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
-import { db } from "../db/config";
+import { db, isFirebaseEnabled } from "../db/config";
 
 const MAX_SLOTS = 9;
 
@@ -10,6 +10,15 @@ export default function QuickKeysBar({ products, onAddToCart }) {
   const popupRef = useRef(null);
 
   useEffect(() => {
+    if (!isFirebaseEnabled || !db) {
+      try {
+        const localKeys = JSON.parse(localStorage.getItem("pan_quick_keys") || "{}");
+        setMappings(localKeys);
+      } catch (e) {
+        console.error("Failed to load local quick keys", e);
+      }
+      return;
+    }
     const unsub = onSnapshot(doc(db, "settings", "quick_keys"), (docSnap) => {
       if (docSnap.exists()) {
         setMappings(docSnap.data() || {});
@@ -20,10 +29,24 @@ export default function QuickKeysBar({ products, onAddToCart }) {
     return () => unsub();
   }, []);
 
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (showAssign && popupRef.current && !popupRef.current.contains(e.target)) {
+        setShowAssign(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showAssign]);
+
   const saveMapping = async (slot, productId, isPack) => {
     const updated = { ...mappings, [slot]: productId ? { productId, isPack: !!isPack } : null };
     if (!productId) delete updated[slot];
     setMappings(updated);
+    if (!isFirebaseEnabled || !db) {
+      localStorage.setItem("pan_quick_keys", JSON.stringify(updated));
+      return;
+    }
     try {
       await setDoc(doc(db, "settings", "quick_keys"), updated);
     } catch (err) {
@@ -88,7 +111,7 @@ export default function QuickKeysBar({ products, onAddToCart }) {
                 )}
               </button>
               {showAssign === slot && (
-                <div style={styles.assignPopup}>
+                <div style={styles.assignPopup} ref={popupRef}>
                   <div style={styles.assignHeader}>
                     <span style={styles.assignTitle}>Assign Slot {i + 1}</span>
                     <button onClick={clearSlot} style={styles.clearBtn}>Clear</button>
@@ -106,7 +129,7 @@ export default function QuickKeysBar({ products, onAddToCart }) {
                     }}
                     autoFocus
                   />
-                  <div style={styles.assignList} ref={popupRef}>
+                  <div style={styles.assignList}>
                     {products.filter(p => p.stock > 0).map(p => (
                       <div key={p.id}>
                         <button

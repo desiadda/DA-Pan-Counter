@@ -2,11 +2,14 @@ import { useState, useEffect } from "react";
 import { dbService } from "../firebase";
 import { useConfirmStore } from "../stores/confirmStore";
 import { logError } from "../db/errorLog";
+import { db, isFirebaseEnabled } from "../db/config";
+import { collection, onSnapshot } from "firebase/firestore";
 
 export default function ExpensesView() {
   const confirm = useConfirmStore((s) => s.confirm);
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("Supplies");
@@ -14,7 +17,23 @@ export default function ExpensesView() {
 
   const categories = dbService.EXPENSE_CATEGORIES;
 
-  useEffect(() => { loadExpenses(); }, []);
+  useEffect(() => {
+    if (isFirebaseEnabled && db) {
+      setLoading(true);
+      const unsub = onSnapshot(collection(db, "expenses"), (snap) => {
+        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        list.sort((a: any, b: any) => (b.date || 0) - (a.date || 0));
+        setExpenses(list);
+        setLoading(false);
+      }, (err) => {
+        logError("EXPENSE", err.message, err.stack);
+        setLoading(false);
+      });
+      return () => unsub();
+    } else {
+      loadExpenses();
+    }
+  }, []);
 
   const loadExpenses = async () => {
     setLoading(true);
@@ -31,11 +50,12 @@ export default function ExpensesView() {
 
   const handleAdd = async (e) => {
     e.preventDefault();
-    if (!amount || parseFloat(amount) <= 0) {
+    if (!amount || parseFloat(amount) <= 0 || submitting) {
       alert("Please enter a valid amount.");
       return;
     }
     try {
+      setSubmitting(true);
       await dbService.addExpense({ amount: parseFloat(amount), category, note: note.trim(), date: Date.now() });
       setAmount("");
       setNote("");
@@ -45,19 +65,25 @@ export default function ExpensesView() {
       logError("EXPENSE", err.message, err.stack);
       alert("❌ " + (err.message || "Failed to add expense"));
       console.error(err);
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleDelete = async (id) => {
+    if (submitting) return;
     const ok = await confirm("Delete this expense entry?", { title: "Delete Expense", confirmLabel: "Delete", variant: "danger" });
     if (ok) {
       try {
+        setSubmitting(true);
         await dbService.deleteExpense(id);
         loadExpenses();
       } catch (err) {
         logError("EXPENSE", err.message, err.stack);
         alert("❌ " + (err.message || "Failed to delete expense"));
         console.error(err);
+      } finally {
+        setSubmitting(false);
       }
     }
   };
@@ -74,19 +100,21 @@ export default function ExpensesView() {
         <form onSubmit={handleAdd} className="flex-col gap-md">
           <div className="input-group">
             <label className="input-label">Amount (฿)</label>
-            <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g. 5000" className="input-field" />
+            <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g. 5000" className="input-field" disabled={submitting} />
           </div>
           <div className="input-group">
             <label className="input-label">Category</label>
-            <select value={category} onChange={(e) => setCategory(e.target.value)} className="input-field">
+            <select value={category} onChange={(e) => setCategory(e.target.value)} className="input-field" disabled={submitting}>
               {categories.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
           <div className="input-group">
             <label className="input-label">Note</label>
-            <input type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Monthly electricity bill" className="input-field" />
+            <input type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Monthly electricity bill" className="input-field" disabled={submitting} />
           </div>
-          <button type="submit" className="btn btn-primary">Add Expense</button>
+          <button type="submit" disabled={submitting} className="btn btn-primary">
+            {submitting ? "Adding..." : "Add Expense"}
+          </button>
         </form>
       </div>
 

@@ -11,7 +11,7 @@ export default function ShortcutsModal({ onClose }) {
     },
     {
       title: "Navigation", items: [
-        { key: "Hash (#)", desc: "pos, inventory, credit, admin — direct URL" },
+        { key: "Direct URL", desc: "/pos, /inventory, /khata, /menu — direct path routing" },
       ],
     },
     {

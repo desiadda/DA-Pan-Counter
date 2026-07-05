@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { dbService } from "../firebase";
 import { useConfirmStore } from "../stores/confirmStore";
+import { useDBStore } from "../stores/dbStore";
 import { SkeletonTable } from "./Skeleton";
 import { logError } from "../db/errorLog";
 import PriceHistoryModal from "./PriceHistoryModal";
@@ -10,7 +11,7 @@ import SupplierDirectory from "./SupplierDirectory";
 
 export default function InventoryView({ subPath, onNavigate }) {
   const confirm = useConfirmStore((s) => s.confirm);
-  const [products, setProducts] = useState([]);
+  const products = useDBStore((s) => s.products);
   const [loading, setLoading] = useState(false);
   
   const [isEditing, setIsEditing] = useState(false);
@@ -39,17 +40,13 @@ export default function InventoryView({ subPath, onNavigate }) {
 
   useEffect(() => {
     loadProducts();
-    window.addEventListener("stock-changed", loadProducts);
-    return () => {
-      window.removeEventListener("stock-changed", loadProducts);
-    };
   }, []);
 
   const loadProducts = async () => {
     setLoading(true);
     try {
       const list = await dbService.getProducts();
-      setProducts(list);
+      useDBStore.getState().setProducts(list);
     } catch (err) {
       logError("INVENTORY", err.message, err.stack);
       alert("❌ " + (err.message || "Failed to load products"));

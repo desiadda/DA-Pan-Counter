@@ -1,7 +1,7 @@
 # DA Pan Counter — Project Context
 
 ## Overview
-Paan shop POS system with billing, inventory, khata (credit accounts), reports, expenses, and graphical analytics. Works offline-first (localStorage) with optional Firebase cloud sync.
+Paan shop POS system with billing, inventory, khata (credit accounts), reports, expenses, and graphical analytics. Works 100% online/cloud-driven with Firebase Firestore real-time sync.
 
 ## Tech Stack
 - React (Vite), **React Router** (browser routing, no hash)
@@ -9,10 +9,10 @@ Paan shop POS system with billing, inventory, khata (credit accounts), reports, 
 - **Zustand** (state — no React Context anywhere)
 - **TanStack Query** (data fetching)
 - **Framer Motion** (animations in ModalPortal)
-- **PWA** (service worker, installable, offline)
+- **PWA** (service worker, installable)
 - **TypeScript** (entry point + configs, allowJs for existing .jsx)
 - Recharts (graphs in Reports)
-- localStorage (default DB), Firebase (optional cloud)
+- Firebase Firestore (primary DB with real-time sync)
 - PIN-based auth (SHA-256 hashed)
 
 ## Architecture

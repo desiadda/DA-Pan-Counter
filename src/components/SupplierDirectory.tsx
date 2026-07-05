@@ -1,31 +1,69 @@
 import { useState, useEffect } from "react";
 import { dbService } from "../firebase";
+import { db, isFirebaseEnabled } from "../db/config";
+import { collection, onSnapshot } from "firebase/firestore";
 
 export default function SupplierDirectory() {
   const [suppliers, setSuppliers] = useState([]);
+  const [purchases, setPurchases] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [editSup, setEditSup] = useState(null);
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    if (isFirebaseEnabled && db) {
+      const unsubSups = onSnapshot(collection(db, "suppliers"), (snap) => {
+        setSuppliers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      });
+      const unsubPurchs = onSnapshot(collection(db, "purchases"), (snap) => {
+        setPurchases(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      });
+      return () => {
+        unsubSups();
+        unsubPurchs();
+      };
+    } else {
+      load();
+    }
+  }, []);
 
-  const load = () => setSuppliers(dbService.getSuppliers());
+  const load = async () => {
+    try {
+      const [sups, purchs] = await Promise.all([
+        dbService.getSuppliers(),
+        dbService.getPurchaseOrders()
+      ]);
+      setSuppliers(sups || []);
+      setPurchases(purchs || []);
+    } catch (e) {
+      console.error("Failed to load supplier directory data", e);
+    }
+  };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!name.trim()) return;
-    dbService.saveSupplier(editSup ? {
-      ...editSup, name: name.trim(), contact: contact.trim(),
-      phone: phone.trim(), address: address.trim(),
-    } : {
-      name: name.trim(), contact: contact.trim(),
-      phone: phone.trim(), address: address.trim(),
-    });
-    reset();
-    load();
+    if (!name.trim() || submitting) return;
+    try {
+      setSubmitting(true);
+      await dbService.saveSupplier(editSup ? {
+        ...editSup, name: name.trim(), contact: contact.trim(),
+        phone: phone.trim(), address: address.trim(),
+      } : {
+        name: name.trim(), contact: contact.trim(),
+        phone: phone.trim(), address: address.trim(),
+      });
+      reset();
+      load();
+    } catch (err) {
+      console.error(err);
+      alert("❌ Failed to save supplier: " + err.message);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleEdit = (s) => {
@@ -33,12 +71,26 @@ export default function SupplierDirectory() {
     setPhone(s.phone || ""); setAddress(s.address || ""); setShowForm(true);
   };
 
+  const handleDelete = async (id) => {
+    if (submitting) return;
+    if (window.confirm("Are you sure you want to delete this supplier?")) {
+      try {
+        setSubmitting(true);
+        await dbService.deleteSupplier(id);
+        load();
+      } catch (err) {
+        console.error(err);
+        alert("❌ Failed to delete supplier: " + err.message);
+      } finally {
+        setSubmitting(false);
+      }
+    }
+  };
+
   const reset = () => {
     setShowForm(false); setEditSup(null); setName("");
     setContact(""); setPhone(""); setAddress("");
   };
-
-  const purchases = dbService.getPurchaseOrders();
 
   return (
     <div className="sup-wrapper">
@@ -68,7 +120,9 @@ export default function SupplierDirectory() {
             <input type="text" value={address} onChange={e => setAddress(e.target.value)} className="input-field" placeholder="Address" />
           </div>
           <div className="flex-btn-group">
-            <button type="submit" className="btn btn-primary btn-sm">{editSup ? "Update" : "Save"}</button>
+            <button type="submit" disabled={submitting} className="btn btn-primary btn-sm">
+              {submitting ? "Saving..." : (editSup ? "Update" : "Save")}
+            </button>
             <button type="button" onClick={reset} className="btn btn-outline btn-sm">Cancel</button>
           </div>
         </form>
@@ -89,7 +143,10 @@ export default function SupplierDirectory() {
                     {s.phone && <div className="sup-detail">📞 {s.phone}</div>}
                     {s.address && <div className="sup-detail">📍 {s.address}</div>}
                   </div>
-                  <button onClick={() => handleEdit(s)} className="sup-edit-btn">✎</button>
+                  <div style={{ display: "flex", gap: "0.25rem" }}>
+                    <button onClick={() => handleEdit(s)} className="sup-edit-btn" title="Edit">✎</button>
+                    <button onClick={() => handleDelete(s.id)} className="sup-edit-btn" style={{ color: "#dc2626" }} title="Delete">🗑️</button>
+                  </div>
                 </div>
                 {supPurchases.length > 0 && (
                   <div className="sup-purchases">

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { collection, onSnapshot } from "firebase/firestore";
-import { db } from "../db/config";
+import { db, isFirebaseEnabled } from "../db/config";
 
 export default function DashboardWidgets({ onNavigate }) {
   const [widgets, setWidgets] = useState({
@@ -28,20 +28,26 @@ export default function DashboardWidgets({ onNavigate }) {
       setWidgets({ todaySales: sales, todayCount: todayTx.length, pendingKhata: khataDue, lowStock: low });
     };
 
-    const unsubProducts = onSnapshot(collection(db, "products"), (snap) => {
-      localProducts = snap.docs.map(d => d.data());
-      calculate();
-    });
+    let unsubProducts = () => {};
+    let unsubCustomers = () => {};
+    let unsubTransactions = () => {};
 
-    const unsubCustomers = onSnapshot(collection(db, "customers"), (snap) => {
-      localCustomers = snap.docs.map(d => d.data());
-      calculate();
-    });
+    if (isFirebaseEnabled && db) {
+      unsubProducts = onSnapshot(collection(db, "products"), (snap) => {
+        localProducts = snap.docs.map(d => d.data());
+        calculate();
+      });
 
-    const unsubTransactions = onSnapshot(collection(db, "transactions"), (snap) => {
-      localTransactions = snap.docs.map(d => d.data());
-      calculate();
-    });
+      unsubCustomers = onSnapshot(collection(db, "customers"), (snap) => {
+        localCustomers = snap.docs.map(d => d.data());
+        calculate();
+      });
+
+      unsubTransactions = onSnapshot(collection(db, "transactions"), (snap) => {
+        localTransactions = snap.docs.map(d => d.data());
+        calculate();
+      });
+    }
 
     return () => {
       active = false;

@@ -70,10 +70,15 @@ export const closeShift = async (userId, actualCash) => {
     const shift = (await getOpenShift(userId)) as any;
     if (!shift) throw new Error("No open shift found");
 
-    const q = query(collection(db, "transactions"), where("cashierId", "==", userId));
+    const q = query(
+      collection(db, "transactions"), 
+      where("timestamp", ">=", shift.openTime)
+    );
     const snap = await getDocs(q);
-    const transactions = snap.docs.map(d => d.data());
-    const sinceOpen = transactions.filter((t: any) => t.timestamp >= shift.openTime);
+    const sinceOpen = snap.docs
+      .map(d => d.data())
+      .filter((t: any) => t.cashierId === userId);
+
     const cashSales = sinceOpen.filter((t: any) => t.paymentMode === "Cash").reduce((sum: number, t: any) => sum + (t.totalAmount || 0), 0);
 
     const actual = parseFloat(actualCash) || 0;

@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { dbService } from "../firebase";
+import { db, isFirebaseEnabled } from "../db/config";
+import { writeBatch, doc } from "firebase/firestore";
 import ModalPortal from "./ModalPortal";
 
 export default function ReminderModal({ customers, onClose }) {
   const [selected, setSelected] = useState({});
   const [copiedId, setCopiedId] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
   const store = JSON.parse(localStorage.getItem("pan_store_settings") || "{}");
   const storeName = store.name || "Paan Counter";
 
@@ -121,19 +124,37 @@ export default function ReminderModal({ customers, onClose }) {
             </button>
             <button
               onClick={async () => {
-                const promises = debtors.filter(c => selected[c.id]).map(c => {
-                  return dbService.saveCustomer({
-                    ...c,
-                    lastReminder: Date.now()
-                  });
-                });
-                await Promise.all(promises);
-                alert(`Reminder marked for ${selectedCount} customer(s)!`);
+                if (submitting) return;
+                try {
+                  setSubmitting(true);
+                  if (isFirebaseEnabled && db) {
+                    const batch = writeBatch(db);
+                    debtors.filter(c => selected[c.id]).forEach(c => {
+                      const ref = doc(db, "customers", c.id);
+                      batch.update(ref, { lastReminder: Date.now() });
+                    });
+                    await batch.commit();
+                  } else {
+                    const promises = debtors.filter(c => selected[c.id]).map(c => {
+                      return dbService.saveCustomer({
+                        ...c,
+                        lastReminder: Date.now()
+                      });
+                    });
+                    await Promise.all(promises);
+                  }
+                  alert(`Reminder marked for ${selectedCount} customer(s)!`);
+                } catch (err) {
+                  alert("❌ Failed to mark reminders: " + err.message);
+                } finally {
+                  setSubmitting(false);
+                }
               }}
               className="btn btn-outline"
               style={{ flex: 1 }}
+              disabled={submitting}
             >
-              ✓ Mark Sent
+              {submitting ? "Marking..." : "✓ Mark Sent"}
             </button>
           </div>
         )}

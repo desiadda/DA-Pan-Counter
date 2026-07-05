@@ -27,7 +27,8 @@ const HARDCODED_CONFIG = {
   measurementId: "G-1QX1R8V5LP"
 };
 
-const config = getSavedFirebaseConfig() || HARDCODED_CONFIG;
+const savedConfig = getSavedFirebaseConfig();
+const config = (savedConfig && savedConfig.apiKey && savedConfig.projectId) ? savedConfig : HARDCODED_CONFIG;
 
 if (config && config.apiKey && config.projectId) {
   try {

@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { dbService } from "../firebase";
+import { db, isFirebaseEnabled } from "../db/config";
+import { collection, onSnapshot } from "firebase/firestore";
 
 export default function PurchaseOrders() {
   const [orders, setOrders] = useState([]);
@@ -7,13 +9,20 @@ export default function PurchaseOrders() {
   const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
-    load();
-    window.addEventListener("purchases-changed", load);
-    window.addEventListener("stock-changed", load);
-    return () => {
-      window.removeEventListener("purchases-changed", load);
-      window.removeEventListener("stock-changed", load);
-    };
+    if (isFirebaseEnabled && db) {
+      const unsubPurchs = onSnapshot(collection(db, "purchases"), (snap) => {
+        setOrders(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      });
+      const unsubProds = onSnapshot(collection(db, "products"), (snap) => {
+        setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      });
+      return () => {
+        unsubPurchs();
+        unsubProds();
+      };
+    } else {
+      load();
+    }
   }, []);
 
   const load = async () => {
@@ -91,6 +100,7 @@ function PurchaseOrderForm({ products, onSave, onCancel }) {
   const [supplier, setSupplier] = useState("");
   const [items, setItems] = useState([{ productId: "", quantity: 1 }]);
   const [notes, setNotes] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const addItem = () => setItems(prev => [...prev, { productId: "", quantity: 1 }]);
   const updateItem = (idx, field, val) => {
@@ -100,37 +110,45 @@ function PurchaseOrderForm({ products, onSave, onCancel }) {
     setItems(prev => prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev);
   };
 
-    const handleSubmit = async () => {
-      if (!supplier.trim()) { alert("Enter supplier name"); return; }
-      const validItems = items.filter(i => i.productId && i.quantity > 0);
-      if (validItems.length === 0) { alert("Add at least one item"); return; }
-      const total = validItems.reduce((sum, item) => {
+  const handleSubmit = async () => {
+    if (!supplier.trim()) { alert("Enter supplier name"); return; }
+    if (submitting) return;
+    const validItems = items.filter(i => i.productId && i.quantity > 0);
+    if (validItems.length === 0) { alert("Add at least one item"); return; }
+    const total = validItems.reduce((sum, item) => {
+      const prod = products.find(p => p.id === item.productId);
+      return sum + ((item.isPack ? (prod?.costPricePack || 0) : (prod?.costPrice || 0)) * item.quantity);
+    }, 0);
+
+    const order = {
+      supplier: supplier.trim(),
+      items: validItems.map(item => {
         const prod = products.find(p => p.id === item.productId);
-        return sum + ((item.isPack ? (prod?.costPricePack || 0) : (prod?.costPrice || 0)) * item.quantity);
-      }, 0);
-  
-      const order = {
-        supplier: supplier.trim(),
-        items: validItems.map(item => {
-          const prod = products.find(p => p.id === item.productId);
-          return {
-            productId: item.productId,
-            productName: prod?.name || "Unknown",
-            quantity: parseInt(item.quantity) || 0,
-            isPack: item.isPack || false,
-            packSize: prod?.packSize || 20,
-            costPrice: item.isPack ? (prod?.costPricePack || 0) : (prod?.costPrice || 0),
-          };
-        }),
-        total,
-        status: "pending",
-        createdAt: Date.now(),
-        notes: notes.trim(),
-        createdBy: JSON.parse(localStorage.getItem("pan_user") || "{}")?.name || "System",
-      };
+        return {
+          productId: item.productId,
+          productName: prod?.name || "Unknown",
+          quantity: parseInt(item.quantity) || 0,
+          isPack: item.isPack || false,
+          packSize: prod?.packSize || 20,
+          costPrice: item.isPack ? (prod?.costPricePack || 0) : (prod?.costPrice || 0),
+        };
+      }),
+      total,
+      status: "pending",
+      createdAt: Date.now(),
+      notes: notes.trim(),
+      createdBy: JSON.parse(localStorage.getItem("pan_user") || "{}")?.name || "System",
+    };
+    try {
+      setSubmitting(true);
       await dbService.savePurchaseOrder(order);
       onSave();
-    };
+    } catch (e) {
+      alert("❌ Failed to create order: " + e.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div style={styles.formCard}>
@@ -170,7 +188,9 @@ function PurchaseOrderForm({ products, onSave, onCancel }) {
       </div>
 
       <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
-        <button onClick={handleSubmit} className="btn btn-primary" style={{ flex: 1 }}>Create Order</button>
+        <button onClick={handleSubmit} disabled={submitting} className="btn btn-primary" style={{ flex: 1 }}>
+          {submitting ? "Creating..." : "Create Order"}
+        </button>
         <button onClick={onCancel} className="btn btn-outline" style={{ flex: 1 }}>Cancel</button>
       </div>
     </div>

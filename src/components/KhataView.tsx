@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { dbService } from "../firebase";
+import { useDBStore } from "../stores/dbStore";
 import { SkeletonList } from "./Skeleton";
 import { logError } from "../db/errorLog";
 import ReminderModal from "./ReminderModal";
 
 export default function KhataView({ subPath, onNavigate }) {
-  const [customers, setCustomers] = useState([]);
+  const customers = useDBStore((s) => s.customers);
   const [selectedCust, setSelectedCust] = useState(null);
   const [payAmount, setPayAmount] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -14,10 +15,6 @@ export default function KhataView({ subPath, onNavigate }) {
 
   useEffect(() => {
     loadCustomers();
-    window.addEventListener("customers-changed", loadCustomers);
-    return () => {
-      window.removeEventListener("customers-changed", loadCustomers);
-    };
   }, []);
 
   useEffect(() => {
@@ -41,7 +38,7 @@ export default function KhataView({ subPath, onNavigate }) {
     setLoading(true);
     try {
       const list = await dbService.getCustomers();
-      setCustomers(list);
+      useDBStore.getState().setCustomers(list);
     } catch (err) {
       logError("CREDIT", err.message, err.stack);
       alert("❌ " + (err.message || "Failed to load customers"));

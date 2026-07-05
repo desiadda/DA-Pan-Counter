@@ -1,6 +1,9 @@
 import { collection, doc, setDoc, addDoc, getDocs, getDoc } from "firebase/firestore";
 import { db, isFirebaseEnabled } from "./config";
 import { logError } from "./errorLog";
+import { getLocalData, setLocalData } from "./storage";
+
+const LS_KEY = "pan_purchase_orders";
 
 async function syncPurchaseToFirebase(order) {
   const { id, ...data } = order;
@@ -18,10 +21,10 @@ export const getPurchaseOrders = async () => {
       const snap = await getDocs(collection(db, "purchases"));
       return snap.docs.map(d => ({ id: d.id, ...d.data() }));
     }
-    return [];
+    return getLocalData(LS_KEY, []);
   } catch (err) {
     logError("PURCHASE", err.message, err.stack);
-    return [];
+    return getLocalData(LS_KEY, []);
   }
 };
 
@@ -33,6 +36,16 @@ export const savePurchaseOrder = async (order) => {
 
     if (isFirebaseEnabled) {
       await syncPurchaseToFirebase(order);
+    } else {
+      const list = getLocalData(LS_KEY, []);
+      if (order.id) {
+        const idx = list.findIndex(o => o.id === order.id);
+        if (idx !== -1) list[idx] = order;
+      } else {
+        order.id = "po_" + Date.now();
+        list.push(order);
+      }
+      setLocalData(LS_KEY, list);
     }
   } catch (err) {
     logError("PURCHASE", err.message, err.stack);
@@ -52,6 +65,13 @@ export const receivePurchaseOrder = async (orderId) => {
       order.status = "received";
       order.receivedAt = Date.now();
       await syncPurchaseToFirebase(order);
+    } else {
+      const list = getLocalData(LS_KEY, []);
+      const order = list.find(o => o.id === orderId);
+      if (!order || order.status !== "pending") return;
+      order.status = "received";
+      order.receivedAt = Date.now();
+      setLocalData(LS_KEY, list);
     }
   } catch (err) {
     logError("PURCHASE", err.message, err.stack);
@@ -69,6 +89,13 @@ export const cancelPurchaseOrder = async (orderId) => {
       order.status = "cancelled";
       order.cancelledAt = Date.now();
       await syncPurchaseToFirebase(order);
+    } else {
+      const list = getLocalData(LS_KEY, []);
+      const order = list.find(o => o.id === orderId);
+      if (!order) return;
+      order.status = "cancelled";
+      order.cancelledAt = Date.now();
+      setLocalData(LS_KEY, list);
     }
   } catch (err) {
     logError("PURCHASE", err.message, err.stack);

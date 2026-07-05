@@ -1,4 +1,4 @@
-import { doc, setDoc, getDoc, onSnapshot, collection } from "firebase/firestore";
+import { doc, setDoc, getDoc, onSnapshot, collection, runTransaction } from "firebase/firestore";
 import { db, isFirebaseEnabled } from "./config";
 import { LS_KEYS } from "../constants";
 import { logError } from "./errorLog";
@@ -47,64 +47,52 @@ export function initCOHListener() {
 }
 
 export function getBalance(userId) {
-  try {
-    const balances = getBalancesRaw();
-    return balances[userId] || 0;
-  } catch (err) {
-    logError("COH", err.message, err.stack);
-    console.error("getBalance: Error getting COH balance", err);
-    return 0;
-  }
+  const balances = getBalancesRaw();
+  return balances[userId] || 0;
 }
 
 export function getAllBalances(users) {
-  try {
-    const balances = getBalancesRaw();
-    return users.map(u => ({
-      ...u,
-      coh: balances[u.id] || 0,
-    }));
-  } catch (err) {
-    logError("COH", err.message, err.stack);
-    console.error("getAllBalances: Error getting all COH balances", err);
-    return users.map(u => ({ ...u, coh: 0 }));
-  }
+  const balances = getBalancesRaw();
+  return users.map(u => ({
+    id: u.id,
+    name: u.name,
+    role: u.role,
+    coh: balances[u.id] || 0,
+  }));
 }
 
 export async function adjustBalance(userId, amount, note, adminName) {
   try {
-    let currentBal = 0;
     if (isFirebaseEnabled) {
-      const docRef = doc(db, "coh_balances", userId);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        currentBal = docSnap.data().balance || 0;
-      }
-    } else {
-      const balances = getBalancesRaw();
-      currentBal = balances[userId] || 0;
-    }
-    const newBal = currentBal + amount;
+      await runTransaction(db, async (transaction) => {
+        const balRef = doc(db, "coh_balances", userId);
+        const balSnap = await transaction.get(balRef);
+        const currentBal = balSnap.exists() ? (balSnap.data().balance || 0) : 0;
+        const newBal = currentBal + amount;
 
-    if (isFirebaseEnabled) {
-      const txId = "coh_" + Date.now();
-      await setDoc(doc(db, "coh_balances", userId), { balance: newBal });
-      await setDoc(doc(db, "coh_transactions", txId), {
-        id: txId,
-        type: "adjustment",
-        fromUserId: "system",
-        fromUserName: adminName || "Admin",
-        toUserId: userId,
-        toUserName: "",
-        amount: Math.abs(amount),
-        sign: amount >= 0 ? "credit" : "debit",
-        note: note || "",
-        status: "approved",
-        timestamp: Date.now(),
-        approvedAt: Date.now(),
+        const txId = "coh_" + Date.now();
+        const txRef = doc(db, "coh_transactions", txId);
+
+        transaction.set(balRef, { balance: newBal });
+        transaction.set(txRef, {
+          id: txId,
+          type: "adjustment",
+          fromUserId: "system",
+          fromUserName: adminName || "Admin",
+          toUserId: userId,
+          toUserName: "",
+          amount: Math.abs(amount),
+          sign: amount >= 0 ? "credit" : "debit",
+          note: note || "",
+          status: "approved",
+          timestamp: Date.now(),
+          approvedAt: Date.now(),
+        });
       });
     } else {
       const balances = getBalancesRaw();
+      const currentBal = balances[userId] || 0;
+      const newBal = currentBal + amount;
       balances[userId] = newBal;
       saveBalancesRaw(balances);
       const txs = getTransactionsRaw();
@@ -126,8 +114,8 @@ export async function adjustBalance(userId, amount, note, adminName) {
     }
   } catch (err) {
     logError("COH", err.message, err.stack);
-    console.error("adjustBalance: Error adjusting COH balance", err);
-    throw new Error(`COH error (COH समस्या): ${err.message}. कृपया पुनः प्रयास करें।`);
+    console.error("adjustBalance: Error adjusting balance", err);
+    throw err;
   }
 }
 
@@ -166,50 +154,44 @@ export async function initiateTransfer(fromUser, toUserId, toUserName, amount) {
 
 export async function approveTransfer(txId) {
   try {
-    let tx;
     if (isFirebaseEnabled) {
-      const txSnap = await getDoc(doc(db, "coh_transactions", txId));
-      if (txSnap.exists()) {
-        tx = { id: txSnap.id, ...txSnap.data() };
-      }
-    } else {
-      const txs = getTransactionsRaw();
-      tx = txs.find(t => t.id === txId);
-    }
+      await runTransaction(db, async (transaction) => {
+        const txRef = doc(db, "coh_transactions", txId);
+        const txSnap = await transaction.get(txRef);
+        if (!txSnap.exists()) throw new Error("Transfer not found.");
+        const tx = txSnap.data();
+        if (tx.status !== "pending") throw new Error("Transfer not found or already processed (ट्रांसफर नहीं मिला या पहले ही प्रोसेस हो चुका).");
 
-    if (!tx || tx.status !== "pending") throw new Error("Transfer not found or already processed (ट्रांसफर नहीं मिला या पहले ही प्रोसेस हो चुका).");
+        const fromRef = doc(db, "coh_balances", tx.fromUserId);
+        const toRef = doc(db, "coh_balances", tx.toUserId);
 
-    if (isFirebaseEnabled) {
-      const fromRef = doc(db, "coh_balances", tx.fromUserId);
-      const toRef = doc(db, "coh_balances", tx.toUserId);
+        const [fromSnap, toSnap] = await Promise.all([transaction.get(fromRef), transaction.get(toRef)]);
 
-      const [fromSnap, toSnap] = await Promise.all([getDoc(fromRef), getDoc(toRef)]);
+        const currentFromBal = fromSnap.exists() ? (fromSnap.data().balance || 0) : 0;
+        const currentToBal = toSnap.exists() ? (toSnap.data().balance || 0) : 0;
 
-      const currentFromBal = fromSnap.exists() ? (fromSnap.data().balance || 0) : 0;
-      const currentToBal = toSnap.exists() ? (toSnap.data().balance || 0) : 0;
+        const newFromBal = currentFromBal - tx.amount;
+        const newToBal = currentToBal + tx.amount;
 
-      const newFromBal = currentFromBal - tx.amount;
-      const newToBal = currentToBal + tx.amount;
-
-      await setDoc(fromRef, { balance: newFromBal });
-      await setDoc(toRef, { balance: newToBal });
-      await setDoc(doc(db, "coh_transactions", txId), {
-        ...tx,
-        status: "approved",
-        approvedAt: Date.now(),
+        transaction.set(fromRef, { balance: newFromBal });
+        transaction.set(toRef, { balance: newToBal });
+        transaction.update(txRef, {
+          status: "approved",
+          approvedAt: Date.now(),
+        });
       });
     } else {
       const txs = getTransactionsRaw();
       const localTx = txs.find(t => t.id === txId);
-      if (localTx) {
-        localTx.status = "approved";
-        localTx.approvedAt = Date.now();
-        saveTransactionsRaw(txs);
-      }
+      if (!localTx || localTx.status !== "pending") throw new Error("Transfer not found or already processed (ट्रांसफर नहीं मिला या पहले ही प्रोसेस हो चुका).");
+      
+      localTx.status = "approved";
+      localTx.approvedAt = Date.now();
+      saveTransactionsRaw(txs);
 
       const balances = getBalancesRaw();
-      balances[tx.fromUserId] = (balances[tx.fromUserId] || 0) - tx.amount;
-      balances[tx.toUserId] = (balances[tx.toUserId] || 0) + tx.amount;
+      balances[localTx.fromUserId] = (balances[localTx.fromUserId] || 0) - localTx.amount;
+      balances[localTx.toUserId] = (balances[localTx.toUserId] || 0) + localTx.amount;
       saveBalancesRaw(balances);
     }
   } catch (err) {

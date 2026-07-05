@@ -11,10 +11,11 @@ export default function ShiftPanel({ user, onClose }) {
   const [msg, setMsg] = useState("");
 
   useEffect(() => {
-    const refresh = () => {
-      const s = getOpenShift(user.id);
+    const refresh = async () => {
+      const s = await getOpenShift(user.id);
       setShift(s);
-      setSummary(getTodayShiftSummary(user.id));
+      const summ = await getTodayShiftSummary(user.id);
+      setSummary(summ);
       if (s) setMode("view");
     };
     refresh();
@@ -30,7 +31,8 @@ export default function ShiftPanel({ user, onClose }) {
       setShift(s);
       setMode("view");
       setMsg("Shift opened successfully!");
-      setSummary(getTodayShiftSummary(user.id));
+      const summ = await getTodayShiftSummary(user.id);
+      setSummary(summ);
     } catch (err) {
       alert(err.message);
     }
@@ -42,7 +44,8 @@ export default function ShiftPanel({ user, onClose }) {
       const s = await closeShift(user.id, closingCash);
       setShift(s);
       setMsg("Shift closed successfully!");
-      setSummary(getTodayShiftSummary(user.id));
+      const summ = await getTodayShiftSummary(user.id);
+      setSummary(summ);
     } catch (err) {
       alert(err.message);
     }

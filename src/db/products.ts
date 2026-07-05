@@ -1,7 +1,6 @@
-import { collection, getDocs, doc, setDoc, addDoc, deleteDoc, getDoc } from "firebase/firestore";
+import { collection, getDocs, doc, deleteDoc, runTransaction } from "firebase/firestore";
 import { db, isFirebaseEnabled } from "./config";
 import { logError } from "./errorLog";
-import { recordPriceChange } from "./priceHistory";
 import { useDBStore } from "../stores/dbStore";
 
 export const getLowStockCount = () => {
@@ -11,16 +10,6 @@ export const getLowStockCount = () => {
 export const getLowStockProducts = () => {
   return useDBStore.getState().products.filter(p => p.stock <= p.lowStockLimit);
 };
-
-async function syncProductToFirebase(product) {
-  const { id, ...data } = product;
-  if (id) {
-    await setDoc(doc(db, "products", id), data);
-  } else {
-    const ref = await addDoc(collection(db, "products"), { ...data, id: "p_" + Date.now() });
-    product.id = ref.id;
-  }
-}
 
 async function deleteProductFromFirebase(productId) {
   await deleteDoc(doc(db, "products", productId));
@@ -41,30 +30,53 @@ export const getProducts = async () => {
 
 export const saveProduct = async (product) => {
   try {
-    if (product.id && isFirebaseEnabled) {
-      const docRef = doc(db, "products", product.id);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        const old = docSnap.data();
-        const userId = product._userId;
-        const userName = product._userName;
-        if (parseFloat(old.costPrice) !== parseFloat(product.costPrice))
-          recordPriceChange(product.id, product.name, "costPrice", old.costPrice, product.costPrice, userId, userName);
-        if (parseFloat(old.sellingPrice) !== parseFloat(product.sellingPrice))
-          recordPriceChange(product.id, product.name, "sellingPrice", old.sellingPrice, product.sellingPrice, userId, userName);
-        if (product.isCigarette) {
-          if (parseFloat(old.costPricePack||0) !== parseFloat(product.costPricePack||0))
-            recordPriceChange(product.id, product.name, "costPricePack", old.costPricePack||0, product.costPricePack, userId, userName);
-          if (parseFloat(old.sellingPricePack||0) !== parseFloat(product.sellingPricePack||0))
-            recordPriceChange(product.id, product.name, "sellingPricePack", old.sellingPricePack||0, product.sellingPricePack, userId, userName);
-        }
-      }
-    } else if (!product.id) {
-      product.id = "p_" + Date.now();
-    }
-
     if (isFirebaseEnabled) {
-      await syncProductToFirebase(product);
+      await runTransaction(db, async (firestoreTx) => {
+        let isNew = !product.id;
+        let finalId = product.id;
+
+        if (isNew) {
+          const newDocRef = doc(collection(db, "products"));
+          finalId = newDocRef.id;
+          product.id = finalId;
+        }
+
+        const docRef = doc(db, "products", finalId);
+
+        if (!isNew) {
+          const docSnap = await firestoreTx.get(docRef);
+          if (docSnap.exists()) {
+            const old = docSnap.data();
+            const userId = product._userId;
+            const userName = product._userName;
+
+            const queuePriceChange = (field, oldVal, newVal) => {
+              if (parseFloat(oldVal) === parseFloat(newVal)) return;
+              const histRef = doc(collection(db, "price_history"));
+              firestoreTx.set(histRef, {
+                productId: finalId,
+                productName: product.name,
+                field,
+                oldValue: oldVal,
+                newValue: newVal,
+                userId: userId || "system",
+                userName: userName || "System",
+                timestamp: Date.now(),
+              });
+            };
+
+            queuePriceChange("costPrice", old.costPrice, product.costPrice);
+            queuePriceChange("sellingPrice", old.sellingPrice, product.sellingPrice);
+            if (product.isCigarette) {
+              queuePriceChange("costPricePack", old.costPricePack || 0, product.costPricePack);
+              queuePriceChange("sellingPricePack", old.sellingPricePack || 0, product.sellingPricePack);
+            }
+          }
+        }
+
+        const { id, _userId, _userName, ...data } = product;
+        firestoreTx.set(docRef, { ...data, id: finalId });
+      });
     }
   } catch (err) {
     logError("INVENTORY", err.message, err.stack);

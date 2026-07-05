@@ -1,23 +1,7 @@
-import { collection, doc, writeBatch, getDocs, deleteDoc, setDoc, getDoc } from "firebase/firestore";
+import { collection, doc, writeBatch, getDocs, deleteDoc, setDoc, getDoc, runTransaction } from "firebase/firestore";
 import { db, isFirebaseEnabled } from "./config";
 import { adjustBalance } from "./coh";
 import { logError } from "./errorLog";
-
-async function syncTransaction(transaction) {
-  const batch = writeBatch(db);
-  const newTxRef = doc(collection(db, "transactions"));
-  batch.set(newTxRef, transaction);
-  for (let item of transaction.items) {
-    const prodRef = doc(db, "products", item.realProductId || item.productId);
-    if (item.isPack) {
-      batch.update(prodRef, { stock: Math.max(0, item.currentStock - item.quantity * (item.packSize || 20)) });
-    } else {
-      batch.update(prodRef, { stock: Math.max(0, item.currentStock - item.quantity) });
-    }
-  }
-  await batch.commit();
-  return newTxRef.id;
-}
 
 export const getTransactions = async () => {
   try {
@@ -36,18 +20,63 @@ export const getTransactions = async () => {
 
 export const addTransaction = async (transaction) => {
   try {
-    transaction.id = "tx_" + Date.now();
-
-    if (transaction.paymentMode === "Cash") {
-      await adjustBalance(transaction.cashierId || "system", transaction.totalAmount, `Cash sale: Bill ${transaction.id}`, transaction.cashierName || "System");
-    }
-
     if (isFirebaseEnabled) {
-      const fireId = await syncTransaction(transaction);
-      transaction.id = fireId;
-    }
+      const fireId = await runTransaction(db, async (firestoreTx) => {
+        // 1. Generate Transaction ID
+        const newTxRef = doc(collection(db, "transactions"));
+        const txId = newTxRef.id;
+        transaction.id = txId;
 
-    return transaction.id;
+        // 2. If Cash payment, adjust Cash on Hand balance in same transaction
+        if (transaction.paymentMode === "Cash") {
+          const cashierId = transaction.cashierId || "system";
+          const balRef = doc(db, "coh_balances", cashierId);
+          const balSnap = await firestoreTx.get(balRef);
+          const currentBal = balSnap.exists() ? (balSnap.data().balance || 0) : 0;
+          const newBal = currentBal + transaction.totalAmount;
+
+          const cohTxId = "coh_" + Date.now();
+          const cohTxRef = doc(db, "coh_transactions", cohTxId);
+
+          firestoreTx.set(balRef, { balance: newBal });
+          firestoreTx.set(cohTxRef, {
+            id: cohTxId,
+            type: "sale",
+            fromUserId: "customer",
+            fromUserName: "Customer",
+            toUserId: cashierId,
+            toUserName: transaction.cashierName || "Cashier",
+            amount: transaction.totalAmount,
+            sign: "credit",
+            note: `Cash sale: Bill ${txId}`,
+            status: "approved",
+            timestamp: Date.now(),
+            approvedAt: Date.now(),
+          });
+        }
+
+        // 3. Update stock levels for each item
+        for (let item of transaction.items) {
+          const prodRef = doc(db, "products", item.realProductId || item.productId);
+          const prodSnap = await firestoreTx.get(prodRef);
+          if (prodSnap.exists()) {
+            const currentStock = prodSnap.data().stock || 0;
+            const deductQty = item.isPack ? item.quantity * (item.packSize || 20) : item.quantity;
+            const newStock = Math.max(0, currentStock - deductQty);
+            firestoreTx.update(prodRef, { stock: newStock });
+          }
+        }
+
+        // 4. Save the transaction invoice
+        firestoreTx.set(newTxRef, transaction);
+
+        return txId;
+      });
+      return fireId;
+    } else {
+      transaction.id = "tx_" + Date.now();
+      return transaction.id;
+    }
   } catch (err) {
     logError("TRANSACTION", err.message, err.stack);
     throw new Error(`Transaction error (लेन-देन समस्या): ${err.message}. कृपया पुनः प्रयास करें।`);

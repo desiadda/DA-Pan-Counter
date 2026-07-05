@@ -1,6 +1,9 @@
 import { collection, doc, setDoc, addDoc, deleteDoc, getDocs } from "firebase/firestore";
 import { db, isFirebaseEnabled } from "./config";
 import { logError } from "./errorLog";
+import { getLocalData, setLocalData } from "./storage";
+
+const LS_KEY = "pan_suppliers";
 
 async function syncSupplierToFirebase(supplier) {
   const { id, ...data } = supplier;
@@ -22,10 +25,10 @@ export const getSuppliers = async () => {
       const snap = await getDocs(collection(db, "suppliers"));
       return snap.docs.map(d => ({ id: d.id, ...d.data() }));
     }
-    return [];
+    return getLocalData(LS_KEY, []);
   } catch (err) {
     logError("STORAGE", err.message, err.stack);
-    return [];
+    return getLocalData(LS_KEY, []);
   }
 };
 
@@ -37,6 +40,16 @@ export const saveSupplier = async (supplier) => {
 
     if (isFirebaseEnabled) {
       await syncSupplierToFirebase(supplier);
+    } else {
+      const list = getLocalData(LS_KEY, []);
+      if (supplier.id) {
+        const idx = list.findIndex(s => s.id === supplier.id);
+        if (idx !== -1) list[idx] = supplier;
+      } else {
+        supplier.id = "sup_" + Date.now();
+        list.push(supplier);
+      }
+      setLocalData(LS_KEY, list);
     }
     return supplier;
   } catch (err) {
@@ -49,6 +62,9 @@ export const deleteSupplier = async (id) => {
   try {
     if (isFirebaseEnabled) {
       await deleteSupplierFromFirebase(id);
+    } else {
+      const list = getLocalData(LS_KEY, []).filter(s => s.id !== id);
+      setLocalData(LS_KEY, list);
     }
   } catch (err) {
     logError("STORAGE", err.message, err.stack);
