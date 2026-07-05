@@ -1,5 +1,5 @@
 import { collection, getDocs, doc, addDoc, deleteDoc, onSnapshot } from "firebase/firestore";
-import { db, isFirebaseEnabled } from "./config";
+import { db, isFirebaseEnabled, localizeError } from "./config";
 import { logError } from "./errorLog";
 import { getLocalData, setLocalData } from "./storage";
 
@@ -60,7 +60,7 @@ export const addExpense = async (expense) => {
     throw new Error("Cannot add expense: Firebase is not initialized.");
   } catch (err) {
     logError("EXPENSE", err.message, err.stack);
-    throw new Error(`Expense error (खर्च समस्या): ${err.message}. कृपया पुनः प्रयास करें।`);
+    throw new Error(localizeError(`Expense error: ${err.message}. Please try again.`, `खर्च समस्या: ${err.message}। कृपया पुनः प्रयास करें।`));
   }
 };
 
@@ -71,6 +71,6 @@ export const deleteExpense = async (expenseId) => {
     }
   } catch (err) {
     logError("EXPENSE", err.message, err.stack);
-    throw new Error(`Delete error (डिलीट समस्या): ${err.message}. कृपया पुनः प्रयास करें।`);
+    throw new Error(localizeError(`Delete error: ${err.message}. Please try again.`, `डिलीट समस्या: ${err.message}। कृपया पुनः प्रयास करें।`));
   }
 };

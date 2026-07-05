@@ -1,5 +1,5 @@
 import { collection, getDocs, doc, deleteDoc, runTransaction } from "firebase/firestore";
-import { db, isFirebaseEnabled } from "./config";
+import { db, isFirebaseEnabled, localizeError } from "./config";
 import { logError } from "./errorLog";
 import { useDBStore } from "../stores/dbStore";
 
@@ -80,7 +80,7 @@ export const saveProduct = async (product) => {
     }
   } catch (err) {
     logError("INVENTORY", err.message, err.stack);
-    throw new Error(`Save error (सेव समस्या): ${err.message}. कृपया पुनः प्रयास करें।`);
+    throw new Error(localizeError(`Save error: ${err.message}. Please try again.`, `सेव समस्या: ${err.message}। कृपया पुनः प्रयास करें।`));
   }
 };
 
@@ -91,6 +91,6 @@ export const deleteProduct = async (productId) => {
     }
   } catch (err) {
     logError("INVENTORY", err.message, err.stack);
-    throw new Error(`Delete error (डिलीट समस्या): ${err.message}. कृपया पुनः प्रयास करें।`);
+    throw new Error(localizeError(`Delete error: ${err.message}. Please try again.`, `डिलीट समस्या: ${err.message}। कृपया पुनः प्रयास करें।`));
   }
 };

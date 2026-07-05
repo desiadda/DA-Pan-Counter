@@ -1,5 +1,5 @@
 import { collection, getDocs, doc, setDoc, updateDoc, getDoc } from "firebase/firestore";
-import { db, isFirebaseEnabled } from "./config";
+import { db, isFirebaseEnabled, localizeError } from "./config";
 import { logError } from "./errorLog";
 
 async function syncCustomerToFirebase(customer) {
@@ -42,7 +42,7 @@ export const saveCustomer = async (customer) => {
     }
   } catch (err) {
     logError("TRANSACTION", err.message, err.stack);
-    throw new Error(`Save error (सेव समस्या): ${err.message}. कृपया पुनः प्रयास करें।`);
+    throw new Error(localizeError(`Save error: ${err.message}. Please try again.`, `सेव समस्या: ${err.message}। कृपया पुनः प्रयास करें।`));
   }
 };
 
@@ -66,6 +66,6 @@ export const updateUdhaarBalance = async (customerId, amountChange, ledgerEntry)
     }
   } catch (err) {
     logError("TRANSACTION", err.message, err.stack);
-    throw new Error(`Khata update error (खाता अपडेट समस्या): ${err.message}. कृपया पुनः प्रयास करें।`);
+    throw new Error(localizeError(`Khata update error: ${err.message}. Please try again.`, `खाता अपडेट समस्या: ${err.message}। कृपया पुनः प्रयास करें।`));
   }
 };

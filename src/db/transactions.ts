@@ -1,5 +1,5 @@
 import { collection, doc, writeBatch, getDocs, deleteDoc, setDoc, getDoc, runTransaction } from "firebase/firestore";
-import { db, isFirebaseEnabled } from "./config";
+import { db, isFirebaseEnabled, localizeError } from "./config";
 import { adjustBalance } from "./coh";
 import { logError } from "./errorLog";
 
@@ -79,7 +79,7 @@ export const addTransaction = async (transaction) => {
     }
   } catch (err) {
     logError("TRANSACTION", err.message, err.stack);
-    throw new Error(`Transaction error (लेन-देन समस्या): ${err.message}. कृपया पुनः प्रयास करें।`);
+    throw new Error(localizeError(`Transaction error: ${err.message}. Please try again.`, `लेन-देन समस्या: ${err.message}। कृपया पुनः प्रयास करें।`));
   }
 };
 
@@ -98,7 +98,7 @@ export const deleteTransaction = async (transactionId) => {
     }
   } catch (err) {
     logError("TRANSACTION", err.message, err.stack);
-    throw new Error(`Delete error (डिलीट समस्या): ${err.message}. कृपया पुनः प्रयास करें।`);
+    throw new Error(localizeError(`Delete error: ${err.message}. Please try again.`, `डिलीट समस्या: ${err.message}। कृपया पुनः प्रयास करें।`));
   }
 };
 
@@ -125,7 +125,7 @@ export const returnTransaction = async (originalTx, returnItems, reason, userId,
     return returnTx;
   } catch (err) {
     logError("TRANSACTION", err.message, err.stack);
-    throw new Error(`Return error (रिटर्न समस्या): ${err.message}. कृपया पुनः प्रयास करें।`);
+    throw new Error(localizeError(`Return error: ${err.message}. Please try again.`, `रिटर्न समस्या: ${err.message}। कृपया पुनः प्रयास करें।`));
   }
 };
 
@@ -134,7 +134,7 @@ export const updateTransactionPaymentMode = async (transactionId, newMode, chang
     if (isFirebaseEnabled) {
       const docRef = doc(db, "transactions", transactionId);
       const docSnap = await getDoc(docRef);
-      if (!docSnap.exists()) throw new Error("Transaction not found (लेन-देन नहीं मिला).");
+      if (!docSnap.exists()) throw new Error(localizeError("Transaction not found.", "लेन-देन नहीं मिला।"));
       const tx = { id: docSnap.id, ...docSnap.data() };
       if (tx.paymentMode === newMode) return;
 
@@ -152,6 +152,6 @@ export const updateTransactionPaymentMode = async (transactionId, newMode, chang
     }
   } catch (err) {
     logError("TRANSACTION", err.message, err.stack);
-    throw new Error(`Update error (अपडेट समस्या): ${err.message}. कृपया पुनः प्रयास करें।`);
+    throw new Error(localizeError(`Update error: ${err.message}. Please try again.`, `अपडेट समस्या: ${err.message}। कृपया पुनः प्रयास करें।`));
   }
 };

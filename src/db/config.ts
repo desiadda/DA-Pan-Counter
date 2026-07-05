@@ -2,6 +2,7 @@ import { initializeApp, getApps } from "firebase/app";
 import { getFirestore, collection, getDocs, writeBatch, doc } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { LS_KEYS } from "../constants";
+import { useLangStore } from "../stores/langStore";
 
 export let isFirebaseEnabled = false;
 export let db = null;
@@ -103,5 +104,14 @@ export async function migrateLocalDataToFirestore() {
     }
   } catch (err) {
     console.error("Self-healing cloud migration failed:", err);
+  }
+}
+
+export function localizeError(en: string, hi: string): string {
+  try {
+    const lang = useLangStore.getState().lang;
+    return lang === "hi" ? hi : en;
+  } catch {
+    return en;
   }
 }

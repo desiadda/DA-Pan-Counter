@@ -1,5 +1,5 @@
 import { doc, setDoc, getDoc, onSnapshot, collection, runTransaction } from "firebase/firestore";
-import { db, isFirebaseEnabled } from "./config";
+import { db, isFirebaseEnabled, localizeError } from "./config";
 import { LS_KEYS } from "../constants";
 import { logError } from "./errorLog";
 import { getLocalData, setLocalData } from "./storage";
@@ -122,7 +122,7 @@ export async function adjustBalance(userId, amount, note, adminName) {
 export async function initiateTransfer(fromUser, toUserId, toUserName, amount) {
   try {
     const balance = getBalance(fromUser.id);
-    if (balance < amount) throw new Error("Insufficient COH balance (पर्याप्त COH शेष नहीं).");
+    if (balance < amount) throw new Error(localizeError("Insufficient COH balance.", "पर्याप्त COH शेष नहीं।"));
 
     const txId = "coh_" + Date.now();
     const txData = {
@@ -160,7 +160,7 @@ export async function approveTransfer(txId) {
         const txSnap = await transaction.get(txRef);
         if (!txSnap.exists()) throw new Error("Transfer not found.");
         const tx = txSnap.data();
-        if (tx.status !== "pending") throw new Error("Transfer not found or already processed (ट्रांसफर नहीं मिला या पहले ही प्रोसेस हो चुका).");
+        if (tx.status !== "pending") throw new Error(localizeError("Transfer not found or already processed.", "ट्रांसफर नहीं मिला या पहले ही प्रोसेस हो चुका।"));
 
         const fromRef = doc(db, "coh_balances", tx.fromUserId);
         const toRef = doc(db, "coh_balances", tx.toUserId);
@@ -183,7 +183,7 @@ export async function approveTransfer(txId) {
     } else {
       const txs = getTransactionsRaw();
       const localTx = txs.find(t => t.id === txId);
-      if (!localTx || localTx.status !== "pending") throw new Error("Transfer not found or already processed (ट्रांसफर नहीं मिला या पहले ही प्रोसेस हो चुका).");
+      if (!localTx || localTx.status !== "pending") throw new Error(localizeError("Transfer not found or already processed.", "ट्रांसफर नहीं मिला या पहले ही प्रोसेस हो चुका।"));
       
       localTx.status = "approved";
       localTx.approvedAt = Date.now();
@@ -214,7 +214,7 @@ export async function rejectTransfer(txId) {
       tx = txs.find(t => t.id === txId);
     }
 
-    if (!tx || tx.status !== "pending") throw new Error("Transfer not found or already processed (ट्रांसफर नहीं मिला या पहले ही प्रोसेस हो चुका).");
+    if (!tx || tx.status !== "pending") throw new Error(localizeError("Transfer not found or already processed.", "ट्रांसफर नहीं मिला या पहले ही प्रोसेस हो चुका।"));
 
     if (isFirebaseEnabled) {
       await setDoc(doc(db, "coh_transactions", txId), {

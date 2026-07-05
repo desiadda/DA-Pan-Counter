@@ -1,4 +1,5 @@
 import { logError } from "./errorLog";
+import { localizeError } from "./config";
 
 const SALT = "paan_counter_pos_v1";
 
@@ -12,7 +13,7 @@ async function sha256(message) {
   } catch (err) {
     logError("SYSTEM", err.message, err.stack);
     console.error("sha256: Hashing error", err);
-    throw new Error(`Hash error (हैश समस्या): ${err.message}. कृपया पुनः प्रयास करें।`);
+    throw new Error(localizeError(`Hash error: ${err.message}. Please try again.`, `हैश समस्या: ${err.message}। कृपया पुनः प्रयास करें।`));
   }
 }
 
@@ -22,7 +23,7 @@ export async function hashPin(pin) {
   } catch (err) {
     logError("SYSTEM", err.message, err.stack);
     console.error("hashPin: Error hashing PIN", err);
-    throw new Error(`PIN hash error (PIN हैश समस्या): ${err.message}. कृपया पुनः प्रयास करें।`);
+    throw new Error(localizeError(`PIN hash error: ${err.message}. Please try again.`, `PIN हैश समस्या: ${err.message}। कृपया पुनः प्रयास करें।`));
   }
 }
 
@@ -36,7 +37,7 @@ export async function verifyPin(pin, storedHash) {
   } catch (err) {
     logError("SYSTEM", err.message, err.stack);
     console.error("verifyPin: PIN verification error", err);
-    throw new Error(`PIN verification error (PIN सत्यापन समस्या): ${err.message}. कृपया पुनः प्रयास करें।`);
+    throw new Error(localizeError(`PIN verification error: ${err.message}. Please try again.`, `PIN सत्यापन समस्या: ${err.message}। कृपया पुनः प्रयास करें।`));
   }
 }
 

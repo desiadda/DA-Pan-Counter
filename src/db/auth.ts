@@ -1,5 +1,5 @@
 import { doc, setDoc, deleteDoc, getDocs, collection, onSnapshot, writeBatch } from "firebase/firestore";
-import { db, isFirebaseEnabled } from "./config";
+import { db, isFirebaseEnabled, localizeError } from "./config";
 import { LS_KEYS, ADMIN_PERMISSIONS, DEFAULT_PERMISSIONS } from "../constants";
 import { hashPin, verifyPin, isPlainPin } from "./hash";
 import { logError } from "./errorLog";
@@ -44,7 +44,7 @@ async function saveUsers(users) {
   } catch (err) {
     logError("AUTH", err.message, err.stack);
     console.error("saveUsers: Error saving users", err);
-    throw new Error(`Save error (सेव समस्या): ${err.message}. कृपया पुनः प्रयास करें।`);
+    throw new Error(localizeError(`Save error: ${err.message}. Please try again.`, `सेव समस्या: ${err.message}। कृपया पुनः प्रयास करें।`));
   }
 }
 
@@ -82,7 +82,7 @@ async function migrateOldPins() {
   } catch (err) {
     logError("AUTH", err.message, err.stack);
     console.error("migrateOldPins: Migration error", err);
-    throw new Error(`Migration error (माइग्रेशन समस्या): ${err.message}. कृपया पुनः प्रयास करें।`);
+    throw new Error(localizeError(`Migration error: ${err.message}. Please try again.`, `माइग्रेशन समस्या: ${err.message}। कृपया पुनः प्रयास करें।`));
   }
 }
 
@@ -126,11 +126,11 @@ export const login = async (email, password) => {
       }
     }
 
-    throw new Error("Invalid PIN. कृपया सही PIN डालें और पुनः प्रयास करें।");
+    throw new Error(localizeError("Invalid PIN. Please enter correct PIN and try again.", "अमान्य PIN। कृपया सही PIN डालें और पुनः प्रयास करें।"));
   } catch (err) {
     logError("AUTH", err.message, err.stack);
     console.error("login error", err);
-    throw new Error(`Login failed (लॉगिन विफल): ${err.message}`);
+    throw new Error(localizeError(`Login failed: ${err.message}`, `लॉगिन विफल: ${err.message}`));
   }
 };
 
@@ -140,7 +140,7 @@ export const logout = async () => {
   } catch (err) {
     logError("AUTH", err.message, err.stack);
     console.error("logout error", err);
-    throw new Error(`Logout error (लॉगआउट समस्या): ${err.message}. कृपया पुनः प्रयास करें।`);
+    throw new Error(localizeError(`Logout error: ${err.message}. Please try again.`, `लॉगआउट समस्या: ${err.message}। कृपया पुनः प्रयास करें।`));
   }
 };
 
