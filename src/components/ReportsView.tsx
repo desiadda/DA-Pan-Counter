@@ -8,11 +8,14 @@ import BillViewModal from "./BillViewModal";
 import ReturnModal from "./ReturnModal";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend } from "recharts";
 import { logError } from "../db/errorLog";
+import { db, isFirebaseEnabled } from "../db/config";
+import { writeBatch, doc } from "firebase/firestore";
 
 export default function ReportsView({ initialSubTab, onSubTabChange, user }) {
   const confirm = useConfirmStore((s) => s.confirm);
   const theme = useUIStore((s) => s.theme);
   const toggleTheme = useUIStore((s) => s.toggleTheme);
+
   const [transactions, setTransactions] = useState([]);
   const [products, setProducts] = useState([]);
   const [customers, setCustomers] = useState([]);
@@ -184,7 +187,67 @@ export default function ReportsView({ initialSubTab, onSubTabChange, user }) {
   const handleSaveFirebaseConfig = () => { try { const parsed = JSON.parse(firebaseConfigInput); dbService.saveConfig(parsed); alert("Firebase Config updated! Application will now refresh."); } catch (e) { alert("Invalid JSON format! Please double check your Firebase configuration syntax."); } };
   const handleClearFirebaseConfig = async () => { try { const ok = await confirm("Are you sure you want to delete the Firebase credentials? App will revert to LocalStorage.", { title: "Disconnect Cloud", confirmLabel: "Disconnect", variant: "danger" }); if (ok) dbService.clearConfig();     } catch (err) { logError("SETTINGS", err.message, err.stack); alert("❌ " + (err.message || "Failed to clear Firebase config")); console.error(err); } };
   const handleExportBackup = () => { try { const backupData = { products, transactions, customers, exportDate: Date.now(), version: "1.0.0" }; const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2)); const downloadAnchor = document.createElement('a'); downloadAnchor.setAttribute("href", dataStr); downloadAnchor.setAttribute("download", `paan_pos_backup_${new Date().toISOString().split('T')[0]}.json`); document.body.appendChild(downloadAnchor); downloadAnchor.click(); downloadAnchor.remove(); } catch (err) { logError("TRANSACTION", err.message, err.stack); alert("❌ " + (err.message || "Failed to export backup")); console.error(err); } };
-  const handleImportBackup = (e) => { const fileReader = new FileReader(); const file = e.target.files[0]; if (!file) return; fileReader.onload = async (event) => { try { const parsed = JSON.parse(event.target.result); if (parsed.products && parsed.transactions) { const ok = await confirm("Do you want to restore this backup? This will overwrite the local database.", { title: "Restore Backup", confirmLabel: "Restore", variant: "danger" }); if (ok) { localStorage.setItem("pan_products", JSON.stringify(parsed.products)); localStorage.setItem("pan_transactions", JSON.stringify(parsed.transactions)); if (parsed.customers) localStorage.setItem("pan_customers", JSON.stringify(parsed.customers)); alert("Database successfully restored! Re-loading..."); loadData(); } } else alert("Invalid backup file format!");     } catch (err) { logError("TRANSACTION", err.message, err.stack); alert("Failed to parse JSON backup file."); } }; fileReader.readAsText(file); };
+  
+  const restoreToFirestore = async (collectionName, items) => {
+    let batch = writeBatch(db);
+    let count = 0;
+    for (const item of items) {
+      const { id, ...data } = item;
+      const ref = doc(db, collectionName, id);
+      batch.set(ref, data);
+      count++;
+      if (count === 500) {
+        await batch.commit();
+        batch = writeBatch(db);
+        count = 0;
+      }
+    }
+    if (count > 0) {
+      await batch.commit();
+    }
+  };
+
+  const handleImportBackup = (e) => {
+    const fileReader = new FileReader();
+    const file = e.target.files[0];
+    if (!file) return;
+    fileReader.onload = async (event) => {
+      try {
+        const parsed = JSON.parse(event.target.result);
+        if (parsed.products && parsed.transactions) {
+          const ok = await confirm(
+            isFirebaseEnabled
+              ? "Do you want to restore this backup? This will overwrite your Cloud Firestore database."
+              : "Do you want to restore this backup? This will overwrite the local database.",
+            { title: "Restore Backup", confirmLabel: "Restore", variant: "danger" }
+          );
+          if (ok) {
+            setLoading(true);
+            if (isFirebaseEnabled && db) {
+              if (parsed.products) await restoreToFirestore("products", parsed.products);
+              if (parsed.transactions) await restoreToFirestore("transactions", parsed.transactions);
+              if (parsed.customers) await restoreToFirestore("customers", parsed.customers);
+            } else {
+              localStorage.setItem("pan_products", JSON.stringify(parsed.products));
+              localStorage.setItem("pan_transactions", JSON.stringify(parsed.transactions));
+              if (parsed.customers) localStorage.setItem("pan_customers", JSON.stringify(parsed.customers));
+            }
+            alert("Database successfully restored! Re-loading...");
+            await loadData();
+          }
+        } else {
+          alert("Invalid backup file format!");
+        }
+      } catch (err) {
+        logError("TRANSACTION", err.message, err.stack);
+        alert("Failed to restore backup: " + err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fileReader.readAsText(file);
+  };
+  
   const handleVoidTransaction = async (txId) => { const ok = await confirm(`Are you sure you want to void Bill ID: ${txId}?`, { title: "Void Bill", message: "This will restore all items back to stock and reverse customer debt updates.", confirmLabel: "Void Bill", variant: "danger" }); if (ok) { setLoading(true); try { await dbService.deleteTransaction(txId); alert("Transaction voided successfully and inventory restocked!"); await loadData(); } catch (err) { logError("TRANSACTION", err.message, err.stack); alert("Failed to void transaction: " + err.message); } finally { setLoading(false); } } };
   const [editingModeTx, setEditingModeTx] = useState(null);
   const [editingModeVal, setEditingModeVal] = useState("");
