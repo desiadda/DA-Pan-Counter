@@ -107,6 +107,7 @@ export function clearErrors() {
 export function deleteError(id) {
   const logs = getLogsRaw().filter(e => e.id !== id);
   saveLogsRaw(logs);
+  window.dispatchEvent(new CustomEvent("error-logged"));
 }
 
 export { CATEGORIES, SEVERITY };
