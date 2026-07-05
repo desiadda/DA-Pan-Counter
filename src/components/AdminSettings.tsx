@@ -5,6 +5,9 @@ import { useConfirmStore } from "../stores/confirmStore";
 import { useUIStore } from "../stores/uiStore";
 import { getErrors, getCategories, getUnreadCount, markAsRead, markAllAsRead, deleteError, clearErrors } from "../db/errorLog";
 import { logError } from "../db/errorLog";
+import { useDBStore } from "../stores/dbStore";
+import { db, isFirebaseEnabled } from "../db/config";
+import { writeBatch, doc } from "firebase/firestore";
 
 const LS = localStorage;
 
@@ -23,6 +26,89 @@ export default function AdminSettings({ onBack }) {
   const confirm = useConfirmStore((s) => s.confirm);
   const theme = useUIStore((s) => s.theme);
   const toggleTheme = useUIStore((s) => s.toggleTheme);
+
+  // DB Data for Backup
+  const products = useDBStore((s) => s.products);
+  const transactions = useDBStore((s) => s.transactions);
+  const customers = useDBStore((s) => s.customers);
+
+  const [isRestoring, setIsRestoring] = useState(false);
+
+  const handleExportBackup = () => {
+    try {
+      const backupData = { products, transactions, customers, exportDate: Date.now(), version: "1.0.0" };
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `paan_pos_backup_${new Date().toISOString().split('T')[0]}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    } catch (err) {
+      logError("SETTINGS", err.message, err.stack);
+      alert("❌ " + (err.message || "Failed to export backup"));
+      console.error(err);
+    }
+  };
+
+  const restoreToFirestore = async (collectionName, items) => {
+    let batch = writeBatch(db);
+    let count = 0;
+    for (const item of items) {
+      const { id, ...data } = item;
+      const ref = doc(db, collectionName, id);
+      batch.set(ref, data);
+      count++;
+      if (count === 500) {
+        await batch.commit();
+        batch = writeBatch(db);
+        count = 0;
+      }
+    }
+    if (count > 0) {
+      await batch.commit();
+    }
+  };
+
+  const handleImportBackup = (e) => {
+    const fileReader = new FileReader();
+    const file = e.target.files[0];
+    if (!file) return;
+    fileReader.onload = async (event) => {
+      try {
+        const parsed = JSON.parse(event.target.result);
+        if (parsed.products && parsed.transactions) {
+          const ok = await confirm(
+            isFirebaseEnabled
+              ? "Do you want to restore this backup? This will overwrite your Cloud Firestore database."
+              : "Do you want to restore this backup? This will overwrite the local database.",
+            { title: "Restore Backup", confirmLabel: "Restore", variant: "danger" }
+          );
+          if (ok) {
+            setIsRestoring(true);
+            if (isFirebaseEnabled && db) {
+              if (parsed.products) await restoreToFirestore("products", parsed.products);
+              if (parsed.transactions) await restoreToFirestore("transactions", parsed.transactions);
+              if (parsed.customers) await restoreToFirestore("customers", parsed.customers);
+            } else {
+              localStorage.setItem("pan_products", JSON.stringify(parsed.products));
+              localStorage.setItem("pan_transactions", JSON.stringify(parsed.transactions));
+              if (parsed.customers) localStorage.setItem("pan_customers", JSON.stringify(parsed.customers));
+            }
+            alert("Database successfully restored!");
+          }
+        } else {
+          alert("Invalid backup file format!");
+        }
+      } catch (err) {
+        logError("SETTINGS", err.message, err.stack);
+        alert("Failed to restore backup: " + err.message);
+      } finally {
+        setIsRestoring(false);
+      }
+    };
+    fileReader.readAsText(file);
+  };
 
   // Store
   const [store, setStore] = useState(getStore);
@@ -221,6 +307,20 @@ export default function AdminSettings({ onBack }) {
         <div style={{display: "flex", gap: "0.5rem"}}>
           <button onClick={handleSaveFirebaseConfig} className="btn btn-primary" style={{flex: 1, padding: "0.6rem"}}>Save & Connect Cloud</button>
           {dbService.isFirebase() && <button onClick={handleClearFirebaseConfig} className="btn btn-danger" style={{flex: 1, padding: "0.6rem"}}>Disconnect Cloud</button>}
+        </div>
+      </div>
+
+      {/* Backup & Restore */}
+      <div style={styles.card}>
+        <h3 style={styles.cardHeader}>💾 Backup & Restore</h3>
+        <p style={{fontSize: "0.8rem", color: "#64748b", marginBottom: "1rem"}}>Download current shop data as a JSON file or import a backup file to restore records.</p>
+        {isRestoring && <div style={{ fontSize: "0.85rem", color: "#047857", fontWeight: "bold", marginBottom: "0.5rem" }}>🔄 Restoring backup, please wait...</div>}
+        <div style={{display: "flex", gap: "0.5rem"}}>
+          <button onClick={handleExportBackup} className="btn btn-outline" style={{flex: 1, padding: "0.5rem"}}>📥 Export Backup</button>
+          <label className="btn btn-outline" style={{flex: 1, padding: "0.5rem", textAlign: "center", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center"}}>
+            📤 Import Restore
+            <input type="file" accept=".json" onChange={handleImportBackup} style={{display: "none"}} />
+          </label>
         </div>
       </div>
 
