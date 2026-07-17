@@ -55,17 +55,59 @@ export const addTransaction = async (transaction) => {
           });
         }
 
-        // 3. Update stock levels for each item
+        // 3. Update stock levels for each item and deduct from batches (FIFO)
+        let totalCostOfSales = 0;
         for (let item of transaction.items) {
           const prodRef = doc(db, "products", item.realProductId || item.productId);
           const prodSnap = await firestoreTx.get(prodRef);
           if (prodSnap.exists()) {
-            const currentStock = prodSnap.data().stock || 0;
+            const prodData = prodSnap.data();
+            const currentStock = prodData.stock || 0;
             const deductQty = item.isPack ? item.quantity * (item.packSize || 20) : item.quantity;
             const newStock = Math.max(0, currentStock - deductQty);
-            firestoreTx.update(prodRef, { stock: newStock });
+
+            let batches = [...(prodData.batches || [])];
+            if (batches.length === 0 && currentStock > 0) {
+              batches = [{
+                id: "b_init_" + prodSnap.id,
+                costPrice: prodData.costPrice || 0,
+                quantity: currentStock,
+                createdAt: prodData.createdAt || Date.now(),
+              }];
+            }
+
+            batches.sort((a, b) => a.createdAt - b.createdAt);
+            let remainingToDeduct = deductQty;
+            let itemCostTotal = 0;
+
+            for (const batch of batches) {
+              if (remainingToDeduct <= 0) break;
+              if (batch.quantity <= 0) continue;
+
+              const deductAmt = Math.min(batch.quantity, remainingToDeduct);
+              batch.quantity -= deductAmt;
+              remainingToDeduct -= deductAmt;
+              itemCostTotal += deductAmt * (batch.costPrice || 0);
+            }
+
+            const updatedBatches = batches.filter(b => b.quantity > 0);
+            totalCostOfSales += itemCostTotal;
+
+            const updates: any = {
+              stock: newStock,
+              batches: updatedBatches,
+            };
+
+            if (prodData.isCigarette) {
+              const packSize = prodData.packSize || 20;
+              updates.stockPack = Math.floor(newStock / packSize);
+              updates.stockLoose = newStock % packSize;
+            }
+
+            firestoreTx.update(prodRef, updates);
           }
         }
+        transaction.totalCostOfSales = totalCostOfSales;
 
         // 4. Save the transaction invoice
         firestoreTx.set(newTxRef, transaction);

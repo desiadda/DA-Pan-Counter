@@ -1,6 +1,6 @@
 import { initializeApp, getApps } from "firebase/app";
 import { getFirestore, collection, getDocs, writeBatch, doc } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
+import { getAuth, signInAnonymously } from "firebase/auth";
 import { LS_KEYS } from "../constants";
 import { useLangStore } from "../stores/langStore";
 
@@ -43,6 +43,12 @@ if (config && config.apiKey && config.projectId) {
     db = getFirestore(app);
     auth = getAuth(app);
     isFirebaseEnabled = true;
+
+    // Silent anonymous sign-in — gives every app user a Firebase auth token
+    // This allows secure Firestore rules (request.auth != null) without breaking PIN login
+    signInAnonymously(auth).catch((err) => {
+      console.warn("Anonymous sign-in failed:", err.code);
+    });
   } catch (err) {
     console.error("Error initializing Firebase, falling back to LocalStorage:", err);
   }

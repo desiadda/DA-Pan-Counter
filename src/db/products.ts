@@ -1,4 +1,4 @@
-import { collection, getDocs, doc, deleteDoc, runTransaction } from "firebase/firestore";
+import { collection, getDocs, doc, deleteDoc, runTransaction, setDoc } from "firebase/firestore";
 import { db, isFirebaseEnabled, localizeError } from "./config";
 import { logError } from "./errorLog";
 import { useDBStore } from "../stores/dbStore";
@@ -19,7 +19,25 @@ export const getProducts = async () => {
   try {
     if (isFirebaseEnabled) {
       const snap = await getDocs(collection(db, "products"));
-      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const list = snap.docs.map(d => {
+        const data = d.data();
+        const id = d.id;
+        let batches = data.batches || [];
+        if (!data.batches && (data.stock > 0 || data.costPrice > 0)) {
+          batches = [{
+            id: "b_init_" + id,
+            costPrice: data.costPrice || 0,
+            quantity: data.stock || 0,
+            createdAt: data.createdAt || Date.now(),
+          }];
+          const docRef = doc(db, "products", id);
+          setDoc(docRef, { ...data, batches }, { merge: true }).catch(err => {
+            console.error("Failed to self-heal batches for product", id, err);
+          });
+        }
+        return { id, ...data, batches };
+      });
+      return list;
     }
     return [];
   } catch (err) {
@@ -42,11 +60,13 @@ export const saveProduct = async (product) => {
         }
 
         const docRef = doc(db, "products", finalId);
+        let existingBatches = [];
 
         if (!isNew) {
           const docSnap = await firestoreTx.get(docRef);
           if (docSnap.exists()) {
             const old = docSnap.data();
+            existingBatches = old.batches || [];
             const userId = product._userId;
             const userName = product._userName;
 
@@ -73,6 +93,37 @@ export const saveProduct = async (product) => {
             }
           }
         }
+
+        // Reconcile manual stock changes with batches
+        let finalBatches = [...existingBatches];
+        const sumQty = finalBatches.reduce((s, b) => s + b.quantity, 0);
+
+        if (product.stock !== sumQty) {
+          const diff = product.stock - sumQty;
+          if (diff > 0) {
+            finalBatches.push({
+              id: "b_adj_" + Date.now() + "_" + Math.random().toString(36).substring(2),
+              costPrice: product.costPrice || 0,
+              quantity: diff,
+              createdAt: Date.now()
+            });
+          } else if (diff < 0) {
+            let toDeduct = Math.abs(diff);
+            finalBatches.sort((a, b) => a.createdAt - b.createdAt);
+            for (const batch of finalBatches) {
+              if (batch.quantity >= toDeduct) {
+                batch.quantity -= toDeduct;
+                toDeduct = 0;
+                break;
+              } else {
+                toDeduct -= batch.quantity;
+                batch.quantity = 0;
+              }
+            }
+            finalBatches = finalBatches.filter(b => b.quantity > 0);
+          }
+        }
+        product.batches = finalBatches;
 
         const { id, _userId, _userName, ...data } = product;
         firestoreTx.set(docRef, { ...data, id: finalId });

@@ -1,9 +1,73 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
+let mockProducts = [];
+
+vi.mock("firebase/firestore", () => {
+  return {
+    collection: () => "products",
+    doc: (db, col, id) => {
+      const generatedId = id || "p_" + Math.random().toString(36).substring(2);
+      return {
+        id: generatedId,
+        _path: generatedId
+      };
+    },
+    deleteDoc: vi.fn(async (docRef) => {
+      const id = docRef.id || docRef;
+      mockProducts = mockProducts.filter(p => p.id !== id);
+      localStorage.setItem("pan_products", JSON.stringify(mockProducts));
+    }),
+    getDocs: vi.fn(async (col) => {
+      return {
+        docs: mockProducts.map(p => ({
+          id: p.id,
+          data: () => {
+            const { id, ...rest } = p;
+            return rest;
+          }
+        }))
+      };
+    }),
+    setDoc: vi.fn(async () => {}),
+    runTransaction: vi.fn(async (db, cb) => {
+      const firestoreTx = {
+        get: async (docRef) => {
+          const id = docRef.id || docRef;
+          const p = mockProducts.find(prod => prod.id === id);
+          return {
+            exists: () => !!p,
+            data: () => p
+          };
+        },
+        set: (docRef, data) => {
+          const id = docRef.id || docRef;
+          // If it's a product
+          const idx = mockProducts.findIndex(prod => prod.id === id);
+          if (idx !== -1) {
+            mockProducts[idx] = { id, ...data };
+          } else {
+            mockProducts.push({ id, ...data });
+          }
+          localStorage.setItem("pan_products", JSON.stringify(mockProducts));
+        },
+        update: (docRef, data) => {
+          const id = docRef.id || docRef;
+          const idx = mockProducts.findIndex(prod => prod.id === id);
+          if (idx !== -1) {
+            mockProducts[idx] = { ...mockProducts[idx], ...data };
+          }
+          localStorage.setItem("pan_products", JSON.stringify(mockProducts));
+        }
+      };
+      await cb(firestoreTx);
+    })
+  };
+});
 
 vi.mock("../db/config", () => ({
-  isFirebaseEnabled: false,
-  db: null,
+  isFirebaseEnabled: true,
+  db: {},
   auth: null,
+  localizeError: (en, hi) => en,
 }));
 
 const { getProducts, saveProduct, deleteProduct } = await import("../db/products");
@@ -12,29 +76,33 @@ const { DEFAULT_PRODUCTS } = await import("../constants");
 describe("getProducts (localStorage)", () => {
   beforeEach(() => {
     localStorage.clear();
+    mockProducts = [...DEFAULT_PRODUCTS];
   });
 
   it("returns default products when localStorage is empty", async () => {
     const products = await getProducts();
-    expect(products).toEqual(DEFAULT_PRODUCTS);
+    expect(products.length).toBe(DEFAULT_PRODUCTS.length);
+    expect(products[0].batches).toBeDefined();
   });
 
   it("returns stored products when localStorage has data", async () => {
     const custom = [{ id: "p_custom", name: "Custom", category: "Other", sellingPrice: 10 }];
-    localStorage.setItem("pan_products", JSON.stringify(custom));
+    mockProducts = custom;
     const products = await getProducts();
-    expect(products).toEqual(custom);
+    expect(products[0].id).toBe("p_custom");
+    expect(products[0].batches).toEqual([]);
   });
 });
 
 describe("saveProduct (localStorage)", () => {
   beforeEach(() => {
     localStorage.clear();
+    mockProducts = [...DEFAULT_PRODUCTS];
   });
 
   it("adds a new product without an id", async () => {
     await saveProduct({ name: "New Item", category: "Other", sellingPrice: 50 });
-    const products = JSON.parse(localStorage.getItem("pan_products"));
+    const products = mockProducts;
     expect(products.length).toBe(9);
     const added = products.find(p => p.name === "New Item");
     expect(added).toBeTruthy();
@@ -45,7 +113,7 @@ describe("saveProduct (localStorage)", () => {
     const products = [...DEFAULT_PRODUCTS];
     products[0].sellingPrice = 999;
     await saveProduct(products[0]);
-    const stored = JSON.parse(localStorage.getItem("pan_products"));
+    const stored = mockProducts;
     const updated = stored.find(p => p.id === products[0].id);
     expect(updated.sellingPrice).toBe(999);
   });
@@ -53,7 +121,7 @@ describe("saveProduct (localStorage)", () => {
   it("does not duplicate product on update", async () => {
     const product = { ...DEFAULT_PRODUCTS[0], sellingPrice: 111 };
     await saveProduct(product);
-    const stored = JSON.parse(localStorage.getItem("pan_products"));
+    const stored = mockProducts;
     expect(stored.filter(p => p.id === product.id)).toHaveLength(1);
   });
 });
@@ -61,18 +129,18 @@ describe("saveProduct (localStorage)", () => {
 describe("deleteProduct (localStorage)", () => {
   beforeEach(() => {
     localStorage.clear();
-    localStorage.setItem("pan_products", JSON.stringify(DEFAULT_PRODUCTS));
+    mockProducts = [...DEFAULT_PRODUCTS];
   });
 
   it("removes a product by id", async () => {
     await deleteProduct("p1");
-    const stored = JSON.parse(localStorage.getItem("pan_products"));
+    const stored = mockProducts;
     expect(stored.find(p => p.id === "p1")).toBeUndefined();
   });
 
   it("keeps other products intact", async () => {
     await deleteProduct("p1");
-    const stored = JSON.parse(localStorage.getItem("pan_products"));
+    const stored = mockProducts;
     expect(stored).toHaveLength(DEFAULT_PRODUCTS.length - 1);
     expect(stored[0].id).toBe("p2");
   });

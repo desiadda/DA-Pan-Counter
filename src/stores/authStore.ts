@@ -5,9 +5,10 @@ import { logError } from "../db/errorLog"
 interface User {
   id: string
   name: string
-  pin: string
+  pin?: string
   role: string
   permissions: Record<string, boolean>
+  sessionId?: string
 }
 
 interface AuthState {

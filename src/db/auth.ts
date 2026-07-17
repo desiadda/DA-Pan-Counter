@@ -93,12 +93,17 @@ export const login = async (email, password) => {
     const users = getUsers();
     for (const u of users) {
       if (await verifyPin(password, u.pin)) {
+        const sessionId = Math.random().toString(36).substring(2) + Date.now().toString(36);
+        u.sessionId = sessionId;
+        await saveUsers(users);
+
         const user = {
           id: u.id,
           name: u.name,
           email: u.email,
           role: u.role,
           permissions: u.permissions,
+          sessionId: sessionId,
         };
         localStorage.setItem(LS_KEYS.USER, JSON.stringify(user));
         return user;
@@ -112,7 +117,9 @@ export const login = async (email, password) => {
       if (idx !== -1) {
         const updatedHash = await hashPin(password);
         users[idx].pin = updatedHash;
-        saveUsers(users);
+        const sessionId = Math.random().toString(36).substring(2) + Date.now().toString(36);
+        users[idx].sessionId = sessionId;
+        await saveUsers(users);
         const u = users[idx];
         const user = {
           id: u.id,
@@ -120,6 +127,7 @@ export const login = async (email, password) => {
           email: u.email,
           role: u.role,
           permissions: u.permissions,
+          sessionId: sessionId,
         };
         localStorage.setItem(LS_KEYS.USER, JSON.stringify(user));
         return user;

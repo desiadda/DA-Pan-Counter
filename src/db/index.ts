@@ -12,7 +12,7 @@ import {
 } from "./coh";
 import { recordPriceChange, getPriceHistory, getAllPriceHistory, clearPriceHistory } from "./priceHistory";
 import { getPurchaseOrders, savePurchaseOrder, receivePurchaseOrder, cancelPurchaseOrder } from "./purchases";
-import { getSuppliers, saveSupplier, deleteSupplier } from "./suppliers";
+import { getSuppliers, saveSupplier, deleteSupplier, updateSupplierBalance, recordSupplierPayment } from "./suppliers";
 import { getOpenShift, getAllShifts, openShift, closeShift, getTodayShiftSummary } from "./shifts";
 
 export const dbService = {
@@ -69,5 +69,7 @@ export const dbService = {
   getSuppliers,
   saveSupplier,
   deleteSupplier,
+  updateSupplierBalance,
+  recordSupplierPayment,
   migrateLocalDataToFirestore,
 };

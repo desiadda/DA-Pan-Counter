@@ -13,6 +13,7 @@ export default function InventoryView({ subPath, onNavigate }) {
   const confirm = useConfirmStore((s) => s.confirm);
   const products = useDBStore((s) => s.products);
   const [loading, setLoading] = useState(false);
+  const [expandedBatches, setExpandedBatches] = useState<Record<string, boolean>>({});
   
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState(null);
@@ -327,47 +328,78 @@ export default function InventoryView({ subPath, onNavigate }) {
               <tbody>
                 {products.map(p => {
                   const isLow = p.stock <= p.lowStockLimit;
+                  const isExpanded = !!expandedBatches[p.id];
+                  const hasBatches = p.batches && p.batches.length > 0;
                   return (
-                    <tr key={p.id} style={{ borderBottom: "1px solid var(--border)" }}>
-                      <td data-label="Product" style={{ padding: "0.6rem 0.5rem", verticalAlign: "middle" }}>
-                        <div style={{ display: "flex", flexDirection: "column" }}>
-                          <span style={{ fontWeight: 700, color: "var(--text)" }}>{p.name}</span>
-                          <span className="text-muted text-xs">{p.id}</span>
-                        </div>
-                      </td>
-                      <td data-label="Category" style={{ padding: "0.6rem 0.5rem", verticalAlign: "middle" }}>{p.category}</td>
-                      <td data-label="Cost" style={{ padding: "0.6rem 0.5rem", verticalAlign: "middle" }}>
-                        {p.isCigarette ? <span>฿{p.costPrice} / ฿{p.costPricePack}</span> : <span>฿{p.costPrice}</span>}
-                      </td>
-                      <td data-label="Sell" style={{ padding: "0.6rem 0.5rem", verticalAlign: "middle" }}>
-                        {p.isCigarette ? <span>฿{p.sellingPrice} / ฿{p.sellingPricePack}</span> : <span>฿{p.sellingPrice}</span>}
-                      </td>
-                      <td data-label="Stock" style={{ padding: "0.6rem 0.5rem", verticalAlign: "middle" }}>
-                        {p.isCigarette ? (
-                          <span style={{ fontWeight: "bold", color: isLow ? "#ea580c" : "inherit" }}>
-                            {p.stock}p / {(p.stockPack != null ? p.stockPack : Math.floor(p.stock / (p.packSize || 20)))}box
-                            {isLow && <span className="stock-badge stock-badge-low" style={{ marginLeft: 4 }}>⚠️</span>}
-                          </span>
-                        ) : (
-                          <span style={{ fontWeight: "bold", fontSize: "0.9rem", color: isLow ? "#ea580c" : "inherit" }}>
-                            {p.stock}
-                            {isLow && <span className="stock-badge stock-badge-low" style={{ marginLeft: 4 }}>⚠️</span>}
-                          </span>
-                        )}
-                      </td>
-                      <td data-label="Restock" style={{ padding: "0.6rem 0.5rem", verticalAlign: "middle" }}>
-                        <div className="flex gap-xs">
-                          <button onClick={() => quickReplenish(p, 10)} className="qty-btn" style={{ width: "auto", padding: "3px 6px", fontSize: "0.75rem", height: "auto" }}>+10</button>
-                          <button onClick={() => quickReplenish(p, 50)} className="qty-btn" style={{ width: "auto", padding: "3px 6px", fontSize: "0.75rem", height: "auto" }}>+50</button>
-                        </div>
-                      </td>
-                      <td data-label="Actions" style={{ padding: "0.6rem 0.5rem", verticalAlign: "middle" }}>
-                        <div className="flex gap-sm">
-                          <button onClick={() => handleEdit(p)} className="btn-icon" style={{ color: "var(--primary)", fontWeight: 600, fontSize: "0.8rem" }}>Edit</button>
-                          <button onClick={() => setHistoryProduct(p)} className="btn-icon" style={{ color: "#2563eb", fontWeight: 600, fontSize: "0.8rem" }}>History</button>
-                          <button onClick={() => handleDelete(p.id)} className="btn-icon" style={{ color: "var(--error)", fontWeight: 600, fontSize: "0.8rem" }}>Delete</button>
-                        </div>
-                      </td>
+                    <tr key={p.id} style={{ display: "contents" }}>
+                      <tr style={{ borderBottom: isExpanded ? "none" : "1px solid var(--border)" }}>
+                        <td data-label="Product" style={{ padding: "0.6rem 0.5rem", verticalAlign: "middle" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                            {hasBatches && (
+                              <button onClick={() => setExpandedBatches(prev => ({ ...prev, [p.id]: !isExpanded }))} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "0.7rem", padding: "2px", color: "var(--text-muted)" }}>
+                                {isExpanded ? "▼" : "▶"}
+                              </button>
+                            )}
+                            <div style={{ display: "flex", flexDirection: "column" }}>
+                              <span style={{ fontWeight: 700, color: "var(--text)" }}>{p.name}</span>
+                              <span className="text-muted text-xs">{p.id}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td data-label="Category" style={{ padding: "0.6rem 0.5rem", verticalAlign: "middle" }}>{p.category}</td>
+                        <td data-label="Cost" style={{ padding: "0.6rem 0.5rem", verticalAlign: "middle" }}>
+                          {p.isCigarette ? <span>฿{p.costPrice} / ฿{p.costPricePack}</span> : <span>฿{p.costPrice}</span>}
+                        </td>
+                        <td data-label="Sell" style={{ padding: "0.6rem 0.5rem", verticalAlign: "middle" }}>
+                          {p.isCigarette ? <span>฿{p.sellingPrice} / ฿{p.sellingPricePack}</span> : <span>฿{p.sellingPrice}</span>}
+                        </td>
+                        <td data-label="Stock" style={{ padding: "0.6rem 0.5rem", verticalAlign: "middle" }}>
+                          {p.isCigarette ? (
+                            <span style={{ fontWeight: "bold", color: isLow ? "#ea580c" : "inherit" }}>
+                              {p.stock}p / {(p.stockPack != null ? p.stockPack : Math.floor(p.stock / (p.packSize || 20)))}box
+                              {isLow && <span className="stock-badge stock-badge-low" style={{ marginLeft: 4 }}>⚠️</span>}
+                            </span>
+                          ) : (
+                            <span style={{ fontWeight: "bold", fontSize: "0.9rem", color: isLow ? "#ea580c" : "inherit" }}>
+                              {p.stock}
+                              {isLow && <span className="stock-badge stock-badge-low" style={{ marginLeft: 4 }}>⚠️</span>}
+                            </span>
+                          )}
+                        </td>
+                        <td data-label="Restock" style={{ padding: "0.6rem 0.5rem", verticalAlign: "middle" }}>
+                          <div className="flex gap-xs">
+                            <button onClick={() => quickReplenish(p, 10)} className="qty-btn" style={{ width: "auto", padding: "3px 6px", fontSize: "0.75rem", height: "auto" }}>+10</button>
+                            <button onClick={() => quickReplenish(p, 50)} className="qty-btn" style={{ width: "auto", padding: "3px 6px", fontSize: "0.75rem", height: "auto" }}>+50</button>
+                          </div>
+                        </td>
+                        <td data-label="Actions" style={{ padding: "0.6rem 0.5rem", verticalAlign: "middle" }}>
+                          <div className="flex gap-sm">
+                            <button onClick={() => handleEdit(p)} className="btn-icon" style={{ color: "var(--primary)", fontWeight: 600, fontSize: "0.8rem" }}>Edit</button>
+                            <button onClick={() => setHistoryProduct(p)} className="btn-icon" style={{ color: "#2563eb", fontWeight: 600, fontSize: "0.8rem" }}>History</button>
+                            <button onClick={() => handleDelete(p.id)} className="btn-icon" style={{ color: "var(--error)", fontWeight: 600, fontSize: "0.8rem" }}>Delete</button>
+                          </div>
+                        </td>
+                      </tr>
+                      {isExpanded && hasBatches && (
+                        <tr style={{ background: "var(--background-alt)", borderBottom: "1px solid var(--border)" }}>
+                          <td colSpan={7} style={{ padding: "0.4rem 2rem 0.6rem 2rem" }}>
+                            <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", fontSize: "0.75rem", padding: "0.5rem 1rem", border: "1px solid var(--border)", borderRadius: "6px", background: "#f8fafc", maxWidth: "450px" }}>
+                              <div style={{ fontWeight: 700, color: "var(--text-muted)", display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--border)", paddingBottom: "2px", marginBottom: "2px" }}>
+                                <span>Batch ID</span>
+                                <span>Cost Price</span>
+                                <span>Stock Left</span>
+                              </div>
+                              {p.batches.map(b => (
+                                <div key={b.id} style={{ display: "flex", justifyContent: "space-between", fontFamily: "monospace" }}>
+                                  <span style={{ color: "#0f766e" }}>{b.id}</span>
+                                  <span style={{ fontWeight: 600 }}>฿{b.costPrice.toFixed(2)}</span>
+                                  <span style={{ color: "#1e293b" }}>{b.quantity} units</span>
+                                </div>
+                              ))}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
                     </tr>
                   );
                 })}

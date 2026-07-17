@@ -11,7 +11,6 @@ import CartSidebar from "./CartSidebar";
 import VariantModal from "./VariantModal";
 import { logError } from "../db/errorLog";
 import CheckoutModal from "./CheckoutModal";
-import QuickKeysBar from "./QuickKeysBar";
 import ScanBarcode from "./ScanBarcode";
 import DashboardWidgets from "./DashboardWidgets";
 import ShortcutsModal from "./ShortcutsModal";
@@ -49,26 +48,6 @@ export default function POSView({ user }) {
     }
   };
 
-  const getQuickKeys = () => {
-    try {
-      return JSON.parse(localStorage.getItem("pan_quick_keys") || "{}");
-    } catch { return {}; }
-  };
-
-  useEffect(() => {
-    const handleKey = (e) => {
-      const num = parseInt(e.key);
-      if (num >= 1 && num <= 9) {
-        const keys = getQuickKeys();
-        const mapping = keys[`slot${num}`];
-        if (!mapping) return;
-        const product = products.find(p => p.id === mapping.productId);
-        if (product) addToCart(product, mapping.isPack ? "pack" : null);
-      }
-    };
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [products]);
 
   const addToCart = (product, forcedVariant = null) => {
     if (product.isCigarette && !forcedVariant) {
@@ -198,7 +177,6 @@ export default function POSView({ user }) {
       });
       setNewCustomerName("");
       setNewCustomerPhone("");
-      loadCustomers();
     } catch (err) {
       logError("TRANSACTION", err.message, err.stack);
       alert("❌ " + (err.message || "Failed to create customer"));
@@ -260,8 +238,6 @@ export default function POSView({ user }) {
       setShowCheckout(false);
       setReceivedCash("");
       setSelectedCustomerId("");
-      loadProducts();
-      loadCustomers();
       playSaleSound();
       alert("Transaction completed successfully! ฿" + total);
     } catch (err) {
@@ -300,7 +276,6 @@ export default function POSView({ user }) {
       </div>
       <div className="pos-layout">
         <div className="pos-main-col">
-          <QuickKeysBar products={products} onAddToCart={addToCart} />
           <ProductGrid products={products} onAddToCart={addToCart} />
         </div>
 

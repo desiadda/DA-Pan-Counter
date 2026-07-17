@@ -157,7 +157,19 @@ function AppContent() {
       }
     };
     window.addEventListener("coh-changed", refreshCOH);
-    const refreshUsers = () => setAllUsers(getUsers());
+    const refreshUsers = () => {
+      const currentUsers = getUsers();
+      setAllUsers(currentUsers);
+      const currentUser = useAuthStore.getState().user;
+      if (currentUser && currentUser.sessionId) {
+        const matched = currentUsers.find(u => u.id === currentUser.id);
+        if (matched && matched.sessionId && matched.sessionId !== currentUser.sessionId) {
+          alert("Your account has been logged in on another device. You will be logged out. / आपका खाता किसी अन्य डिवाइस पर लॉग इन किया गया है। आप लॉग आउट हो जाएंगे।");
+          localStorage.removeItem("pan_user");
+          useAuthStore.setState({ user: null });
+        }
+      }
+    };
     window.addEventListener("users-changed", refreshUsers);
     const store = JSON.parse(localStorage.getItem("pan_store_settings") || "{}");
     if (store.logo) {

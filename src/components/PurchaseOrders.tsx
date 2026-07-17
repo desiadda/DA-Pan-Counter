@@ -6,7 +6,9 @@ import { collection, onSnapshot } from "firebase/firestore";
 export default function PurchaseOrders() {
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
   const [showForm, setShowForm] = useState(false);
+  const [isDirectPurchase, setIsDirectPurchase] = useState(false);
 
   useEffect(() => {
     if (isFirebaseEnabled && db) {
@@ -16,9 +18,13 @@ export default function PurchaseOrders() {
       const unsubProds = onSnapshot(collection(db, "products"), (snap) => {
         setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
       });
+      const unsubSups = onSnapshot(collection(db, "suppliers"), (snap) => {
+        setSuppliers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      });
       return () => {
         unsubPurchs();
         unsubProds();
+        unsubSups();
       };
     } else {
       load();
@@ -26,24 +32,40 @@ export default function PurchaseOrders() {
   }, []);
 
   const load = async () => {
-    const [ordersList, productsList] = await Promise.all([
+    const [ordersList, productsList, suppliersList] = await Promise.all([
       dbService.getPurchaseOrders(),
-      dbService.getProducts()
+      dbService.getProducts(),
+      dbService.getSuppliers()
     ]);
     setOrders(ordersList || []);
     setProducts(productsList || []);
+    setSuppliers(suppliersList || []);
   };
 
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h2 style={styles.title}>📦 Purchase Orders</h2>
-        <button onClick={() => setShowForm(true)} className="btn btn-primary" style={{ padding: "0.4rem 0.75rem", fontSize: "0.8rem" }}>
-          + New Order
-        </button>
+        <h2 style={styles.title}>📦 Purchases & POs</h2>
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          <button onClick={() => { setIsDirectPurchase(false); setShowForm(true); }} className="btn btn-primary" style={{ padding: "0.4rem 0.75rem", fontSize: "0.8rem" }}>
+            + New PO
+          </button>
+          <button onClick={() => { setIsDirectPurchase(true); setShowForm(true); }} className="btn btn-outline" style={{ padding: "0.4rem 0.75rem", fontSize: "0.8rem", color: "var(--primary-color)" }}>
+            + Direct Purchase
+          </button>
+        </div>
       </div>
 
-      {showForm && <PurchaseOrderForm products={products} onSave={() => { setShowForm(false); load(); }} onCancel={() => setShowForm(false)} />}
+      {showForm && (
+        <PurchaseOrderForm
+          products={products}
+          suppliers={suppliers}
+          orders={orders}
+          isDirect={isDirectPurchase}
+          onSave={() => { setShowForm(false); load(); }}
+          onCancel={() => setShowForm(false)}
+        />
+      )}
 
       {orders.length === 0 ? (
         <p style={styles.empty}>No purchase orders yet.</p>
@@ -54,14 +76,19 @@ export default function PurchaseOrders() {
               <div style={styles.cardHeader}>
                 <div>
                   <span style={styles.supplier}>{order.supplier}</span>
+                  {order.paymentMode && (
+                    <span style={{ fontSize: "0.7rem", color: "#475569", background: "#f1f5f9", padding: "2px 6px", borderRadius: "4px", marginLeft: "0.5rem", fontWeight: 600 }}>
+                      {order.paymentMode}
+                    </span>
+                  )}
                   <span style={styles.date}>{new Date(order.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
                 </div>
                 <span style={{
                   ...styles.status,
-                  color: order.status === "completed" ? "#047857" : order.status === "cancelled" ? "#dc2626" : "#d97706",
-                  background: order.status === "completed" ? "#f0fdf4" : order.status === "cancelled" ? "#fef2f2" : "#fef3c7",
+                  color: order.status === "received" ? "#047857" : order.status === "cancelled" ? "#dc2626" : "#d97706",
+                  background: order.status === "received" ? "#f0fdf4" : order.status === "cancelled" ? "#fef2f2" : "#fef3c7",
                 }}>
-                  {order.status === "completed" ? "✓ Received" : order.status === "cancelled" ? "✕ Cancelled" : "⏳ Pending"}
+                  {order.status === "received" ? "✓ Received" : order.status === "cancelled" ? "✕ Cancelled" : "⏳ Pending"}
                 </span>
               </div>
               <div style={styles.items}>
@@ -69,7 +96,7 @@ export default function PurchaseOrders() {
                   <div key={i} style={styles.itemRow}>
                     <span style={styles.itemName}>{item.productName} {item.isPack ? `(×${item.packSize})` : ""}</span>
                     <span style={styles.itemQty}>×{item.quantity}</span>
-                    <span style={styles.itemCost}>฿{(item.costPrice || 0).toFixed(0)}</span>
+                    <span style={styles.itemCost}>฿{(item.costPrice * item.quantity).toFixed(0)}</span>
                   </div>
                 ))}
               </div>
@@ -96,32 +123,81 @@ export default function PurchaseOrders() {
   );
 }
 
-function PurchaseOrderForm({ products, onSave, onCancel }) {
-  const [supplier, setSupplier] = useState("");
-  const [items, setItems] = useState([{ productId: "", quantity: 1 }]);
+function PurchaseOrderForm({ products, suppliers, orders, isDirect, onSave, onCancel }) {
+  const [supplierId, setSupplierId] = useState("");
+  const [paymentMode, setPaymentMode] = useState("Cash");
+  const [items, setItems] = useState([{ productId: "", quantity: 1, costPrice: 0, isPack: false }]);
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const addItem = () => setItems(prev => [...prev, { productId: "", quantity: 1 }]);
+  const selectedSupplier = suppliers.find(s => s.id === supplierId);
+
+  const addItem = () => setItems(prev => [...prev, { productId: "", quantity: 1, costPrice: 0, isPack: false }]);
+  
   const updateItem = (idx, field, val) => {
-    setItems(prev => prev.map((item, i) => i === idx ? { ...item, [field]: val } : item));
+    setItems(prev => prev.map((item, i) => {
+      if (i !== idx) return item;
+      const updated = { ...item, [field]: val };
+
+      if (field === "productId") {
+        const prod = products.find(p => p.id === val);
+        if (prod) {
+          // Look up last purchase cost for this supplier and product in history
+          const lastOrderWithProd = [...orders]
+            .sort((a, b) => b.createdAt - a.createdAt)
+            .find(o => o.supplierId === supplierId && o.status === "received" && o.items?.some(it => it.productId === val));
+
+          if (lastOrderWithProd) {
+            const lastItem = lastOrderWithProd.items.find(it => it.productId === val);
+            updated.costPrice = lastItem.costPrice || 0;
+            updated.isPack = lastItem.isPack || false;
+          } else {
+            updated.isPack = false;
+            updated.costPrice = prod.costPrice || 0;
+          }
+        } else {
+          updated.costPrice = 0;
+          updated.isPack = false;
+        }
+      }
+
+      if (field === "isPack") {
+        const prod = products.find(p => p.id === item.productId);
+        if (prod) {
+          const lastOrderWithProd = [...orders]
+            .sort((a, b) => b.createdAt - a.createdAt)
+            .find(o => o.supplierId === supplierId && o.status === "received" && o.items?.some(it => it.productId === item.productId && it.isPack === val));
+
+          if (lastOrderWithProd) {
+            const lastItem = lastOrderWithProd.items.find(it => it.productId === item.productId && it.isPack === val);
+            updated.costPrice = lastItem.costPrice || 0;
+          } else {
+            updated.costPrice = val ? (prod.costPricePack || 0) : (prod.costPrice || 0);
+          }
+        }
+      }
+
+      return updated;
+    }));
   };
+
   const removeItem = (idx) => {
     setItems(prev => prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev);
   };
 
   const handleSubmit = async () => {
-    if (!supplier.trim()) { alert("Enter supplier name"); return; }
+    if (!supplierId || !selectedSupplier) { alert("Please select a supplier first."); return; }
     if (submitting) return;
     const validItems = items.filter(i => i.productId && i.quantity > 0);
     if (validItems.length === 0) { alert("Add at least one item"); return; }
-    const total = validItems.reduce((sum, item) => {
-      const prod = products.find(p => p.id === item.productId);
-      return sum + ((item.isPack ? (prod?.costPricePack || 0) : (prod?.costPrice || 0)) * item.quantity);
-    }, 0);
+    
+    const total = validItems.reduce((sum, item) => sum + ((item.costPrice || 0) * item.quantity), 0);
+    const user = JSON.parse(localStorage.getItem("pan_user") || "{}");
 
     const order = {
-      supplier: supplier.trim(),
+      supplier: selectedSupplier.name,
+      supplierId: selectedSupplier.id,
+      paymentMode,
       items: validItems.map(item => {
         const prod = products.find(p => p.id === item.productId);
         return {
@@ -130,21 +206,23 @@ function PurchaseOrderForm({ products, onSave, onCancel }) {
           quantity: parseInt(item.quantity) || 0,
           isPack: item.isPack || false,
           packSize: prod?.packSize || 20,
-          costPrice: item.isPack ? (prod?.costPricePack || 0) : (prod?.costPrice || 0),
+          costPrice: parseFloat(item.costPrice) || 0,
         };
       }),
       total,
-      status: "pending",
+      status: isDirect ? "received" : "pending",
       createdAt: Date.now(),
       notes: notes.trim(),
-      createdBy: JSON.parse(localStorage.getItem("pan_user") || "{}")?.name || "System",
+      createdById: user.id || "system",
+      createdBy: user.name || "System",
     };
+
     try {
       setSubmitting(true);
       await dbService.savePurchaseOrder(order);
       onSave();
     } catch (e) {
-      alert("❌ Failed to create order: " + e.message);
+      alert("❌ Failed to create purchase record: " + e.message);
     } finally {
       setSubmitting(false);
     }
@@ -152,35 +230,75 @@ function PurchaseOrderForm({ products, onSave, onCancel }) {
 
   return (
     <div style={styles.formCard}>
-      <h3 style={styles.formTitle}>New Purchase Order</h3>
-      <div className="input-group">
-        <label className="input-label">Supplier</label>
-        <input type="text" value={supplier} onChange={e => setSupplier(e.target.value)} className="input-field" placeholder="Supplier name" />
+      <h3 style={styles.formTitle}>{isDirect ? "Direct Purchase / Bill Entry" : "New Purchase Order"}</h3>
+      
+      <div className="input-group" style={{ display: "flex", gap: "1rem" }}>
+        <div style={{ flex: 2 }}>
+          <label className="input-label">Supplier</label>
+          <select value={supplierId} onChange={e => { setSupplierId(e.target.value); setItems([{ productId: "", quantity: 1, costPrice: 0, isPack: false }]); }} className="input-field" style={{ fontFamily: "inherit" }}>
+            <option value="">Select supplier...</option>
+            {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </div>
+        <div style={{ flex: 1 }}>
+          <label className="input-label">Payment Mode</label>
+          <select value={paymentMode} onChange={e => setPaymentMode(e.target.value)} className="input-field" style={{ fontFamily: "inherit" }}>
+            <option value="Cash">Cash (COH)</option>
+            <option value="Credit">Credit (Khata)</option>
+            <option value="Bank Transfer">Bank Transfer</option>
+          </select>
+        </div>
       </div>
 
-      <div style={styles.itemsSection}>
-        <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "#475569" }}>Items</label>
-        {items.map((item, i) => {
-          const prod = products.find(p => p.id === item.productId);
-          return (
-            <div key={i} style={styles.formItemRow}>
-              <select value={item.productId} onChange={e => updateItem(i, "productId", e.target.value)} className="input-field" style={{ flex: 1, fontSize: "0.8rem", padding: "0.4rem" }}>
-                <option value="">Select product...</option>
-                {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-              <input type="number" value={item.quantity} onChange={e => updateItem(i, "quantity", e.target.value)} style={{ width: "60px", padding: "0.4rem", borderRadius: "6px", border: "1px solid #e2e8f0", fontSize: "0.8rem", textAlign: "center" }} min="1" />
-              {prod?.isCigarette && (
-                <label style={{ fontSize: "0.7rem", display: "flex", alignItems: "center", gap: "0.25rem", cursor: "pointer" }}>
-                  <input type="checkbox" checked={item.isPack || false} onChange={e => updateItem(i, "isPack", e.target.checked)} /> Box
-                </label>
-              )}
-              {prod && <span style={{ fontSize: "0.75rem", color: "#64748b", minWidth: "50px", textAlign: "right" }}>฿{((item.isPack ? prod.costPricePack : prod.costPrice) * item.quantity).toFixed(0)}</span>}
-              <button onClick={() => removeItem(i)} style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "0.8rem" }}>✕</button>
-            </div>
-          );
-        })}
-        <button onClick={addItem} style={{ ...styles.addItemBtn }}>+ Add Item</button>
-      </div>
+      {!supplierId ? (
+        <div style={{ padding: "1rem", textAlign: "center", color: "#64748b", border: "1px dashed #cbd5e1", borderRadius: "8px", margin: "1rem 0", fontSize: "0.85rem" }}>
+          ⚠️ Please select a supplier first to add items. / कृपया आइटम जोड़ने के लिए पहले सप्लायर चुनें।
+        </div>
+      ) : (
+        <div style={styles.itemsSection}>
+          <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "#475569" }}>Items</label>
+          {items.map((item, i) => {
+            const prod = products.find(p => p.id === item.productId);
+            return (
+              <div key={i} style={styles.formItemRow}>
+                <select value={item.productId} onChange={e => updateItem(i, "productId", e.target.value)} className="input-field" style={{ flex: 1, fontSize: "0.8rem", padding: "0.4rem" }}>
+                  <option value="">Select product...</option>
+                  {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+                
+                <input
+                  type="number"
+                  value={item.quantity}
+                  onChange={e => updateItem(i, "quantity", e.target.value)}
+                  style={{ width: "60px", padding: "0.4rem", borderRadius: "6px", border: "1px solid #e2e8f0", fontSize: "0.8rem", textAlign: "center" }}
+                  min="1"
+                />
+
+                {prod?.isCigarette && (
+                  <label style={{ fontSize: "0.7rem", display: "flex", alignItems: "center", gap: "0.25rem", cursor: "pointer", whiteSpace: "nowrap" }}>
+                    <input type="checkbox" checked={item.isPack || false} onChange={e => updateItem(i, "isPack", e.target.checked)} /> Box
+                  </label>
+                )}
+
+                <div style={{ display: "flex", alignItems: "center", gap: "0.15rem" }}>
+                  <span style={{ fontSize: "0.8rem", color: "#64748b" }}>฿</span>
+                  <input
+                    type="number"
+                    value={item.costPrice || ""}
+                    onChange={e => updateItem(i, "costPrice", parseFloat(e.target.value) || 0)}
+                    style={{ width: "70px", padding: "0.4rem", borderRadius: "6px", border: "1px solid #e2e8f0", fontSize: "0.8rem", textAlign: "right" }}
+                    placeholder="Cost"
+                  />
+                </div>
+
+                {prod && <span style={{ fontSize: "0.75rem", color: "#64748b", minWidth: "50px", textAlign: "right" }}>฿{((item.costPrice || 0) * item.quantity).toFixed(0)}</span>}
+                <button onClick={() => removeItem(i)} style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "0.8rem" }}>✕</button>
+              </div>
+            );
+          })}
+          <button onClick={addItem} style={{ ...styles.addItemBtn }}>+ Add Item</button>
+        </div>
+      )}
 
       <div className="input-group">
         <label className="input-label">Notes (optional)</label>
@@ -188,8 +306,8 @@ function PurchaseOrderForm({ products, onSave, onCancel }) {
       </div>
 
       <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
-        <button onClick={handleSubmit} disabled={submitting} className="btn btn-primary" style={{ flex: 1 }}>
-          {submitting ? "Creating..." : "Create Order"}
+        <button onClick={handleSubmit} disabled={submitting || !supplierId} className="btn btn-primary" style={{ flex: 1 }}>
+          {submitting ? "Processing..." : isDirect ? "Record Purchase" : "Create PO"}
         </button>
         <button onClick={onCancel} className="btn btn-outline" style={{ flex: 1 }}>Cancel</button>
       </div>

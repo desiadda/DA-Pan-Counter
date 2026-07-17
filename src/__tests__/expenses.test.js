@@ -1,9 +1,38 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
+let mockExpenses = [];
+
+vi.mock("firebase/firestore", () => ({
+  collection: () => "expenses",
+  doc: (db, col, id) => id || "fake_doc_ref",
+  addDoc: vi.fn(async (col, data) => {
+    const id = "exp_" + Math.random().toString(36).substring(2);
+    mockExpenses.unshift({ id, ...data });
+    localStorage.setItem("pan_expenses", JSON.stringify(mockExpenses));
+    return { id };
+  }),
+  deleteDoc: vi.fn(async (docRef) => {
+    mockExpenses = mockExpenses.filter(e => e.id !== docRef);
+    localStorage.setItem("pan_expenses", JSON.stringify(mockExpenses));
+  }),
+  getDocs: vi.fn(async (col) => {
+    return {
+      docs: mockExpenses.map(e => ({
+        id: e.id,
+        data: () => {
+          const { id, ...rest } = e;
+          return rest;
+        }
+      }))
+    };
+  }),
+  onSnapshot: () => () => {},
+}));
 
 vi.mock("../db/config", () => ({
-  isFirebaseEnabled: false,
-  db: null,
+  isFirebaseEnabled: true,
+  db: {},
   auth: null,
+  localizeError: (en, hi) => en,
 }));
 
 const { getExpenses, addExpense, deleteExpense, EXPENSE_CATEGORIES } = await import("../db/expenses");
@@ -22,6 +51,7 @@ describe("EXPENSE_CATEGORIES", () => {
 describe("getExpenses (localStorage)", () => {
   beforeEach(() => {
     localStorage.clear();
+    mockExpenses = [];
   });
 
   it("returns empty array when no expenses exist", async () => {
@@ -31,7 +61,7 @@ describe("getExpenses (localStorage)", () => {
 
   it("returns stored expenses from localStorage", async () => {
     const testExpense = { id: "exp_1", amount: 500, category: "Rent", date: "2026-06-01", description: "Test" };
-    localStorage.setItem("pan_expenses", JSON.stringify([testExpense]));
+    mockExpenses = [testExpense];
     const expenses = await getExpenses();
     expect(expenses).toEqual([testExpense]);
   });
@@ -40,6 +70,7 @@ describe("getExpenses (localStorage)", () => {
 describe("addExpense (localStorage)", () => {
   beforeEach(() => {
     localStorage.clear();
+    mockExpenses = [];
   });
 
   it("adds an expense and returns an id", async () => {
@@ -63,6 +94,7 @@ describe("addExpense (localStorage)", () => {
 describe("deleteExpense (localStorage)", () => {
   beforeEach(() => {
     localStorage.clear();
+    mockExpenses = [];
   });
 
   it("removes an expense by id", async () => {

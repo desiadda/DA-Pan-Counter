@@ -106,11 +106,12 @@ export const getTodayShiftSummary = async (userId) => {
     today.setHours(0, 0, 0, 0);
     const q = query(
       collection(db, "shifts"),
-      where("userId", "==", userId),
-      where("openTime", ">=", today.getTime())
+      where("userId", "==", userId)
     );
     const snap = await getDocs(q);
-    const todayShifts = snap.docs.map(d => d.data());
+    const todayShifts = snap.docs
+      .map(d => d.data())
+      .filter((s: any) => s.openTime >= today.getTime());
     if (todayShifts.length === 0) return null;
     const last = todayShifts[todayShifts.length - 1];
     const openCount = todayShifts.filter(s => s.status === "open").length;

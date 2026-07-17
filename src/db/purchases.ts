@@ -1,4 +1,4 @@
-import { collection, doc, setDoc, addDoc, getDocs, getDoc } from "firebase/firestore";
+import { collection, doc, setDoc, addDoc, getDocs, getDoc, runTransaction } from "firebase/firestore";
 import { db, isFirebaseEnabled } from "./config";
 import { logError } from "./errorLog";
 import { getLocalData, setLocalData } from "./storage";
@@ -30,12 +30,106 @@ export const getPurchaseOrders = async () => {
 
 export const savePurchaseOrder = async (order) => {
   try {
-    if (!order.id) {
-      order.status = "pending";
-    }
-
     if (isFirebaseEnabled) {
-      await syncPurchaseToFirebase(order);
+      await runTransaction(db, async (firestoreTx) => {
+        let finalId = order.id;
+        if (!finalId) {
+          const newDocRef = doc(collection(db, "purchases"));
+          finalId = newDocRef.id;
+          order.id = finalId;
+        }
+
+        const docRef = doc(db, "purchases", finalId);
+        
+        if (order.status === "received" && !order.receivedAt) {
+          order.receivedAt = Date.now();
+          for (const item of order.items) {
+            const prodRef = doc(db, "products", item.productId);
+            const prodSnap = await firestoreTx.get(prodRef);
+            if (prodSnap.exists()) {
+              const prod = prodSnap.data();
+              const unitCost = item.isPack ? (item.costPrice / (item.packSize || 20)) : item.costPrice;
+              const unitQty = item.isPack ? item.quantity * (item.packSize || 20) : item.quantity;
+
+              const newBatch = {
+                id: "b_po_" + finalId + "_" + Math.random().toString(36).substring(2),
+                costPrice: unitCost,
+                quantity: unitQty,
+                createdAt: Date.now()
+              };
+
+              const updatedBatches = [...(prod.batches || []), newBatch];
+              const newStock = (prod.stock || 0) + unitQty;
+
+              const updates: any = {
+                batches: updatedBatches,
+                stock: newStock,
+                costPrice: unitCost,
+              };
+
+              if (prod.isCigarette) {
+                if (item.isPack) {
+                  updates.costPricePack = item.costPrice;
+                  updates.stockPack = Math.floor(newStock / (item.packSize || 20));
+                  updates.stockLoose = newStock % (item.packSize || 20);
+                } else {
+                  updates.stockPack = Math.floor(newStock / (prod.packSize || 20));
+                  updates.stockLoose = newStock % (prod.packSize || 20);
+                }
+              }
+
+              firestoreTx.update(prodRef, updates);
+            }
+          }
+
+          // Supplier balance and COH integrations
+          if (order.paymentMode === "Credit" && order.supplierId) {
+            const supRef = doc(db, "suppliers", order.supplierId);
+            const supSnap = await firestoreTx.get(supRef);
+            if (supSnap.exists()) {
+              const supData = supSnap.data();
+              const currentBal = supData.balance || 0;
+              const currentLedger = supData.ledger || [];
+              const newBal = currentBal + order.total;
+              const newLedger = [...currentLedger, {
+                date: Date.now(),
+                type: "Purchase",
+                amount: order.total,
+                referenceId: finalId,
+                description: `Purchase Invoice: ${finalId}`
+              }];
+              firestoreTx.update(supRef, { balance: newBal, ledger: newLedger });
+            }
+          } else if (order.paymentMode === "Cash" && order.createdById) {
+            const balRef = doc(db, "coh_balances", order.createdById);
+            const balSnap = await firestoreTx.get(balRef);
+            const currentCoh = balSnap.exists() ? (balSnap.data().balance || 0) : 0;
+            const newCoh = currentCoh - order.total;
+
+            const cohTxId = "coh_" + Date.now();
+            const cohTxRef = doc(db, "coh_transactions", cohTxId);
+
+            firestoreTx.set(balRef, { balance: newCoh });
+            firestoreTx.set(cohTxRef, {
+              id: cohTxId,
+              type: "expense",
+              fromUserId: order.createdById,
+              fromUserName: order.createdBy || "System",
+              toUserId: "supplier_" + (order.supplierId || ""),
+              toUserName: order.supplier,
+              amount: order.total,
+              sign: "debit",
+              note: `Direct Cash Purchase: ${order.supplier}`,
+              status: "approved",
+              timestamp: Date.now(),
+              approvedAt: Date.now(),
+            });
+          }
+        }
+
+        const { id, ...orderData } = order;
+        firestoreTx.set(docRef, orderData);
+      });
     } else {
       const list = getLocalData(LS_KEY, []);
       if (order.id) {
@@ -56,15 +150,102 @@ export const savePurchaseOrder = async (order) => {
 export const receivePurchaseOrder = async (orderId) => {
   try {
     if (isFirebaseEnabled) {
-      const docRef = doc(db, "purchases", orderId);
-      const docSnap = await getDoc(docRef);
-      if (!docSnap.exists()) return;
-      const order = { id: docSnap.id, ...docSnap.data() };
-      if (order.status !== "pending") return;
+      await runTransaction(db, async (firestoreTx) => {
+        const docRef = doc(db, "purchases", orderId);
+        const docSnap = await firestoreTx.get(docRef);
+        if (!docSnap.exists()) return;
+        const order = { id: docSnap.id, ...docSnap.data() };
+        if (order.status !== "pending") return;
 
-      order.status = "received";
-      order.receivedAt = Date.now();
-      await syncPurchaseToFirebase(order);
+        order.status = "received";
+        order.receivedAt = Date.now();
+
+        for (const item of order.items) {
+          const prodRef = doc(db, "products", item.productId);
+          const prodSnap = await firestoreTx.get(prodRef);
+          if (prodSnap.exists()) {
+            const prod = prodSnap.data();
+            const unitCost = item.isPack ? (item.costPrice / (item.packSize || 20)) : item.costPrice;
+            const unitQty = item.isPack ? item.quantity * (item.packSize || 20) : item.quantity;
+
+            const newBatch = {
+              id: "b_po_" + order.id + "_" + Math.random().toString(36).substring(2),
+              costPrice: unitCost,
+              quantity: unitQty,
+              createdAt: Date.now()
+            };
+
+            const updatedBatches = [...(prod.batches || []), newBatch];
+            const newStock = (prod.stock || 0) + unitQty;
+
+            const updates: any = {
+              batches: updatedBatches,
+              stock: newStock,
+              costPrice: unitCost,
+            };
+
+            if (prod.isCigarette) {
+              if (item.isPack) {
+                updates.costPricePack = item.costPrice;
+                updates.stockPack = Math.floor(newStock / (item.packSize || 20));
+                updates.stockLoose = newStock % (item.packSize || 20);
+              } else {
+                updates.stockPack = Math.floor(newStock / (prod.packSize || 20));
+                updates.stockLoose = newStock % (prod.packSize || 20);
+              }
+            }
+
+            firestoreTx.update(prodRef, updates);
+          }
+        }
+
+        // Supplier balance and COH integrations
+        if (order.paymentMode === "Credit" && order.supplierId) {
+          const supRef = doc(db, "suppliers", order.supplierId);
+          const supSnap = await firestoreTx.get(supRef);
+          if (supSnap.exists()) {
+            const supData = supSnap.data();
+            const currentBal = supData.balance || 0;
+            const currentLedger = supData.ledger || [];
+            const newBal = currentBal + order.total;
+            const newLedger = [...currentLedger, {
+              date: Date.now(),
+              type: "Purchase",
+              amount: order.total,
+              referenceId: orderId,
+              description: `Purchase Invoice: ${orderId}`
+            }];
+            firestoreTx.update(supRef, { balance: newBal, ledger: newLedger });
+          }
+        } else if (order.paymentMode === "Cash" && order.createdById) {
+          const balRef = doc(db, "coh_balances", order.createdById);
+          const balSnap = await firestoreTx.get(balRef);
+          const currentCoh = balSnap.exists() ? (balSnap.data().balance || 0) : 0;
+          const newCoh = currentCoh - order.total;
+
+          const cohTxId = "coh_" + Date.now();
+          const cohTxRef = doc(db, "coh_transactions", cohTxId);
+
+          firestoreTx.set(balRef, { balance: newCoh });
+          firestoreTx.set(cohTxRef, {
+            id: cohTxId,
+            type: "expense",
+            fromUserId: order.createdById,
+            fromUserName: order.createdBy || "System",
+            toUserId: "supplier_" + (order.supplierId || ""),
+            toUserName: order.supplier,
+            amount: order.total,
+            sign: "debit",
+            note: `PO Cash Payment: ${order.supplier}`,
+            status: "approved",
+            timestamp: Date.now(),
+            approvedAt: Date.now(),
+          });
+        }
+
+        const { id, ...orderData } = order;
+        firestoreTx.set(docRef, orderData);
+      });
     } else {
       const list = getLocalData(LS_KEY, []);
       const order = list.find(o => o.id === orderId);
