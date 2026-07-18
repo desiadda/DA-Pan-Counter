@@ -40,12 +40,40 @@ export const savePurchaseOrder = async (order) => {
         }
 
         const docRef = doc(db, "purchases", finalId);
-        
+
+        // --- READ PHASE ---
+
+        // A. Read all product states if receiving
+        const prodDataList = [];
         if (order.status === "received" && !order.receivedAt) {
-          order.receivedAt = Date.now();
           for (const item of order.items) {
             const prodRef = doc(db, "products", item.productId);
             const prodSnap = await firestoreTx.get(prodRef);
+            prodDataList.push({ item, prodRef, prodSnap });
+          }
+        }
+
+        // B. Read supplier state if Credit and receiving
+        let supRef = null;
+        let supSnap = null;
+        if (order.status === "received" && !order.receivedAt && order.paymentMode === "Credit" && order.supplierId) {
+          supRef = doc(db, "suppliers", order.supplierId);
+          supSnap = await firestoreTx.get(supRef);
+        }
+
+        // C. Read cashier COH state if Cash and receiving
+        let balRef = null;
+        let balSnap = null;
+        if (order.status === "received" && !order.receivedAt && order.paymentMode === "Cash" && order.createdById) {
+          balRef = doc(db, "coh_balances", order.createdById);
+          balSnap = await firestoreTx.get(balRef);
+        }
+
+        // --- WRITE PHASE ---
+        
+        if (order.status === "received" && !order.receivedAt) {
+          order.receivedAt = Date.now();
+          for (const { item, prodRef, prodSnap } of prodDataList) {
             if (prodSnap.exists()) {
               const prod = prodSnap.data();
               const unitCost = item.isPack ? (item.costPrice / (item.packSize || 20)) : item.costPrice;
@@ -83,26 +111,20 @@ export const savePurchaseOrder = async (order) => {
           }
 
           // Supplier balance and COH integrations
-          if (order.paymentMode === "Credit" && order.supplierId) {
-            const supRef = doc(db, "suppliers", order.supplierId);
-            const supSnap = await firestoreTx.get(supRef);
-            if (supSnap.exists()) {
-              const supData = supSnap.data();
-              const currentBal = supData.balance || 0;
-              const currentLedger = supData.ledger || [];
-              const newBal = currentBal + order.total;
-              const newLedger = [...currentLedger, {
-                date: Date.now(),
-                type: "Purchase",
-                amount: order.total,
-                referenceId: finalId,
-                description: `Purchase Invoice: ${finalId}`
-              }];
-              firestoreTx.update(supRef, { balance: newBal, ledger: newLedger });
-            }
-          } else if (order.paymentMode === "Cash" && order.createdById) {
-            const balRef = doc(db, "coh_balances", order.createdById);
-            const balSnap = await firestoreTx.get(balRef);
+          if (order.paymentMode === "Credit" && supRef && supSnap && supSnap.exists()) {
+            const supData = supSnap.data();
+            const currentBal = supData.balance || 0;
+            const currentLedger = supData.ledger || [];
+            const newBal = currentBal + order.total;
+            const newLedger = [...currentLedger, {
+              date: Date.now(),
+              type: "Purchase",
+              amount: order.total,
+              referenceId: finalId,
+              description: `Purchase Invoice: ${finalId}`
+            }];
+            firestoreTx.update(supRef, { balance: newBal, ledger: newLedger });
+          } else if (order.paymentMode === "Cash" && balRef && balSnap) {
             const currentCoh = balSnap.exists() ? (balSnap.data().balance || 0) : 0;
             const newCoh = currentCoh - order.total;
 
@@ -160,9 +182,35 @@ export const receivePurchaseOrder = async (orderId) => {
         order.status = "received";
         order.receivedAt = Date.now();
 
+        // --- READ PHASE ---
+
+        // A. Read all product states
+        const prodDataList = [];
         for (const item of order.items) {
           const prodRef = doc(db, "products", item.productId);
           const prodSnap = await firestoreTx.get(prodRef);
+          prodDataList.push({ item, prodRef, prodSnap });
+        }
+
+        // B. Read supplier state if Credit
+        let supRef = null;
+        let supSnap = null;
+        if (order.paymentMode === "Credit" && order.supplierId) {
+          supRef = doc(db, "suppliers", order.supplierId);
+          supSnap = await firestoreTx.get(supRef);
+        }
+
+        // C. Read cashier COH state if Cash
+        let balRef = null;
+        let balSnap = null;
+        if (order.paymentMode === "Cash" && order.createdById) {
+          balRef = doc(db, "coh_balances", order.createdById);
+          balSnap = await firestoreTx.get(balRef);
+        }
+
+        // --- WRITE PHASE ---
+
+        for (const { item, prodRef, prodSnap } of prodDataList) {
           if (prodSnap.exists()) {
             const prod = prodSnap.data();
             const unitCost = item.isPack ? (item.costPrice / (item.packSize || 20)) : item.costPrice;
@@ -200,26 +248,20 @@ export const receivePurchaseOrder = async (orderId) => {
         }
 
         // Supplier balance and COH integrations
-        if (order.paymentMode === "Credit" && order.supplierId) {
-          const supRef = doc(db, "suppliers", order.supplierId);
-          const supSnap = await firestoreTx.get(supRef);
-          if (supSnap.exists()) {
-            const supData = supSnap.data();
-            const currentBal = supData.balance || 0;
-            const currentLedger = supData.ledger || [];
-            const newBal = currentBal + order.total;
-            const newLedger = [...currentLedger, {
-              date: Date.now(),
-              type: "Purchase",
-              amount: order.total,
-              referenceId: orderId,
-              description: `Purchase Invoice: ${orderId}`
-            }];
-            firestoreTx.update(supRef, { balance: newBal, ledger: newLedger });
-          }
-        } else if (order.paymentMode === "Cash" && order.createdById) {
-          const balRef = doc(db, "coh_balances", order.createdById);
-          const balSnap = await firestoreTx.get(balRef);
+        if (order.paymentMode === "Credit" && supRef && supSnap && supSnap.exists()) {
+          const supData = supSnap.data();
+          const currentBal = supData.balance || 0;
+          const currentLedger = supData.ledger || [];
+          const newBal = currentBal + order.total;
+          const newLedger = [...currentLedger, {
+            date: Date.now(),
+            type: "Purchase",
+            amount: order.total,
+            referenceId: orderId,
+            description: `Purchase Invoice: ${orderId}`
+          }];
+          firestoreTx.update(supRef, { balance: newBal, ledger: newLedger });
+        } else if (order.paymentMode === "Cash" && balRef && balSnap) {
           const currentCoh = balSnap.exists() ? (balSnap.data().balance || 0) : 0;
           const newCoh = currentCoh - order.total;
 

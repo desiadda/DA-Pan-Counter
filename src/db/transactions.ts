@@ -27,14 +27,31 @@ export const addTransaction = async (transaction) => {
         const txId = newTxRef.id;
         transaction.id = txId;
 
-        // 2. If Cash payment, adjust Cash on Hand balance in same transaction
+        // --- READ PHASE ---
+
+        // A. Read cashier COH balance if Cash
+        let currentCohBal = 0;
+        let balRef = null;
         if (transaction.paymentMode === "Cash") {
           const cashierId = transaction.cashierId || "system";
-          const balRef = doc(db, "coh_balances", cashierId);
+          balRef = doc(db, "coh_balances", cashierId);
           const balSnap = await firestoreTx.get(balRef);
-          const currentBal = balSnap.exists() ? (balSnap.data().balance || 0) : 0;
-          const newBal = currentBal + transaction.totalAmount;
+          currentCohBal = balSnap.exists() ? (balSnap.data().balance || 0) : 0;
+        }
 
+        // B. Read all product states
+        const prodDataList = [];
+        for (let item of transaction.items) {
+          const prodRef = doc(db, "products", item.realProductId || item.productId);
+          const prodSnap = await firestoreTx.get(prodRef);
+          prodDataList.push({ item, prodRef, prodSnap });
+        }
+
+        // --- WRITE PHASE ---
+
+        // A. Adjust Cash on Hand
+        if (transaction.paymentMode === "Cash" && balRef) {
+          const newBal = currentCohBal + transaction.totalAmount;
           const cohTxId = "coh_" + Date.now();
           const cohTxRef = doc(db, "coh_transactions", cohTxId);
 
@@ -44,7 +61,7 @@ export const addTransaction = async (transaction) => {
             type: "sale",
             fromUserId: "customer",
             fromUserName: "Customer",
-            toUserId: cashierId,
+            toUserId: transaction.cashierId || "system",
             toUserName: transaction.cashierName || "Cashier",
             amount: transaction.totalAmount,
             sign: "credit",
@@ -55,11 +72,9 @@ export const addTransaction = async (transaction) => {
           });
         }
 
-        // 3. Update stock levels for each item and deduct from batches (FIFO)
+        // B. Update stock levels for each item and deduct from batches (FIFO)
         let totalCostOfSales = 0;
-        for (let item of transaction.items) {
-          const prodRef = doc(db, "products", item.realProductId || item.productId);
-          const prodSnap = await firestoreTx.get(prodRef);
+        for (const { item, prodRef, prodSnap } of prodDataList) {
           if (prodSnap.exists()) {
             const prodData = prodSnap.data();
             const currentStock = prodData.stock || 0;
@@ -109,7 +124,7 @@ export const addTransaction = async (transaction) => {
         }
         transaction.totalCostOfSales = totalCostOfSales;
 
-        // 4. Save the transaction invoice
+        // C. Save the transaction invoice
         firestoreTx.set(newTxRef, transaction);
 
         return txId;
@@ -153,14 +168,31 @@ export const returnTransaction = async (originalTx, returnItems, reason, userId,
         const returnTxId = "ret_" + Date.now();
         const returnTxRef = doc(db, "transactions", returnTxId);
 
-        // 1. If Cash payment, deduct from cashier's Cash on Hand balance in same transaction
+        // --- READ PHASE ---
+
+        // A. Read cashier COH balance if Cash
+        let currentCohBal = 0;
+        let balRef = null;
         if (originalTx.paymentMode === "Cash") {
           const cashierId = userId || originalTx.cashierId || "system";
-          const balRef = doc(db, "coh_balances", cashierId);
+          balRef = doc(db, "coh_balances", cashierId);
           const balSnap = await firestoreTx.get(balRef);
-          const currentBal = balSnap.exists() ? (balSnap.data().balance || 0) : 0;
-          const newBal = currentBal - returnAmount;
+          currentCohBal = balSnap.exists() ? (balSnap.data().balance || 0) : 0;
+        }
 
+        // B. Read all product states
+        const prodDataList = [];
+        for (const item of returnItems) {
+          const prodRef = doc(db, "products", item.realProductId || item.productId);
+          const prodSnap = await firestoreTx.get(prodRef);
+          prodDataList.push({ item, prodRef, prodSnap });
+        }
+
+        // --- WRITE PHASE ---
+
+        // A. Adjust Cash on Hand
+        if (originalTx.paymentMode === "Cash" && balRef) {
+          const newBal = currentCohBal - returnAmount;
           const cohTxId = "coh_" + Date.now();
           const cohTxRef = doc(db, "coh_transactions", cohTxId);
 
@@ -168,7 +200,7 @@ export const returnTransaction = async (originalTx, returnItems, reason, userId,
           firestoreTx.set(cohTxRef, {
             id: cohTxId,
             type: "expense",
-            fromUserId: cashierId,
+            fromUserId: userId || originalTx.cashierId || "system",
             fromUserName: userName || originalTx.cashierName || "System",
             toUserId: "customer",
             toUserName: "Customer",
@@ -181,10 +213,8 @@ export const returnTransaction = async (originalTx, returnItems, reason, userId,
           });
         }
 
-        // 2. Restore stock levels and create return batches
-        for (const item of returnItems) {
-          const prodRef = doc(db, "products", item.realProductId || item.productId);
-          const prodSnap = await firestoreTx.get(prodRef);
+        // B. Restore stock levels and create return batches
+        for (const { item, prodRef, prodSnap } of prodDataList) {
           if (prodSnap.exists()) {
             const prod = prodSnap.data();
             const unitQty = item.isPack ? item.returnQty * (item.packSize || 20) : item.returnQty;
@@ -215,7 +245,7 @@ export const returnTransaction = async (originalTx, returnItems, reason, userId,
           }
         }
 
-        // 3. Write Return invoice doc
+        // C. Write Return invoice doc
         const returnTx = {
           id: returnTxId,
           originalBillId: originalTx.id,
@@ -265,14 +295,31 @@ export const updateTransactionPaymentMode = async (transactionId, newMode, chang
         const tx = { id: docSnap.id, ...docSnap.data() };
         if (tx.paymentMode === newMode) return;
 
-        // 1. Adjust Cash on Hand if switching to/from Cash
-        if (tx.paymentMode === "Cash") {
-          const cashierId = tx.cashierId || "system";
-          const balRef = doc(db, "coh_balances", cashierId);
-          const balSnap = await firestoreTx.get(balRef);
-          const currentBal = balSnap.exists() ? (balSnap.data().balance || 0) : 0;
-          const newBal = currentBal - tx.totalAmount;
+        // --- READ PHASE ---
 
+        // 1. Read cashier COH balance if switching to/from Cash
+        let currentBal = 0;
+        let balRef = null;
+        if (tx.paymentMode === "Cash" || newMode === "Cash") {
+          const cashierId = tx.cashierId || "system";
+          balRef = doc(db, "coh_balances", cashierId);
+          const balSnap = await firestoreTx.get(balRef);
+          currentBal = balSnap.exists() ? (balSnap.data().balance || 0) : 0;
+        }
+
+        // 2. Read customer credit state if switching to/from Udhaar
+        let custRef = null;
+        let custSnap = null;
+        if ((tx.paymentMode === "Udhaar" || newMode === "Udhaar") && tx.customerId) {
+          custRef = doc(db, "customers", tx.customerId);
+          custSnap = await firestoreTx.get(custRef);
+        }
+
+        // --- WRITE PHASE ---
+
+        // 1. Adjust Cash on Hand
+        if (tx.paymentMode === "Cash" && balRef) {
+          const newBal = currentBal - tx.totalAmount;
           const cohTxId = "coh_" + Date.now();
           const cohTxRef = doc(db, "coh_transactions", cohTxId);
 
@@ -280,7 +327,7 @@ export const updateTransactionPaymentMode = async (transactionId, newMode, chang
           firestoreTx.set(cohTxRef, {
             id: cohTxId,
             type: "expense",
-            fromUserId: cashierId,
+            fromUserId: tx.cashierId || "system",
             fromUserName: tx.cashierName || "System",
             toUserId: "system",
             toUserName: "System",
@@ -291,13 +338,8 @@ export const updateTransactionPaymentMode = async (transactionId, newMode, chang
             timestamp: Date.now(),
             approvedAt: Date.now(),
           });
-        } else if (newMode === "Cash") {
-          const cashierId = tx.cashierId || "system";
-          const balRef = doc(db, "coh_balances", cashierId);
-          const balSnap = await firestoreTx.get(balRef);
-          const currentBal = balSnap.exists() ? (balSnap.data().balance || 0) : 0;
+        } else if (newMode === "Cash" && balRef) {
           const newBal = currentBal + tx.totalAmount;
-
           const cohTxId = "coh_" + Date.now();
           const cohTxRef = doc(db, "coh_transactions", cohTxId);
 
@@ -307,7 +349,7 @@ export const updateTransactionPaymentMode = async (transactionId, newMode, chang
             type: "sale",
             fromUserId: "system",
             fromUserName: "System",
-            toUserId: cashierId,
+            toUserId: tx.cashierId || "system",
             toUserName: tx.cashierName || "System",
             amount: tx.totalAmount,
             sign: "credit",
@@ -318,39 +360,31 @@ export const updateTransactionPaymentMode = async (transactionId, newMode, chang
           });
         }
 
-        // 2. Adjust customer's credit balance if switching to/from Udhaar
-        if (tx.paymentMode === "Udhaar" && tx.customerId) {
-          const custRef = doc(db, "customers", tx.customerId);
-          const custSnap = await firestoreTx.get(custRef);
-          if (custSnap.exists()) {
-            const custData = custSnap.data();
-            const currentBal = custData.balance || 0;
-            const currentLedger = custData.ledger || [];
-            const newBal = currentBal - tx.totalAmount;
-            const newLedger = [...currentLedger, {
-              date: Date.now(),
-              type: "Adjustment",
-              amount: -tx.totalAmount,
-              description: `Payment mode changed from Udhaar to ${newMode} for Bill ${transactionId}`
-            }];
-            firestoreTx.update(custRef, { balance: newBal, ledger: newLedger });
-          }
-        } else if (newMode === "Udhaar" && tx.customerId) {
-          const custRef = doc(db, "customers", tx.customerId);
-          const custSnap = await firestoreTx.get(custRef);
-          if (custSnap.exists()) {
-            const custData = custSnap.data();
-            const currentBal = custData.balance || 0;
-            const currentLedger = custData.ledger || [];
-            const newBal = currentBal + tx.totalAmount;
-            const newLedger = [...currentLedger, {
-              date: Date.now(),
-              type: "Purchase",
-              amount: tx.totalAmount,
-              description: `Payment mode changed from ${tx.paymentMode} to Udhaar for Bill ${transactionId}`
-            }];
-            firestoreTx.update(custRef, { balance: newBal, ledger: newLedger });
-          }
+        // 2. Adjust customer's credit balance
+        if (tx.paymentMode === "Udhaar" && custRef && custSnap && custSnap.exists()) {
+          const custData = custSnap.data();
+          const curCustBal = custData.balance || 0;
+          const currentLedger = custData.ledger || [];
+          const newBal = curCustBal - tx.totalAmount;
+          const newLedger = [...currentLedger, {
+            date: Date.now(),
+            type: "Adjustment",
+            amount: -tx.totalAmount,
+            description: `Payment mode changed from Udhaar to ${newMode} for Bill ${transactionId}`
+          }];
+          firestoreTx.update(custRef, { balance: newBal, ledger: newLedger });
+        } else if (newMode === "Udhaar" && custRef && custSnap && custSnap.exists()) {
+          const custData = custSnap.data();
+          const curCustBal = custData.balance || 0;
+          const currentLedger = custData.ledger || [];
+          const newBal = curCustBal + tx.totalAmount;
+          const newLedger = [...currentLedger, {
+            date: Date.now(),
+            type: "Purchase",
+            amount: tx.totalAmount,
+            description: `Payment mode changed from ${tx.paymentMode} to Udhaar for Bill ${transactionId}`
+          }];
+          firestoreTx.update(custRef, { balance: newBal, ledger: newLedger });
         }
 
         // 3. Update the transaction
