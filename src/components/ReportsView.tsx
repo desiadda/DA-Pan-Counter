@@ -9,7 +9,7 @@ import ReturnModal from "./ReturnModal";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend } from "recharts";
 import { logError } from "../db/errorLog";
 import { db, isFirebaseEnabled } from "../db/config";
-import { writeBatch, doc } from "firebase/firestore";
+import { writeBatch, doc, collection, onSnapshot } from "firebase/firestore";
 
 export default function ReportsView({ initialSubTab, onSubTabChange, user }) {
   const confirm = useConfirmStore((s) => s.confirm);
@@ -161,7 +161,18 @@ export default function ReportsView({ initialSubTab, onSubTabChange, user }) {
   };
 
   const [expenses, setExpenses] = useState([]);
-  useEffect(() => { (async () => { try { const list = await dbService.getExpenses(); setExpenses(list); } catch (err) { logError("TRANSACTION", err.message, err.stack); console.error(err); } })(); }, []);
+  useEffect(() => {
+    if (isFirebaseEnabled && db) {
+      const unsub = onSnapshot(collection(db, "expenses"), (snap) => {
+        setExpenses(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      }, (err) => {
+        logError("REPORTS_SYNC", "Expenses reports listener error: " + err.message, err.stack);
+      });
+      return unsub;
+    } else {
+      dbService.getExpenses().then(setExpenses).catch(console.error);
+    }
+  }, []);
 
   const getDailyExpenses = () => {
     const days = [];
