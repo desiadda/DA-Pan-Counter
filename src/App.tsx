@@ -13,6 +13,8 @@ import COHPanel from "./components/COHPanel";
 import LanguageSwitcher from "./components/LanguageSwitcher";
 import CartBottomSheet from "./components/CartBottomSheet";
 import AppShell from "./components/AppShell";
+import ConfirmDialog from "./components/ConfirmDialog";
+import { useConfirmStore } from "./stores/confirmStore";
 import { getUsers } from "./db/auth";
 import { dbService } from "./firebase";
 import { getCriticalUnreadCount } from "./db/errorLog";
@@ -49,6 +51,7 @@ const navItems = [
 
 function AppContent() {
   const user = useAuthStore((s) => s.user);
+  const confirmState = useConfirmStore();
   const setUser = useAuthStore((s) => s.setUser);
   const init = useAuthStore((s) => s.init);
   const logout = useAuthStore((s) => s.logout);
@@ -369,6 +372,17 @@ function AppContent() {
 
       {showCOH && <ErrorBoundary><COHPanel user={user} users={allUsers} onClose={() => setShowCOH(false)} /></ErrorBoundary>}
       {mobileCartProps && <ErrorBoundary><CartBottomSheet {...mobileCartProps} onClose={closeMobileCart} onCheckout={handleCheckout} /></ErrorBoundary>}
+      
+      <ConfirmDialog
+        open={confirmState.open}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmLabel={confirmState.confirmLabel}
+        cancelLabel={confirmState.cancelLabel}
+        variant={confirmState.variant}
+        onConfirm={confirmState.handleConfirm}
+        onCancel={confirmState.handleCancel}
+      />
     </AppShell>
   );
 }
