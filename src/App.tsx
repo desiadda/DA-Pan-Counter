@@ -10,7 +10,6 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import AuthView from "./components/AuthView";
 import AdminHub from "./components/AdminHub";
 import COHPanel from "./components/COHPanel";
-import ShiftPanel from "./components/ShiftPanel";
 import LanguageSwitcher from "./components/LanguageSwitcher";
 import CartBottomSheet from "./components/CartBottomSheet";
 import AppShell from "./components/AppShell";
@@ -67,8 +66,6 @@ function AppContent() {
 
   const showCOH = useUIStore((s) => s.showCOH);
   const setShowCOH = (show: boolean) => useUIStore.setState({ showCOH: show });
-  const showShift = useUIStore((s) => s.showShift);
-  const setShowShift = (show: boolean) => useUIStore.setState({ showShift: show });
 
   const getTabFromPath = () => {
     const path = location.pathname;
@@ -318,10 +315,6 @@ function AppContent() {
             )}
           </div>
 
-          <button onClick={() => setShowShift(true)} className="shift-badge header-shift-btn" title="Shift Management">
-            <span>🛑</span>
-          </button>
-
           <LanguageSwitcher />
           <button onClick={toggleTheme} className="logout-btn" title="Toggle Dark Mode">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
@@ -375,7 +368,6 @@ function AppContent() {
       </nav>
 
       {showCOH && <ErrorBoundary><COHPanel user={user} users={allUsers} onClose={() => setShowCOH(false)} /></ErrorBoundary>}
-      {showShift && <ErrorBoundary><ShiftPanel user={user} onClose={() => setShowShift(false)} /></ErrorBoundary>}
       {mobileCartProps && <ErrorBoundary><CartBottomSheet {...mobileCartProps} onClose={closeMobileCart} onCheckout={handleCheckout} /></ErrorBoundary>}
     </AppShell>
   );

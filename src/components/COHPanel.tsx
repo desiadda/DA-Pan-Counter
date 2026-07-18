@@ -17,6 +17,39 @@ export default function COHPanel({ user, users, onClose }) {
   const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0]);
   const [endDate, setEndDate] = useState(new Date().toISOString().split("T")[0]);
   const [submitting, setSubmitting] = useState(false);
+  const [physicalCount, setPhysicalCount] = useState("");
+  const [reconcileNote, setReconcileNote] = useState("");
+
+  const handleReconcile = async () => {
+    if (submitting || physicalCount.trim() === "") return;
+    setError("");
+    setMsg("");
+    const entered = parseFloat(physicalCount);
+    if (isNaN(entered) || entered < 0) {
+      alert("Please enter a valid cash amount.");
+      return;
+    }
+    const diff = entered - balance;
+    try {
+      setSubmitting(true);
+      await dbService.adjustBalance(
+        user.id, 
+        diff, 
+        `Physical Verification: ${reconcileNote.trim() || "Regular drawer audit"}${diff !== 0 ? ` (Discrepancy: ${diff < 0 ? "-" : "+"}฿${Math.abs(diff).toFixed(2)})` : ""}`,
+        user.name
+      );
+      alert("Counter cash successfully reconciled!");
+      setPhysicalCount("");
+      setReconcileNote("");
+      setTab("balance");
+      load();
+    } catch (e) {
+      logError("COH", e.message, e.stack);
+      alert("Reconciliation failed: " + e.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const load = () => {
     try {
@@ -300,9 +333,9 @@ export default function COHPanel({ user, users, onClose }) {
         )}
 
         <div style={styles.tabs}>
-          {["balance", "transfer", "pending", "history", "statement"].map(t => (
+          {["balance", "transfer", "pending", "history", "statement", "reconcile"].map(t => (
             <button key={t} onClick={() => setTab(t)} style={{...styles.tab, ...(tab === t ? styles.activeTab : {})}}>
-              {t === "balance" ? "Balance" : t === "transfer" ? "Transfer" : t === "pending" ? `Pending${pending.length > 0 ? ` (${pending.length})` : ""}` : t === "history" ? "History" : "Statement"}
+              {t === "balance" ? "Balance" : t === "transfer" ? "Transfer" : t === "pending" ? `Pending${pending.length > 0 ? ` (${pending.length})` : ""}` : t === "history" ? "History" : t === "statement" ? "Statement" : "Verify Cash"}
             </button>
           ))}
         </div>
@@ -517,6 +550,84 @@ export default function COHPanel({ user, users, onClose }) {
             </div>
           );
         })()}
+
+        {tab === "reconcile" && (
+          <div style={styles.section}>
+            <h3 style={{ fontSize: "0.95rem", fontWeight: "700", color: "var(--text)", marginBottom: "0.75rem" }}>
+              Verify Counter Cash / गल्ला मिलान करें
+            </h3>
+            
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", color: "var(--text-muted)" }}>
+                <span>System Balance (कागजी कैश):</span>
+                <span style={{ fontWeight: "700", color: "var(--text)" }}>฿{balance.toFixed(2)}</span>
+              </div>
+
+              <div className="input-group">
+                <label className="input-label">Actual Drawer Cash / गल्ले में नकद रूपये</label>
+                <input
+                  type="number"
+                  placeholder="Enter physical cash..."
+                  value={physicalCount}
+                  onChange={e => setPhysicalCount(e.target.value)}
+                  className="input-field"
+                />
+              </div>
+
+              <div className="input-group">
+                <label className="input-label">Note / टिप्पणी (optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. End of day matching, change discrepancy..."
+                  value={reconcileNote}
+                  onChange={e => setReconcileNote(e.target.value)}
+                  className="input-field"
+                />
+              </div>
+
+              {physicalCount.trim() !== "" && (() => {
+                const diff = (parseFloat(physicalCount) || 0) - balance;
+                const absDiff = Math.abs(diff);
+                return (
+                  <div style={{ 
+                    padding: "0.75rem", 
+                    borderRadius: "8px", 
+                    backgroundColor: diff === 0 ? "#ecfdf5" : diff < 0 ? "#fef2f2" : "#fef9c3",
+                    border: `1px solid ${diff === 0 ? "#10b981" : diff < 0 ? "#ef4444" : "#eab308"}`,
+                    fontSize: "0.82rem",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "0.25rem"
+                  }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "700" }}>
+                      <span>Difference / अंतर:</span>
+                      <span style={{ color: diff === 0 ? "#10b981" : diff < 0 ? "#ef4444" : "#ca8a04" }}>
+                        {diff === 0 ? "฿0.00 (Perfect Match)" : `${diff < 0 ? "-" : "+"}฿${absDiff.toFixed(2)}`}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: "0.75rem", color: "#64748b" }}>
+                      {diff === 0 
+                        ? "✅ Everything is correct! गल्ला पूरी तरह सही है।" 
+                        : diff < 0 
+                          ? `⚠️ Shortage: You are short of ฿${absDiff.toFixed(2)}! गल्ले में पैसे कम हैं।`
+                          : `📈 Surplus: You have ฿${absDiff.toFixed(2)} extra! गल्ले में पैसे ज़्यादा हैं।`
+                      }
+                    </div>
+                  </div>
+                );
+              })()}
+
+              <button 
+                onClick={handleReconcile}
+                disabled={submitting || physicalCount.trim() === ""}
+                className="btn btn-primary"
+                style={{ width: "100%", padding: "0.6rem", marginTop: "0.5rem" }}
+              >
+                {submitting ? "Saving..." : "Confirm & Reconcile / मिलान पक्का करें"}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
     </ModalPortal>
