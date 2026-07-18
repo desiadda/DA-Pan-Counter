@@ -2,6 +2,7 @@ import { createRoot } from "react-dom/client"
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import App from "./App"
+import GlobalErrorBoundary from "./components/GlobalErrorBoundary"
 import "./index.css"
 
 const queryClient = new QueryClient({
@@ -18,12 +19,14 @@ if (isDark) {
 }
 
 createRoot(document.getElementById("root")!).render(
-  <QueryClientProvider client={queryClient}>
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Navigate to="/pos" replace />} />
-        <Route path="/*" element={<App />} />
-      </Routes>
-    </BrowserRouter>
-  </QueryClientProvider>,
+  <GlobalErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Navigate to="/pos" replace />} />
+          <Route path="/*" element={<App />} />
+        </Routes>
+      </BrowserRouter>
+    </QueryClientProvider>
+  </GlobalErrorBoundary>,
 )
