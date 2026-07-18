@@ -186,19 +186,21 @@ export default function CheckoutModal({
         )}
 
         {paymentMode === "PromptPay" && (
-          <div style={{ ...styles.paymentSection, textAlign: "center", padding: "1rem 0" }}>
-            <div style={{ fontWeight: "bold", color: "#1e3a8a", marginBottom: "0.5rem" }}>
+          <div style={{ ...styles.paymentSection, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "1.5rem", backgroundColor: "#f8fafc", borderRadius: "12px", border: "1px solid #e2e8f0", gap: "0.75rem", marginTop: "1rem" }}>
+            <div style={{ fontWeight: "800", color: "#1e3a8a", fontSize: "0.95rem", letterSpacing: "0.5px" }}>
               PROMPTPAY BANK TRANSFER
             </div>
-            <div style={{ fontSize: "0.85rem", color: "#64748b", marginBottom: "1rem" }}>
-              PromptPay ID: {promptpayNumber}
+            <div style={{ fontSize: "0.85rem", fontWeight: "600", color: "#475569", backgroundColor: "#e2e8f0", padding: "0.25rem 0.75rem", borderRadius: "20px" }}>
+              ID: {promptpayNumber}
             </div>
-            <img
-              src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=promptpay://${promptpayNumber}/${finalTotal.toFixed(2)}`}
-              alt="PromptPay QR Code"
-              style={{ maxWidth: "100%", width: "180px", height: "auto", aspectRatio: 1, borderRadius: "8px", border: "1px solid #cbd5e1" }}
-            />
-            <div style={{ marginTop: "1rem", fontSize: "0.85rem", color: "#64748b" }}>
+            <div style={{ backgroundColor: "#ffffff", padding: "0.75rem", borderRadius: "12px", boxShadow: "0 4px 12px rgba(0,0,0,0.05)", border: "1px solid #cbd5e1", display: "flex", justifyContent: "center", alignItems: "center" }}>
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=promptpay://${promptpayNumber}/${finalTotal.toFixed(2)}`}
+                alt="PromptPay QR Code"
+                style={{ width: "180px", height: "180px", display: "block" }}
+              />
+            </div>
+            <div style={{ fontSize: "0.75rem", color: "#94a3b8", fontStyle: "italic", marginTop: "0.25rem" }}>
               Or enter custom PromptPay ID in settings
             </div>
           </div>
