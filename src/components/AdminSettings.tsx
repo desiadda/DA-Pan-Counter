@@ -7,6 +7,7 @@ import { getErrors, getCategories, getUnreadCount, markAsRead, markAllAsRead, de
 import { logError } from "../db/errorLog";
 import { useDBStore } from "../stores/dbStore";
 import { useAuthStore } from "../stores/authStore";
+import { getUsers } from "../db/auth";
 import { db, isFirebaseEnabled } from "../db/config";
 import { writeBatch, doc } from "firebase/firestore";
 
@@ -40,7 +41,9 @@ export default function AdminSettings({ onBack }) {
     try {
       const hashed = await hashPin(resetConfirmPin.trim());
       const currentUser = useAuthStore.getState().user;
-      if (!currentUser || hashed !== currentUser.pin) {
+      const fullUsers = getUsers();
+      const fullUser = currentUser ? fullUsers.find(u => u.id === currentUser.id) : null;
+      if (!fullUser || hashed !== fullUser.pin) {
         alert("❌ Invalid Admin PIN! Verification failed.");
         return;
       }
