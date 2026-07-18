@@ -95,6 +95,7 @@ Paan shop POS system with billing, inventory, khata (credit accounts), reports, 
 - Use `useAuthStore()`, `useCartStore()`, `useConfirmStore()`, `useLangStore()` directly — no Context
 - `fetch` calls use TanStack Query (staleTime: 30s, retry: 1)
 - Modal state: COH → `useState` in App, Shift → `useState` in App, Confirm → `useConfirmStore`
+- Anti-Caching: Ensure sensitive screens/assets (e.g. `index.html`, `service-worker.js`) enforce `Cache-Control: no-store, no-cache, must-revalidate` headers. Avoid long-term local/browser caching of live data (like COH, Reports, Sessions) to prevent device sync discrepancies.
 
 ## Tests
 ```bash
