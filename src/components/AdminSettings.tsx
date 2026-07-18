@@ -6,6 +6,7 @@ import { useUIStore } from "../stores/uiStore";
 import { getErrors, getCategories, getUnreadCount, markAsRead, markAllAsRead, deleteError, clearErrors } from "../db/errorLog";
 import { logError } from "../db/errorLog";
 import { useDBStore } from "../stores/dbStore";
+import { useAuthStore } from "../stores/authStore";
 import { db, isFirebaseEnabled } from "../db/config";
 import { writeBatch, doc } from "firebase/firestore";
 
@@ -33,6 +34,40 @@ export default function AdminSettings({ onBack }) {
   const customers = useDBStore((s) => s.customers);
 
   const [isRestoring, setIsRestoring] = useState(false);
+  const [resetConfirmPin, setResetConfirmPin] = useState("");
+
+  const handleFactoryReset = async () => {
+    try {
+      const hashed = await hashPin(resetConfirmPin.trim());
+      const currentUser = useAuthStore.getState().user;
+      if (!currentUser || hashed !== currentUser.pin) {
+        alert("❌ Invalid Admin PIN! Verification failed.");
+        return;
+      }
+
+      const ok = await confirm(
+        "Are you absolutely sure you want to trigger a Factory Reset? All database records will be permanently deleted.",
+        { title: "CONFIRM FACTORY RESET", confirmLabel: "DELETE EVERYTHING", variant: "danger" }
+      );
+      if (!ok) return;
+
+      const typedOk = prompt("To confirm, please type 'RESET' below:");
+      if (typedOk !== "RESET") {
+        alert("Reset cancelled. Confirmation text did not match.");
+        return;
+      }
+
+      setIsRestoring(true);
+      await (dbService as any).factoryReset();
+      alert("App successfully reset to factory settings! Reloading...");
+      window.location.reload();
+    } catch (err) {
+      logError("SYSTEM", err.message, err.stack);
+      alert("Failed to reset: " + err.message);
+    } finally {
+      setIsRestoring(false);
+    }
+  };
 
   const handleExportBackup = () => {
     try {
@@ -321,6 +356,32 @@ export default function AdminSettings({ onBack }) {
             📤 Import Restore
             <input type="file" accept=".json" onChange={handleImportBackup} style={{display: "none"}} />
           </label>
+        </div>
+      </div>
+
+      {/* Factory Reset */}
+      <div style={{ ...styles.card, border: "1px solid #fee2e2", backgroundColor: "#fff5f5" }}>
+        <h3 style={{ ...styles.cardHeader, color: "#991b1b", borderBottom: "1px solid #fee2e2" }}>🚨 Factory Reset (फ़ैक्टरी रीसेट)</h3>
+        <p style={{ fontSize: "0.8rem", color: "#b91c1c", marginBottom: "0.75rem", fontWeight: "600" }}>
+          ⚠️ Warning: This will permanently delete all transactions, products, stock history, credit accounts (Udhaar), suppliers, and expenses. The application will be reset to default settings. This cannot be undone.
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+          <input
+            type="password"
+            placeholder="Enter Admin PIN to verify..."
+            value={resetConfirmPin}
+            onChange={e => setResetConfirmPin(e.target.value)}
+            className="input-field"
+            style={{ maxWidth: "240px", fontSize: "0.85rem" }}
+          />
+          <button
+            onClick={handleFactoryReset}
+            disabled={resetConfirmPin.length < 4}
+            className="btn btn-danger"
+            style={{ padding: "0.6rem", alignSelf: "flex-start", opacity: resetConfirmPin.length < 4 ? 0.5 : 1 }}
+          >
+            🗑️ Delete All Data & Reset App
+          </button>
         </div>
       </div>
 

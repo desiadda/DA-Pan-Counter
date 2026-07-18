@@ -73,3 +73,6 @@ export const dbService = {
   recordSupplierPayment,
   migrateLocalDataToFirestore,
 };
+
+import { factoryReset } from "./reset";
+(dbService as any).factoryReset = factoryReset;
