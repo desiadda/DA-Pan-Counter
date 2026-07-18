@@ -117,14 +117,20 @@ export const recordSupplierPayment = async (supplierId, supplierName, amount, pa
         const currentLedger = data.ledger || [];
         const newBal = currentBal - amount;
         const newLedger = [...currentLedger, ledgerEntry];
+
+        let currentCoh = 0;
+        let balRef = null;
+        if (paymentMode === "Cash") {
+          balRef = doc(db, "coh_balances", cashierId);
+          const balSnap = await firestoreTx.get(balRef);
+          currentCoh = balSnap.exists() ? (balSnap.data().balance || 0) : 0;
+        }
+
+        // --- WRITE PHASE ---
         firestoreTx.update(supRef, { balance: newBal, ledger: newLedger });
 
-        if (paymentMode === "Cash") {
-          const balRef = doc(db, "coh_balances", cashierId);
-          const balSnap = await firestoreTx.get(balRef);
-          const currentCoh = balSnap.exists() ? (balSnap.data().balance || 0) : 0;
+        if (paymentMode === "Cash" && balRef) {
           const newCoh = currentCoh - amount;
-
           const cohTxId = "coh_" + Date.now();
           const cohTxRef = doc(db, "coh_transactions", cohTxId);
 
