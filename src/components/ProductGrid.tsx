@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { SkeletonCard } from "./Skeleton";
 
 export default function ProductGrid({ products, onAddToCart }) {
   const [activeCategory, setActiveCategory] = useState("All");
@@ -47,9 +48,12 @@ export default function ProductGrid({ products, onAddToCart }) {
         </div>
       </div>
 
-      <div className="product-grid">
-        {getDisplayProducts().map(p => {
-          const isOutOfStock = p.stock <= 0;
+      {products.length === 0 ? (
+        <SkeletonCard count={8} />
+      ) : (
+        <div className="product-grid">
+          {getDisplayProducts().map(p => {
+            const isOutOfStock = p.stock <= 0;
           const isLowStock = p.stock <= p.lowStockLimit;
 
           return (
@@ -90,6 +94,7 @@ export default function ProductGrid({ products, onAddToCart }) {
           );
         })}
       </div>
+    )}
     </div>
   );
 }
