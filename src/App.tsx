@@ -151,9 +151,10 @@ function AppContent() {
     window.addEventListener("error-logged", onError);
     
     const refreshCOH = () => {
-      if (user?.id) {
-        setCohBalance(dbService.getBalance(user.id));
-        setCohPending(dbService.getPendingCount(user.id));
+      const currentUser = useAuthStore.getState().user;
+      if (currentUser?.id) {
+        setCohBalance(dbService.getBalance(currentUser.id));
+        setCohPending(dbService.getPendingCount(currentUser.id));
       }
     };
     window.addEventListener("coh-changed", refreshCOH);

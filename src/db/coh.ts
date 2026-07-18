@@ -33,6 +33,8 @@ export function initCOHListener() {
     });
     saveBalancesRaw(balances);
     window.dispatchEvent(new CustomEvent("coh-changed"));
+  }, (err) => {
+    logError("COH_SYNC", "Balances listener error: " + err.message, err.stack);
   });
 
   onSnapshot(collection(db, "coh_transactions"), (snapshot) => {
@@ -43,6 +45,8 @@ export function initCOHListener() {
     txs.sort((a, b) => b.timestamp - a.timestamp);
     saveTransactionsRaw(txs);
     window.dispatchEvent(new CustomEvent("coh-changed"));
+  }, (err) => {
+    logError("COH_SYNC", "Transactions listener error: " + err.message, err.stack);
   });
 }
 
