@@ -50,8 +50,17 @@ async function saveUsers(users) {
 
 async function migrateOldPins() {
   try {
-    const existing = getUsers();
-    if (existing.length > 0) return;
+    if (isFirebaseEnabled) {
+      const snap = await getDocs(collection(db, "users"));
+      if (!snap.empty) {
+        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setLocalData(LS_KEYS.USERS, list);
+        return;
+      }
+    } else {
+      const existing = getUsers();
+      if (existing.length > 0) return;
+    }
 
     const users = [];
     const adminRaw = localStorage.getItem(LS_KEYS.ADMIN_PIN);
@@ -78,7 +87,7 @@ async function migrateOldPins() {
       permissions: { ...DEFAULT_PERMISSIONS },
     });
 
-    saveUsers(users);
+    await saveUsers(users);
   } catch (err) {
     logError("AUTH", err.message, err.stack);
     console.error("migrateOldPins: Migration error", err);
@@ -90,12 +99,31 @@ export const login = async (email, password) => {
   try {
     await migrateOldPins();
 
-    const users = getUsers();
+    let users = [];
+    if (isFirebaseEnabled) {
+      const snap = await getDocs(collection(db, "users"));
+      users = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setLocalData(LS_KEYS.USERS, users);
+    } else {
+      users = getUsers();
+    }
+
     for (const u of users) {
       if (await verifyPin(password, u.pin)) {
         const sessionId = Math.random().toString(36).substring(2) + Date.now().toString(36);
+        
+        if (isFirebaseEnabled) {
+          const userRef = doc(db, "users", u.id);
+          await setDoc(userRef, { sessionId }, { merge: true });
+        }
+        
         u.sessionId = sessionId;
-        await saveUsers(users);
+        const localUsers = getUsers();
+        const localIdx = localUsers.findIndex(lu => lu.id === u.id);
+        if (localIdx !== -1) {
+          localUsers[localIdx].sessionId = sessionId;
+          setLocalData(LS_KEYS.USERS, localUsers);
+        }
 
         const user = {
           id: u.id,
@@ -118,8 +146,15 @@ export const login = async (email, password) => {
         const updatedHash = await hashPin(password);
         users[idx].pin = updatedHash;
         const sessionId = Math.random().toString(36).substring(2) + Date.now().toString(36);
+        
+        if (isFirebaseEnabled) {
+          const userRef = doc(db, "users", users[idx].id);
+          await setDoc(userRef, { pin: updatedHash, sessionId }, { merge: true });
+        }
+        
         users[idx].sessionId = sessionId;
-        await saveUsers(users);
+        setLocalData(LS_KEYS.USERS, users);
+
         const u = users[idx];
         const user = {
           id: u.id,
