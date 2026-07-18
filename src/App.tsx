@@ -93,6 +93,7 @@ function AppContent() {
   const [lowStockCount, setLowStockCount] = useState(0);
   const [criticalErrors, setCriticalErrors] = useState(getCriticalUnreadCount());
   const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [showNotifDropdown, setShowNotifDropdown] = useState(false);
 
   const activeTabRef = useRef(activeTab);
   useEffect(() => {
@@ -265,15 +266,57 @@ function AppContent() {
             {cohPending > 0 && <span className="coh-pending-dot">{cohPending}</span>}
           </button>
 
-          {(lowStockCount > 0 || (user.permissions?.settings && criticalErrors > 0)) && (
-            <button onClick={() => {
-              if (lowStockCount > 0) { navigate("/inventory", { replace: true }); }
-              else { navigate("/admin/errors", { replace: true }); }
-            }} className="notif-badge" title={`${lowStockCount} low stock, ${criticalErrors} errors`}>
+          <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+            <button onClick={() => setShowNotifDropdown(prev => !prev)} className="notif-badge" title="Notifications">
               <span>🔔</span>
-              <span className="notif-count">{lowStockCount + criticalErrors}</span>
+              {(lowStockCount + criticalErrors + cohPending) > 0 && (
+                <span className="notif-count">{lowStockCount + criticalErrors + cohPending}</span>
+              )}
             </button>
-          )}
+
+            {showNotifDropdown && (
+              <>
+                <div style={{ position: "fixed", inset: 0, zIndex: 998 }} onClick={() => setShowNotifDropdown(false)} />
+                <div className="notif-dropdown">
+                  <div className="notif-dropdown-header">Notifications</div>
+                  <div className="notif-dropdown-list">
+                    {lowStockCount > 0 && (
+                      <div className="notif-dropdown-item" onClick={() => { navigate("/inventory", { replace: true }); setShowNotifDropdown(false); }}>
+                        <span style={{ fontSize: "1.1rem" }}>⚠️</span>
+                        <div>
+                          <div className="notif-dropdown-title">Low Stock Warning</div>
+                          <div className="notif-dropdown-desc">{lowStockCount} products are running low on stock.</div>
+                        </div>
+                      </div>
+                    )}
+                    {user.permissions?.settings && criticalErrors > 0 && (
+                      <div className="notif-dropdown-item" onClick={() => { navigate("/admin/errors", { replace: true }); setShowNotifDropdown(false); }}>
+                        <span style={{ fontSize: "1.1rem" }}>❌</span>
+                        <div>
+                          <div className="notif-dropdown-title">System Error Logs</div>
+                          <div className="notif-dropdown-desc">{criticalErrors} unread critical error logs.</div>
+                        </div>
+                      </div>
+                    )}
+                    {cohPending > 0 && (
+                      <div className="notif-dropdown-item" onClick={() => { setShowCOH(true); setShowNotifDropdown(false); }}>
+                        <span style={{ fontSize: "1.1rem" }}>💰</span>
+                        <div>
+                          <div className="notif-dropdown-title">Pending Transfers</div>
+                          <div className="notif-dropdown-desc">{cohPending} cash on hand transfers pending approval.</div>
+                        </div>
+                      </div>
+                    )}
+                    {lowStockCount === 0 && (!user.permissions?.settings || criticalErrors === 0) && cohPending === 0 && (
+                      <div style={{ padding: "1.25rem 1rem", textAlign: "center", color: "#64748b", fontSize: "0.82rem" }}>
+                        🎉 All caught up! No notifications.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
 
           <button onClick={() => setShowShift(true)} className="shift-badge header-shift-btn" title="Shift Management">
             <span>🛑</span>
