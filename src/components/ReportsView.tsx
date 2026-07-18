@@ -710,7 +710,10 @@ export default function ReportsView({ initialSubTab, onSubTabChange, user }) {
                         <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
                           <select value={editingModeVal} onChange={e => setEditingModeVal(e.target.value)} style={{ fontSize: "0.7rem", padding: "2px 4px", borderRadius: "4px", border: "1px solid #cbd5e1", fontFamily: "inherit" }}>
                             <option value="">Change to...</option>
-                            {["Cash", "PromptPay", "Bank Transfer", "Udhaar"].filter(m => m !== tx.paymentMode).map(m => <option key={m} value={m}>{m}</option>)}
+                            {["Cash", "PromptPay", "Bank Transfer", "Udhaar"]
+                              .filter(m => m !== tx.paymentMode)
+                              .filter(m => m !== "Udhaar" || !!tx.customerId)
+                              .map(m => <option key={m} value={m}>{m}</option>)}
                           </select>
                           <button onClick={() => handleEditMode(tx.id)} disabled={!editingModeVal} className="btn btn-primary" style={{padding: "2px 6px", fontSize: "0.65rem", borderRadius: "4px"}}>Save</button>
                           <button onClick={() => setEditingModeTx(null)} className="btn btn-outline" style={{padding: "2px 6px", fontSize: "0.65rem", borderRadius: "4px"}}>Cancel</button>
