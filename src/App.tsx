@@ -129,6 +129,7 @@ function AppContent() {
     let unsubProducts = () => {};
     let unsubCustomers = () => {};
     let unsubTransactions = () => {};
+    let unsubPaymentModes = () => {};
 
     if (isFirebaseEnabled && db) {
       unsubProducts = onSnapshot(collection(db, "products"), (snap) => {
@@ -146,6 +147,19 @@ function AppContent() {
         const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         list.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
         useDBStore.getState().setTransactions(list);
+      });
+
+      unsubPaymentModes = onSnapshot(collection(db, "payment_modes"), (snap) => {
+        if (snap.empty) {
+          dbService.getPaymentModes();
+        } else {
+          const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          useDBStore.getState().setPaymentModes(list);
+        }
+      });
+    } else {
+      dbService.getPaymentModes().then(list => {
+        useDBStore.getState().setPaymentModes(list);
       });
     }
 
@@ -191,6 +205,7 @@ function AppContent() {
       unsubProducts();
       unsubCustomers();
       unsubTransactions();
+      unsubPaymentModes();
       window.removeEventListener("error-logged", onError);
       window.removeEventListener("coh-changed", refreshCOH);
       window.removeEventListener("users-changed", refreshUsers);

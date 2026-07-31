@@ -3,9 +3,11 @@ import { dbService } from "../firebase";
 import { db, isFirebaseEnabled } from "../db/config";
 import { collection, onSnapshot } from "firebase/firestore";
 import { useLangStore } from "../stores/langStore";
+import { useDBStore } from "../stores/dbStore";
 
 export default function PurchaseOrders() {
   const lang = useLangStore((s) => s.lang);
+  const paymentModes = useDBStore((s) => s.paymentModes);
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
@@ -245,9 +247,11 @@ function PurchaseOrderForm({ products, suppliers, orders, isDirect, onSave, onCa
         <div style={{ flex: 1 }}>
           <label className="input-label">Payment Mode</label>
           <select value={paymentMode} onChange={e => setPaymentMode(e.target.value)} className="input-field" style={{ fontFamily: "inherit" }}>
-            <option value="Cash">Cash (COH)</option>
-            <option value="Credit">Credit (Khata)</option>
-            <option value="Bank Transfer">Bank Transfer</option>
+            {paymentModes.filter(m => m.enabled).map(m => (
+              <option key={m.id} value={m.id === "Udhaar" ? "Credit" : m.id}>
+                {m.id === "Udhaar" ? "Credit (Khata)" : m.id === "Cash" ? "Cash (COH)" : m.name}
+              </option>
+            ))}
           </select>
         </div>
       </div>

@@ -67,7 +67,11 @@ export const dbService = {
   updateSupplierBalance,
   recordSupplierPayment,
   migrateLocalDataToFirestore,
+  getPaymentModes,
+  savePaymentMode,
+  deletePaymentMode,
 };
 
+import { getPaymentModes, savePaymentMode, deletePaymentMode } from "./paymentModes";
 import { factoryReset } from "./reset";
 (dbService as any).factoryReset = factoryReset;

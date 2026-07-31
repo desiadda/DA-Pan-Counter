@@ -8,6 +8,7 @@ import ReminderModal from "./ReminderModal";
 
 export default function KhataView({ subPath, onNavigate }) {
   const customers = useDBStore((s) => s.customers);
+  const paymentModes = useDBStore((s) => s.paymentModes);
   const user = useAuthStore((s) => s.user);
   const [selectedCust, setSelectedCust] = useState(null);
   const [payAmount, setPayAmount] = useState("");
@@ -183,9 +184,9 @@ export default function KhataView({ subPath, onNavigate }) {
                     placeholder="Enter amount to pay" className="input-field" style={{ flex: 1, minWidth: "120px" }} />
                   
                   <select value={paymentMode} onChange={(e) => setPaymentMode(e.target.value)} className="input-field" style={{ width: "auto" }}>
-                    <option value="Cash">💵 Cash</option>
-                    <option value="PromptPay">📱 PromptPay</option>
-                    <option value="Bank Transfer">🏦 Bank Transfer</option>
+                    {paymentModes.filter(m => m.enabled && m.id !== "Udhaar").map(m => (
+                      <option key={m.id} value={m.id}>{m.name}</option>
+                    ))}
                   </select>
 
                   <button type="button" onClick={() => setPayAmount(selectedCust.balance.toString())}

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useDBStore } from "../stores/dbStore";
 import { dbService } from "../firebase";
 import { useConfirmStore } from "../stores/confirmStore";
 import { useUIStore } from "../stores/uiStore";
@@ -99,6 +100,9 @@ export default function ReportsView({ initialSubTab, onSubTabChange, user }) {
   const [taxEnabled, setTaxEnabled] = useState(localStorage.getItem("pan_tax_enabled") === "true");
   const [taxRate, setTaxRate] = useState(localStorage.getItem("pan_tax_rate") || "7");
   const [firebaseConfigInput, setFirebaseConfigInput] = useState(JSON.stringify(dbService.getConfig(), null, 2));
+  
+  const paymentModes = useDBStore((s) => s.paymentModes);
+  const [newModeName, setNewModeName] = useState("");
 
   useEffect(() => { loadData(); }, []);
 
@@ -1059,6 +1063,131 @@ export default function ReportsView({ initialSubTab, onSubTabChange, user }) {
               </div>
             </div>
           </div>
+          {/* Payment Modes */}
+          <div style={styles.reportCard}>
+            <h3 style={styles.cardHeader}>💳 Payment Modes</h3>
+            <p style={{fontSize: "0.8rem", color: "#64748b", marginBottom: "0.75rem"}}>
+              Toggle, add, upload QR code images, or delete payment modes.
+            </p>
+            <div style={{display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1rem"}}>
+              {paymentModes.map((mode) => (
+                <div key={mode.id} style={{display: "flex", flexDirection: "column", padding: "0.75rem", backgroundColor: "#f8fafc", borderRadius: "8px", border: "1px solid #cbd5e1", gap: "0.5rem"}}>
+                  <div style={{display: "flex", justifyContent: "space-between", alignItems: "center"}}>
+                    <div>
+                      <span style={{fontWeight: "bold", color: "#1e293b"}}>{mode.name}</span>
+                      {mode.isSystem && <span style={{fontSize: "0.75rem", color: "#64748b", marginLeft: "0.5rem"}}>(System Mode)</span>}
+                    </div>
+                    <div style={{display: "flex", gap: "0.5rem", alignItems: "center"}}>
+                      <label style={{fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "0.25rem", cursor: "pointer"}}>
+                        <input
+                          type="checkbox"
+                          checked={mode.enabled}
+                          disabled={mode.id === "Cash" || mode.id === "Udhaar"}
+                          onChange={async (e) => {
+                            await dbService.savePaymentMode({ ...mode, enabled: e.target.checked });
+                          }}
+                        />
+                        Enabled
+                      </label>
+                      {!mode.isSystem && (
+                        <button
+                          onClick={async () => {
+                            if (window.confirm(`Are you sure you want to delete ${mode.name}?`)) {
+                              await dbService.deletePaymentMode(mode.id);
+                            }
+                          }}
+                          className="btn btn-outline"
+                          style={{padding: "2px 6px", fontSize: "0.7rem", color: "#dc2626", borderColor: "#dc2626"}}
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{display: "flex", alignItems: "center", gap: "1rem"}}>
+                    <div style={{flex: 1}}>
+                      <label className="input-label" style={{fontSize: "0.75rem", marginBottom: "2px"}}>Upload QR Code</label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onload = async (ev) => {
+                            const base64 = ev.target?.result as string;
+                            if (base64.length > 3_000_000) {
+                              alert("QR Image is too large! Please use a smaller file under ~3MB.");
+                              return;
+                            }
+                            await dbService.savePaymentMode({ ...mode, qrCode: base64 });
+                            alert("QR Code updated successfully!");
+                          };
+                          reader.readAsDataURL(file);
+                        }}
+                        style={{fontSize: "0.75rem"}}
+                      />
+                    </div>
+                    {mode.qrCode && (
+                      <div style={{display: "flex", alignItems: "center", gap: "0.25rem"}}>
+                        <img src={mode.qrCode} alt="QR Preview" style={{width: "40px", height: "40px", objectFit: "contain", border: "1px solid #cbd5e1", borderRadius: "4px"}} />
+                        <button
+                          onClick={async () => {
+                            await dbService.savePaymentMode({ ...mode, qrCode: "" });
+                          }}
+                          style={{border: "none", background: "none", color: "#dc2626", cursor: "pointer", fontSize: "0.75rem"}}
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Add Payment Mode Form */}
+            <div style={{padding: "0.75rem", backgroundColor: "#eff6ff", borderRadius: "8px", border: "1px solid #bfdbfe", display: "flex", flexDirection: "column", gap: "0.5rem"}}>
+              <h4 style={{fontSize: "0.85rem", fontWeight: "bold", color: "#1e40af", margin: 0}}>Add Custom Payment Mode</h4>
+              <div style={{display: "flex", gap: "0.5rem"}}>
+                <input
+                  type="text"
+                  placeholder="e.g. GPay, Card, Gulla..."
+                  value={newModeName}
+                  onChange={(e) => setNewModeName(e.target.value)}
+                  className="input-field"
+                  style={{flex: 1, fontSize: "0.8rem", padding: "0.4rem"}}
+                />
+                <button
+                  onClick={async () => {
+                    const name = newModeName.trim();
+                    if (!name) return;
+                    const id = name.replace(/\s+/g, '_').toLowerCase();
+                    if (paymentModes.some(m => m.id === id || m.name.toLowerCase() === name.toLowerCase())) {
+                      alert("A payment mode with this name already exists.");
+                      return;
+                    }
+                    const newMode = {
+                      id,
+                      name,
+                      qrCode: "",
+                      isSystem: false,
+                      enabled: true
+                    };
+                    await dbService.savePaymentMode(newMode);
+                    setNewModeName("");
+                    alert("Payment mode added!");
+                  }}
+                  className="btn btn-primary"
+                  style={{padding: "0.4rem 0.8rem", fontSize: "0.8rem"}}
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div style={styles.reportCard}>
             <h3 style={styles.cardHeader}>VAT Configuration</h3>
             <p style={{fontSize: "0.8rem", color: "#64748b", marginBottom: "0.75rem"}}>Thailand VAT is 7%. Businesses with annual revenue under 1.8M THB are exempt.</p>
