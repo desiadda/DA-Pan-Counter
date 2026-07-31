@@ -163,7 +163,7 @@ export default function UserManager() {
 
           {error && <div className="error-inline">{error}</div>}
 
-          <div className="coh-tx-list">
+          <div className="user-list">
             {users.map(u => (
               <div key={u.id} className="user-card">
                 <div className="user-card-top">
