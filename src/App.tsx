@@ -27,6 +27,7 @@ const ReportsView = lazy(() => import("./components/ReportsView"));
 const ExpensesView = lazy(() => import("./components/ExpensesView"));
 const UserManager = lazy(() => import("./components/UserManager"));
 const COHView = lazy(() => import("./components/COHView"));
+const FinanceView = lazy(() => import("./components/FinanceView"));
 const AdminSettings = lazy(() => import("./components/AdminSettings"));
 const ErrorLogView = lazy(() => import("./components/ErrorLogView"));
 
@@ -84,6 +85,7 @@ function AppContent() {
     if (path.startsWith("/khata")) return "khata";
     if (path.startsWith("/reports")) return "reports";
     if (path.startsWith("/expenses")) return "expenses";
+    if (path.startsWith("/finance")) return "finance";
     if (path.startsWith("/users")) return "users";
     if (path.startsWith("/settings")) return "settings";
     if (path.startsWith("/errors")) return "errors";
@@ -160,6 +162,7 @@ function AppContent() {
     // Init listeners and migrate AFTER bindings are ready
     dbService.initCOHListener();
     dbService.initUsersListener();
+    dbService.initFinanceListener();
     dbService.migrateLocalDataToFirestore().finally(() => {
       // Clear stale offline caches — safe now because onSnapshot listeners are already active
       if (isFirebaseEnabled) {
@@ -232,6 +235,7 @@ function AppContent() {
     if (key === "khata") return !!user?.permissions?.khata;
     if (key === "reports") return !!user?.permissions?.reports;
     if (key === "expenses") return !!user?.permissions?.expenses;
+    if (key === "finance") return user?.role === "admin" || !!user?.permissions?.finance;
     if (key === "settings") return !!user?.permissions?.settings;
     if (key === "users") return !!user?.permissions?.settings && !!user?.permissions?.settingsManageUsers;
     if (key === "coh") return !!user?.permissions?.settings;
@@ -246,6 +250,7 @@ function AppContent() {
     if (key === "khata") return "khata";
     if (key === "reports") return "reports";
     if (key === "expenses") return "expenses";
+    if (key === "finance") return "finance";
     if (key === "users") return "users";
     if (key === "settings" || key === "coh" || key === "errors") return "settings";
     return null;
@@ -301,6 +306,8 @@ function AppContent() {
         return <ReportsView initialSubTab={subPath} onSubTabChange={handleSubNavigate} user={user} />;
       case "expenses":
         return <ExpensesView />;
+      case "finance":
+        return <FinanceView user={user} />;
       case "users":
         return <UserManager />;
       case "coh":
@@ -434,7 +441,7 @@ function AppContent() {
         {navItems.map(tab => {
           const showTab = tab.perm ? canAccessTab(tab.perm) : true;
           if (!showTab) return null;
-          const isActive = activeTab === tab.key || (tab.key === "menu" && ["reports", "expenses", "users", "settings", "errors", "coh"].includes(activeTab));
+          const isActive = activeTab === tab.key || (tab.key === "menu" && ["reports", "expenses", "finance", "users", "settings", "errors", "coh"].includes(activeTab));
           return (
             <button
               key={tab.key}
@@ -507,6 +514,12 @@ function AppContent() {
                 <button className="drawer-item" onClick={() => { setIsMenuDrawerOpen(false); navigate("/coh"); }}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
                   Cash on Hand
+                </button>
+              )}
+              {canAccessTab("finance") && (
+                <button className="drawer-item" onClick={() => { setIsMenuDrawerOpen(false); navigate("/finance"); }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                  Finance
                 </button>
               )}
               {canAccessTab("settings") && (

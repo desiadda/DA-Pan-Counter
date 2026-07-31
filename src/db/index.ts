@@ -13,6 +13,7 @@ import {
 import { recordPriceChange, getPriceHistory, getAllPriceHistory, clearPriceHistory } from "./priceHistory";
 import { getPurchaseOrders, savePurchaseOrder, receivePurchaseOrder, cancelPurchaseOrder } from "./purchases";
 import { getSuppliers, saveSupplier, deleteSupplier, updateSupplierBalance, recordSupplierPayment } from "./suppliers";
+import { initFinanceListener, getBanks, addBank, updateBank, deleteBank, getFinanceTransactions, financeTransfer } from "./finance";
 
 
 export const dbService = {
@@ -70,6 +71,13 @@ export const dbService = {
   getPaymentModes,
   savePaymentMode,
   deletePaymentMode,
+  initFinanceListener,
+  getBanks,
+  addBank,
+  updateBank,
+  deleteBank,
+  getFinanceTransactions,
+  financeTransfer,
 };
 
 import { getPaymentModes, savePaymentMode, deletePaymentMode } from "./paymentModes";

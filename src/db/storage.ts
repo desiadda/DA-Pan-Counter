@@ -9,7 +9,9 @@ const MEMORY_DB: Record<string, any> = {
   pan_suppliers: [],
   pan_purchase_orders: [],
   pan_shifts: [],
-  pan_users: []
+  pan_users: [],
+  pan_banks: [],
+  pan_finance_transactions: [],
 };
 
 export const getLocalData = (key: string, fallback: any = null) => {

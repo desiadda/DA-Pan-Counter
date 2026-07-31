@@ -55,6 +55,12 @@ export function getBalance(userId) {
   return balances[userId] || 0;
 }
 
+export function setBalanceLocal(userId, balance) {
+  const balances = getBalancesRaw();
+  balances[userId] = balance;
+  saveBalancesRaw(balances);
+}
+
 export function getAllBalances(users) {
   const balances = getBalancesRaw();
   return users.map(u => ({

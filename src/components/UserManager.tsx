@@ -35,6 +35,7 @@ const PERM_CATEGORIES = [
     title: "Financials & Administration",
     perms: [
       { key: "expenses", label: "Manage Expenses" },
+      { key: "finance", label: "Access Finance Dashboard" },
       { key: "reports", label: "View Reports & Analytics" },
       { key: "cohApprove", label: "Approve COH Transfers" },
       { key: "cohAdjust", label: "Directly Adjust COH Balances" },

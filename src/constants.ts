@@ -36,6 +36,8 @@ export const LS_KEYS = {
   STORE_SETTINGS: "pan_store_settings",
   PRICE_HISTORY: "pan_price_history",
   QUICK_KEYS: "pan_quick_keys",
+  BANKS: "pan_banks",
+  FINANCE_TRANSACTIONS: "pan_finance_transactions",
 };
 
 export const DEFAULT_PERMISSIONS = {
@@ -52,6 +54,7 @@ export const DEFAULT_PERMISSIONS = {
   khataDelete: false,
   expenses: false,
   reports: false,
+  finance: false,
   cohApprove: true,
   cohAdjust: false,
   settings: false,
@@ -73,6 +76,7 @@ export const ADMIN_PERMISSIONS = {
   khataDelete: true,
   expenses: true,
   reports: true,
+  finance: true,
   cohApprove: true,
   cohAdjust: true,
   settings: true,

@@ -2228,6 +2228,16 @@ textarea.input-field {
   text-align: center;
 }
 
+.success-inline {
+  color: var(--primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: var(--primary-light);
+  padding: 0.5rem;
+  border-radius: 6px;
+  text-align: center;
+}
+
 /* ── Tab Toggle ── */
 .tab-toggle {
   padding: 0.35rem 0.8rem;
