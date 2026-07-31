@@ -1,4 +1,5 @@
 import ModalPortal from "./ModalPortal";
+import { logError } from "../db/errorLog";
 
 export default function BillViewModal({ tx, onClose }) {
   if (!tx) return null;

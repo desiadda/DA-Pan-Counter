@@ -119,7 +119,7 @@ export default function ReportsView({ initialSubTab, onSubTabChange, user }) {
 
   const getSalesTotal = () => transactions.reduce((sum, tx) => sum + (tx.totalAmount || 0), 0);
   const getCostTotal = () => transactions.reduce((sum, tx) => {
-    const itemsCost = tx.items.reduce((cs, item) => cs + ((item.costPrice || 0) * item.quantity), 0);
+    const itemsCost = (tx.items || []).reduce((cs, item) => cs + ((item.costPrice || 0) * item.quantity), 0);
     return sum + itemsCost;
   }, 0);
   const getProfitTotal = () => getSalesTotal() - getCostTotal();
@@ -825,13 +825,13 @@ export default function ReportsView({ initialSubTab, onSubTabChange, user }) {
                       <div style={styles.txId}>Bill ID: {tx.id}</div>
                       <div style={styles.txDate}>{new Date(tx.timestamp).toLocaleString()}</div>
                       <div style={styles.txPaymentMode}>Mode: <b>{tx.paymentMode}</b> | {tx.cashierEmail}</div>
-                      <div style={{fontSize: "0.75rem", color: "#475569", marginTop: "4px"}}>Items: {tx.items.map(item => `${item.name} (${item.quantity}x)`).join(", ")}</div>
+                      <div style={{fontSize: "0.75rem", color: "#475569", marginTop: "4px"}}>Items: {(tx.items || []).map(item => `${item.name} (${item.quantity}x)`).join(", ") || "—"}</div>
                       {tx.taxEnabled && <div style={{fontSize: "0.7rem", color: "#d97706", marginTop: "2px", fontWeight: "bold"}}>VAT {tx.taxRate}%: ฿{(tx.taxAmount || 0).toFixed(2)}</div>}
                       {tx.discountAmount > 0 && <div style={{fontSize: "0.7rem", color: "#dc2626", marginTop: "2px", fontWeight: "bold"}}>Discount: {tx.discountType === "percent" ? `${tx.discountValue}%` : `฿${tx.discountValue}`} (-฿{tx.discountAmount.toFixed(2)}){tx.discountReason ? ` · ${tx.discountReason}` : ""}</div>}
                     </div>
                     <div style={styles.txRowRight}>
                       <div style={styles.txTotal}>฿{(tx.totalAmount || 0).toFixed(2)}</div>
-                      <div style={{...styles.txQty, marginBottom: "6px"}}>{tx.items.length} items</div>
+                      <div style={{...styles.txQty, marginBottom: "6px"}}>{(tx.items || []).length} items</div>
                       {editingModeTx === tx.id ? (
                         <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
                           <select value={editingModeVal} onChange={e => setEditingModeVal(e.target.value)} style={{ fontSize: "0.7rem", padding: "2px 4px", borderRadius: "4px", border: "1px solid #cbd5e1", fontFamily: "inherit" }}>
