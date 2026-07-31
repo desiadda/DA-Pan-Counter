@@ -1,8 +1,9 @@
 import ModalPortal from "./ModalPortal";
+import { DEFAULT_PACK_SIZE } from "../constants";
 
 export default function VariantModal({ product, onSelect, onClose }) {
   if (!product) return null;
-  const availableBoxes = product.stockPack != null ? product.stockPack : Math.floor(product.stock / (product.packSize || 20));
+  const availableBoxes = product.stockPack != null ? product.stockPack : Math.floor(product.stock / (product.packSize || DEFAULT_PACK_SIZE));
 
   return (
     <ModalPortal>

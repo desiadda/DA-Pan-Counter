@@ -3,6 +3,7 @@ import { db, isFirebaseEnabled } from "./config";
 import { logError } from "./errorLog";
 import { getLocalData, setLocalData } from "./storage";
 import { logAudit } from "./audit";
+import { DEFAULT_PACK_SIZE } from "../constants";
 
 const LS_KEY = "pan_purchase_orders";
 
@@ -77,8 +78,8 @@ export const savePurchaseOrder = async (order) => {
           for (const { item, prodRef, prodSnap } of prodDataList) {
             if (prodSnap.exists()) {
               const prod = prodSnap.data();
-              const unitCost = item.isPack ? (item.costPrice / (item.packSize || 20)) : item.costPrice;
-              const unitQty = item.isPack ? item.quantity * (item.packSize || 20) : item.quantity;
+              const unitCost = item.isPack ? (item.costPrice / (item.packSize || prod.packSize || DEFAULT_PACK_SIZE)) : item.costPrice;
+              const unitQty = item.isPack ? item.quantity * (item.packSize || prod.packSize || DEFAULT_PACK_SIZE) : item.quantity;
 
               const newBatch = {
                 id: "b_po_" + finalId + "_" + Math.random().toString(36).substring(2),
@@ -99,11 +100,11 @@ export const savePurchaseOrder = async (order) => {
               if (prod.isCigarette) {
                 if (item.isPack) {
                   updates.costPricePack = item.costPrice;
-                  updates.stockPack = Math.floor(newStock / (item.packSize || 20));
-                  updates.stockLoose = newStock % (item.packSize || 20);
+                  updates.stockPack = Math.floor(newStock / (item.packSize || prod.packSize || DEFAULT_PACK_SIZE));
+                  updates.stockLoose = newStock % (item.packSize || prod.packSize || DEFAULT_PACK_SIZE);
                 } else {
-                  updates.stockPack = Math.floor(newStock / (prod.packSize || 20));
-                  updates.stockLoose = newStock % (prod.packSize || 20);
+                  updates.stockPack = Math.floor(newStock / (prod.packSize || DEFAULT_PACK_SIZE));
+                  updates.stockLoose = newStock % (prod.packSize || DEFAULT_PACK_SIZE);
                 }
               }
 
@@ -216,8 +217,8 @@ export const receivePurchaseOrder = async (orderId) => {
         for (const { item, prodRef, prodSnap } of prodDataList) {
           if (prodSnap.exists()) {
             const prod = prodSnap.data();
-            const unitCost = item.isPack ? (item.costPrice / (item.packSize || 20)) : item.costPrice;
-            const unitQty = item.isPack ? item.quantity * (item.packSize || 20) : item.quantity;
+            const unitCost = item.isPack ? (item.costPrice / (item.packSize || prod.packSize || DEFAULT_PACK_SIZE)) : item.costPrice;
+            const unitQty = item.isPack ? item.quantity * (item.packSize || prod.packSize || DEFAULT_PACK_SIZE) : item.quantity;
 
             const newBatch = {
               id: "b_po_" + order.id + "_" + Math.random().toString(36).substring(2),
@@ -238,11 +239,11 @@ export const receivePurchaseOrder = async (orderId) => {
             if (prod.isCigarette) {
               if (item.isPack) {
                 updates.costPricePack = item.costPrice;
-                updates.stockPack = Math.floor(newStock / (item.packSize || 20));
-                updates.stockLoose = newStock % (item.packSize || 20);
+                updates.stockPack = Math.floor(newStock / (item.packSize || prod.packSize || DEFAULT_PACK_SIZE));
+                updates.stockLoose = newStock % (item.packSize || prod.packSize || DEFAULT_PACK_SIZE);
               } else {
-                updates.stockPack = Math.floor(newStock / (prod.packSize || 20));
-                updates.stockLoose = newStock % (prod.packSize || 20);
+                updates.stockPack = Math.floor(newStock / (prod.packSize || DEFAULT_PACK_SIZE));
+                updates.stockLoose = newStock % (prod.packSize || DEFAULT_PACK_SIZE);
               }
             }
 

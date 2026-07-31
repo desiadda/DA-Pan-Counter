@@ -2,6 +2,7 @@ import { useState } from "react";
 import ModalPortal from "./ModalPortal";
 import { useDBStore } from "../stores/dbStore";
 import { useAuthStore } from "../stores/authStore";
+import { CASH_MODE, QUICK_CASH_CHIPS_POS, UDHAAR_MODE } from "../constants";
 
 export default function CheckoutModal({
   cart,
@@ -158,7 +159,7 @@ export default function CheckoutModal({
                 ...(paymentMode === mode.id ? styles.activePaymentTab : {}),
               }}
             >
-              {mode.id === "Udhaar" ? "Udhaar (Credit)" : mode.id === "Bank Transfer" ? "Bank / Online" : mode.name}
+              {mode.id === UDHAAR_MODE ? "Udhaar (Credit)" : mode.id === "Bank Transfer" ? "Bank / Online" : mode.name}
             </button>
           ))}
         </div>
@@ -178,7 +179,7 @@ export default function CheckoutModal({
             </div>
 
             <div style={styles.quickCashContainer}>
-              {[20, 50, 100, 500, 1000].map(val => (
+              {QUICK_CASH_CHIPS_POS.map(val => (
                 <button
                   key={val}
                   type="button"
@@ -204,13 +205,13 @@ export default function CheckoutModal({
           </div>
         )}
 
-        {paymentMode !== "Cash" && paymentMode !== "Udhaar" && (() => {
+        {paymentMode !== CASH_MODE && paymentMode !== UDHAAR_MODE && (() => {
           const modeObj = paymentModes.find(m => m.id === paymentMode);
           if (!modeObj) return null;
           
           const qrSrc = modeObj.qrCode 
             ? modeObj.qrCode 
-            : (modeObj.id === "PromptPay" 
+            : (modeObj.id === "PromptPay" && promptpayNumber
                 ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=promptpay://${promptpayNumber}/${finalTotal.toFixed(2)}` 
                 : "");
                 
@@ -219,9 +220,14 @@ export default function CheckoutModal({
               <div style={{ fontWeight: "800", color: "#1e3a8a", fontSize: "0.95rem", letterSpacing: "0.5px" }}>
                 {modeObj.name.toUpperCase()} PAYMENT
               </div>
-              {modeObj.id === "PromptPay" && !modeObj.qrCode && (
+              {modeObj.id === "PromptPay" && !modeObj.qrCode && promptpayNumber && (
                 <div style={{ fontSize: "0.85rem", fontWeight: "600", color: "#475569", backgroundColor: "#e2e8f0", padding: "0.25rem 0.75rem", borderRadius: "20px" }}>
                   ID: {promptpayNumber}
+                </div>
+              )}
+              {modeObj.id === "PromptPay" && !modeObj.qrCode && !promptpayNumber && (
+                <div style={{ fontSize: "0.85rem", color: "#b45309", fontWeight: "600", backgroundColor: "#fef3c7", padding: "0.25rem 0.75rem", borderRadius: "20px" }}>
+                  ⚠️ PromptPay ID not set — ask Admin to configure it in Settings
                 </div>
               )}
               {qrSrc ? (
@@ -241,7 +247,7 @@ export default function CheckoutModal({
           );
         })()}
 
-        {paymentMode === "Udhaar" && (
+        {paymentMode === UDHAAR_MODE && (
           <div style={styles.paymentSection}>
             <div className="input-group">
               <label className="input-label">Select Customer</label>

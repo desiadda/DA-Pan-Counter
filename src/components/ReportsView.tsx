@@ -13,6 +13,7 @@ import { logError } from "../db/errorLog";
 import { db, isFirebaseEnabled } from "../db/config";
 import { writeBatch, doc, collection, onSnapshot } from "firebase/firestore";
 import { getUsers } from "../db/auth";
+import { DEFAULT_LOW_STOCK_LIMIT, DEAD_STOCK_DAYS, GOOD_MARGIN_PCT, DEFAULT_STORE_NAME, PAYMENT_MODES, UDHAAR_MODE } from "../constants";
 
 const exportToCSV = (data: any[][], headers: string[], filename: string) => {
   const escapeCSV = (val: any) => {
@@ -66,7 +67,7 @@ const exportToPDF = (title: string, headers: string[], data: any[][]) => {
       </head>
       <body>
         <div class="header">
-          <div class="store-name">${store.name || "Paan Counter"}</div>
+          <div class="store-name">${store.name || DEFAULT_STORE_NAME}</div>
           <div class="report-title">${title}</div>
           <div class="date">Generated on: ${new Date().toLocaleString()}</div>
         </div>
@@ -278,11 +279,11 @@ export default function ReportsView({ initialSubTab, onSubTabChange, user }) {
 
   // ── Low Stock / Dead Stock / Valuation ──
   const getLowStockItems = () => {
-    return products.filter(p => p.stock <= (p.lowStockLimit || 10)).sort((a, b) => (a.stock / (a.lowStockLimit || 10)) - (b.stock / (b.lowStockLimit || 10)));
+    return products.filter(p => p.stock <= (p.lowStockLimit || DEFAULT_LOW_STOCK_LIMIT)).sort((a, b) => (a.stock / (a.lowStockLimit || DEFAULT_LOW_STOCK_LIMIT)) - (b.stock / (b.lowStockLimit || DEFAULT_LOW_STOCK_LIMIT)));
   };
 
   const getDeadStockItems = () => {
-    const cutoff = Date.now() - 30 * 86400000;
+    const cutoff = Date.now() - DEAD_STOCK_DAYS * 86400000;
     const soldIds = new Set();
     transactions.forEach(tx => {
       if (tx.timestamp >= cutoff) (tx.items || []).forEach(i => soldIds.add(i.realProductId || i.productId));
@@ -413,7 +414,7 @@ export default function ReportsView({ initialSubTab, onSubTabChange, user }) {
   const expenseCats = getExpenseByCategory();
   const paySplit = getPaymentSplit();
   const allPayModes = Object.keys(paySplit).filter(k => paySplit[k] > 0);
-  const editModeOptions = [...new Set([...(paymentModes || []).map(m => m.name || m), ...allPayModes, "Cash", "PromptPay", "Bank Transfer", "Udhaar"])];
+  const editModeOptions = [...new Set([...(paymentModes || []).map(m => m.name || m), ...allPayModes, ...PAYMENT_MODES])];
   const totalQtySold = productSales.reduce((s, p) => s + p.qty, 0);
 
   const periodLabel = () => {
@@ -778,8 +779,8 @@ export default function ReportsView({ initialSubTab, onSubTabChange, user }) {
                 {allPayModes.length === 0 && <div style={styles.splitRow}><span style={styles.splitLabel}>No sales in this period</span></div>}
                 {allPayModes.map((m, i) => (
                   <div key={m} style={styles.splitRow}>
-                    <span style={styles.splitLabel}>{m === "Cash" ? "💵" : m === "PromptPay" ? "📱" : m === "Bank Transfer" ? "🏦" : m === "Udhaar" ? "🤝" : "💳"} {m}:</span>
-                    <span style={{...styles.splitValue, color: m === "Udhaar" ? "#ef4444" : PIE_COLORS[i % PIE_COLORS.length]}}>{fmt(paySplit[m])}</span>
+                    <span style={styles.splitLabel}>{m === "Cash" ? "💵" : m === "PromptPay" ? "📱" : m === "Bank Transfer" ? "🏦" : m === UDHAAR_MODE ? "🤝" : "💳"} {m}:</span>
+                    <span style={{...styles.splitValue, color: m === UDHAAR_MODE ? "#ef4444" : PIE_COLORS[i % PIE_COLORS.length]}}>{fmt(paySplit[m])}</span>
                   </div>
                 ))}
                 {totalTax > 0 && <div style={{...styles.splitRow, borderBottom: "none", marginTop: "0.5rem", borderTop: "2px solid #e2e8f0", paddingTop: "0.5rem"}}><span style={styles.splitLabel}>🧾 VAT Collected:</span><span style={{...styles.splitValue, color: "#d97706"}}>{fmt(totalTax)}</span></div>}
@@ -963,7 +964,7 @@ export default function ReportsView({ initialSubTab, onSubTabChange, user }) {
                           <td style={{ ...cell, color: "#dc2626" }}>−{fmt(p.discount)}</td>
                           <td style={{ ...cell, color: "#dc2626" }}>{fmt(p.cost)}</td>
                           <td style={{ ...cell, fontWeight: "600", color: profit >= 0 ? "#2563eb" : "#ef4444" }}>{fmt(profit)}</td>
-                          <td style={{ ...cell, fontWeight: "600", color: margin >= 15 ? "#047857" : margin >= 0 ? "#d97706" : "#ef4444" }}>{margin.toFixed(1)}%</td>
+                          <td style={{ ...cell, fontWeight: "600", color: margin >= GOOD_MARGIN_PCT ? "#047857" : margin >= 0 ? "#d97706" : "#ef4444" }}>{margin.toFixed(1)}%</td>
                         </tr>
                       );
                     })}
@@ -1360,7 +1361,7 @@ export default function ReportsView({ initialSubTab, onSubTabChange, user }) {
                             <option value="">Change to...</option>
                             {editModeOptions
                               .filter(m => m !== tx.paymentMode)
-                              .filter(m => m !== "Udhaar" || !!tx.customerId)
+                              .filter(m => m !== UDHAAR_MODE || !!tx.customerId)
                               .map(m => <option key={m} value={m}>{m}</option>)}
                           </select>
                           <button onClick={() => handleEditMode(tx.id)} disabled={!editingModeVal} className="btn btn-primary" style={{padding: "2px 6px", fontSize: "0.65rem", borderRadius: "4px"}}>Save</button>

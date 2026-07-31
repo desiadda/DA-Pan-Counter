@@ -15,6 +15,7 @@ import ScanBarcode from "./ScanBarcode";
 import DashboardWidgets from "./DashboardWidgets";
 import ShortcutsModal from "./ShortcutsModal";
 import { useAuthStore } from "../stores/authStore";
+import { DEFAULT_DISCOUNT_REASONS, DEFAULT_PACK_SIZE, DEFAULT_VAT_RATE, UDHAAR_MODE } from "../constants";
 
 export default function POSView({ user }) {
   const navigate = useNavigate();
@@ -41,7 +42,7 @@ export default function POSView({ user }) {
     window.addEventListener("settings-changed", bump);
     return () => window.removeEventListener("settings-changed", bump);
   }, []);
-  const promptpayNumber = localStorage.getItem("pan_promptpay_number") || "0912345678";
+  const promptpayNumber = localStorage.getItem("pan_promptpay_number") || "";
   const [discountType, setDiscountType] = useState("");
   const [discountValue, setDiscountValue] = useState(0);
   const [discountReason, setDiscountReason] = useState("");
@@ -49,11 +50,11 @@ export default function POSView({ user }) {
   const getDiscountReasons = () => {
     try {
       const raw = localStorage.getItem("pan_discount_reasons");
-      return raw ? JSON.parse(raw) : ["Loyalty Discount", "Festival Offer", "Damaged Product", "Bulk Purchase", "Staff Discount"];
+      return raw ? JSON.parse(raw) : [...DEFAULT_DISCOUNT_REASONS];
     } catch (err) {
       logError("TRANSACTION", err.message, err.stack);
       console.error(err);
-      return ["Loyalty Discount", "Festival Offer", "Damaged Product", "Bulk Purchase", "Staff Discount"];
+      return [...DEFAULT_DISCOUNT_REASONS];
     }
   };
 
@@ -67,7 +68,7 @@ export default function POSView({ user }) {
     const isPack = forcedVariant === "pack";
     const price = isPack ? product.sellingPricePack : product.sellingPrice;
     const cost = isPack ? product.costPricePack : product.costPrice;
-    const requiredSticks = isPack ? (product.packSize || 20) : 1;
+    const requiredSticks = isPack ? (product.packSize || DEFAULT_PACK_SIZE) : 1;
 
     if (product.stock < requiredSticks) {
       alert("Not enough stock available for this selection.");
@@ -80,7 +81,7 @@ export default function POSView({ user }) {
 
       const totalSticksInCart = prev
         .filter(item => item.realProductId === product.id || item.productId === product.id)
-        .reduce((sum, item) => sum + (item.quantity * (item.isPack ? (product.packSize || 20) : 1)), 0);
+        .reduce((sum, item) => sum + (item.quantity * (item.isPack ? (product.packSize || DEFAULT_PACK_SIZE) : 1)), 0);
 
       if (totalSticksInCart + requiredSticks > product.stock) {
         alert("Cannot add more. Exceeds total available stock!");
@@ -103,7 +104,7 @@ export default function POSView({ user }) {
         costPrice: cost,
         quantity: 1,
         currentStock: product.stock,
-        packSize: product.packSize || 20,
+        packSize: product.packSize || DEFAULT_PACK_SIZE,
         isPack,
       }];
     });
@@ -128,9 +129,9 @@ export default function POSView({ user }) {
       const targetRealId = targetItem.realProductId || targetItem.productId;
       const otherSticksInCart = prev
         .filter(item => (item.realProductId === targetRealId || item.productId === targetRealId) && item.productId !== productId)
-        .reduce((sum, item) => sum + (item.quantity * (item.isPack ? (item.packSize || 20) : 1)), 0);
+        .reduce((sum, item) => sum + (item.quantity * (item.isPack ? (item.packSize || DEFAULT_PACK_SIZE) : 1)), 0);
 
-      const newSticksForTarget = newQty * (targetItem.isPack ? (targetItem.packSize || 20) : 1);
+      const newSticksForTarget = newQty * (targetItem.isPack ? (targetItem.packSize || DEFAULT_PACK_SIZE) : 1);
 
       if (otherSticksInCart + newSticksForTarget > targetItem.currentStock) {
         alert("Not enough stock available!");
@@ -171,7 +172,7 @@ export default function POSView({ user }) {
 
   const getTaxSettings = () => {
     const enabled = localStorage.getItem("pan_tax_enabled") === "true";
-    const rate = parseFloat(localStorage.getItem("pan_tax_rate") || "7");
+    const rate = parseFloat(localStorage.getItem("pan_tax_rate") || String(DEFAULT_VAT_RATE));
     return { enabled, rate };
   };
 
@@ -245,7 +246,7 @@ export default function POSView({ user }) {
       alert("Received cash must be greater or equal to total.");
       return;
     }
-    if (paymentMode === "Udhaar" && !selectedCustomerId) {
+    if (paymentMode === UDHAAR_MODE && !selectedCustomerId) {
       alert("Please select a customer for Udhaar.");
       return;
     }
@@ -271,7 +272,7 @@ export default function POSView({ user }) {
         cashierName: user.name,
       };
 
-      if (paymentMode === "Udhaar") {
+      if (paymentMode === UDHAAR_MODE) {
         transaction.customerId = selectedCustomerId;
         const customer = customers.find(c => c.id === selectedCustomerId);
         const ledgerEntry = {

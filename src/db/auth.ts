@@ -242,39 +242,10 @@ export const login = async (email, password) => {
       }
     }
 
-    // Fallback self-healing: if verification fails but password is a default PIN (1234 or 5555), re-hash and update
-    if (password === "1234" || password === "5555") {
-      const targetRole = password === "1234" ? "admin" : "staff";
-      const idx = users.findIndex(u => u.role === targetRole);
-      if (idx !== -1) {
-        const updatedHash = await hashPin(password);
-        users[idx].pin = updatedHash;
-        const sessionId = Math.random().toString(36).substring(2) + Date.now().toString(36);
-        
-        if (isFirebaseEnabled) {
-          const userRef = doc(db, "users", users[idx].id);
-          await setDoc(userRef, { pin: updatedHash, sessionId }, { merge: true });
-        }
-        
-        users[idx].sessionId = sessionId;
-        setLocalData(LS_KEYS.USERS, users);
-
-        const u = users[idx];
-        const roleDefaults = u.role === "admin" ? ADMIN_PERMISSIONS : DEFAULT_PERMISSIONS;
-        u.permissions = { ...roleDefaults, ...(u.permissions || {}) };
-        const user = {
-          id: u.id,
-          name: u.name,
-          email: u.email,
-          role: u.role,
-          permissions: u.permissions,
-          sessionId: sessionId,
-        };
-        localStorage.setItem(LS_KEYS.USER, JSON.stringify(user));
-        logAudit("auth_login", "user", u.id, `Logged in as ${u.name} (${u.role})`, { actorId: u.id, actorName: u.name, role: u.role });
-        return user;
-      }
-    }
+    // Fallback self-healing removed: verifying against a default PIN (1234/5555)
+    // used to silently rewrite the stored hash and log the attacker in. verifyPin()
+    // already handles plaintext hashes, and default PINs only exist for genuine
+    // first-run migration or explicit factory reset.
 
     throw new Error(localizeError(
       "Invalid PIN. Please enter the correct PIN and try again. If it still fails, ask the Admin to reset your PIN in User Management.",

@@ -3,6 +3,7 @@ import { db, isFirebaseEnabled, localizeError } from "./config";
 import { adjustBalance } from "./coh";
 import { logError } from "./errorLog";
 import { logAudit, getActorInfo } from "./audit";
+import { DEFAULT_PACK_SIZE } from "../constants";
 
 export const getTransactions = async () => {
   try {
@@ -80,7 +81,7 @@ export const addTransaction = async (transaction) => {
           if (prodSnap.exists()) {
             const prodData = prodSnap.data();
             const currentStock = prodData.stock || 0;
-            const deductQty = item.isPack ? item.quantity * (item.packSize || 20) : item.quantity;
+            const deductQty = item.isPack ? item.quantity * (item.packSize || prodData.packSize || DEFAULT_PACK_SIZE) : item.quantity;
             const newStock = Math.max(0, currentStock - deductQty);
 
             let batches = [...(prodData.batches || [])];
@@ -116,7 +117,7 @@ export const addTransaction = async (transaction) => {
             };
 
             if (prodData.isCigarette) {
-              const packSize = prodData.packSize || 20;
+              const packSize = prodData.packSize || DEFAULT_PACK_SIZE;
               updates.stockPack = Math.floor(newStock / packSize);
               updates.stockLoose = newStock % packSize;
             }
@@ -222,7 +223,7 @@ export const returnTransaction = async (originalTx, returnItems, reason, userId,
         for (const { item, prodRef, prodSnap } of prodDataList) {
           if (prodSnap.exists()) {
             const prod = prodSnap.data();
-            const unitQty = item.isPack ? item.returnQty * (item.packSize || 20) : item.returnQty;
+            const unitQty = item.isPack ? item.returnQty * (item.packSize || prod.packSize || DEFAULT_PACK_SIZE) : item.returnQty;
             const unitCost = prod.costPrice || 0;
 
             const returnBatch = {
@@ -241,7 +242,7 @@ export const returnTransaction = async (originalTx, returnItems, reason, userId,
             };
 
             if (prod.isCigarette) {
-              const packSize = prod.packSize || 20;
+              const packSize = prod.packSize || DEFAULT_PACK_SIZE;
               updates.stockPack = Math.floor(newStock / packSize);
               updates.stockLoose = newStock % packSize;
             }
@@ -262,7 +263,7 @@ export const returnTransaction = async (originalTx, returnItems, reason, userId,
             name: item.name,
             quantity: item.returnQty,
             isPack: item.isPack || false,
-            packSize: item.packSize || 20,
+            packSize: item.packSize || DEFAULT_PACK_SIZE,
             sellingPrice: item.sellingPrice,
           })),
           returnAmount,

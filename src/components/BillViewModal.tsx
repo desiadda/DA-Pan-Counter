@@ -1,10 +1,13 @@
 import ModalPortal from "./ModalPortal";
 import { logError } from "../db/errorLog";
+import { CASH_MODE, DEFAULT_PACK_SIZE, DEFAULT_RECEIPT_FOOTER, DEFAULT_RECEIPT_FOOTER_SUB, DEFAULT_STORE_NAME, UDHAAR_MODE } from "../constants";
 
 export default function BillViewModal({ tx, onClose }) {
   if (!tx) return null;
 
   const store = JSON.parse(localStorage.getItem("pan_store_settings") || "{}");
+  const footerText = store.footerText || DEFAULT_RECEIPT_FOOTER;
+  const footerSub = store.footerSub || DEFAULT_RECEIPT_FOOTER_SUB;
 
   const formatDate = (ts) => new Date(ts).toLocaleString("en-GB", {
     day: "2-digit", month: "short", year: "numeric",
@@ -15,7 +18,7 @@ export default function BillViewModal({ tx, onClose }) {
     try {
       const itemRows = tx.items?.map(item => `
         <tr>
-          <td style="padding:4px 0;font-size:12px">${item.name}${item.isPack ? `<br><small style="color:#94a3b8">(Pack of ${item.packSize || 20})</small>` : ""}</td>
+          <td style="padding:4px 0;font-size:12px">${item.name}${item.isPack ? `<br><small style="color:#94a3b8">(Pack of ${item.packSize || DEFAULT_PACK_SIZE})</small>` : ""}</td>
           <td style="padding:4px 0;font-size:12px;text-align:center">×${item.quantity}</td>
           <td style="padding:4px 0;font-size:12px;text-align:right">฿${(item.isPack ? item.sellingPricePack || item.sellingPrice : item.sellingPrice).toFixed(2)}</td>
           <td style="padding:4px 0;font-size:12px;text-align:right;font-weight:600">฿${((item.isPack ? item.sellingPricePack || item.sellingPrice : item.sellingPrice) * item.quantity).toFixed(2)}</td>
@@ -71,7 +74,7 @@ export default function BillViewModal({ tx, onClose }) {
           <div class="receipt">
             <div class="header">
               ${store.logo ? `<img src="${store.logo}" style="height:56px;object-fit:contain;margin-bottom:4px">` : ""}
-              <div class="store-name">${store.name || "Paan Counter"}</div>
+              <div class="store-name">${store.name || DEFAULT_STORE_NAME}</div>
               ${store.address ? `<div class="store-detail">${store.address}</div>` : ""}
               ${store.phone ? `<div class="store-detail">Tel: ${store.phone}</div>` : ""}
               ${store.taxId ? `<div class="store-detail">Tax ID: ${store.taxId}</div>` : ""}
@@ -99,8 +102,8 @@ export default function BillViewModal({ tx, onClose }) {
             ${tx.customerId ? `<div class="total-row" style="color:#7c3aed"><span>Customer</span><span>${tx.customerName || tx.customerId}</span></div>` : ""}
             <hr>
             <div class="footer">
-              <div class="footer-text">Thank you for your purchase!</div>
-              <div class="footer-sub">Visit again 😊</div>
+              <div class="footer-text">${footerText}</div>
+              <div class="footer-sub">${footerSub}</div>
             </div>
           </div>
         </body>
@@ -127,7 +130,7 @@ export default function BillViewModal({ tx, onClose }) {
         <div className="bill-receipt">
           <div className="bill-header">
             {store.logo && <img src={store.logo} alt="Store Logo" style={{height: "56px", marginBottom: "4px", objectFit: "contain"}} />}
-            <div className="bill-store-name">{store.name || "Paan Counter"}</div>
+            <div className="bill-store-name">{store.name || DEFAULT_STORE_NAME}</div>
             {store.address && <div className="bill-store-detail">{store.address}</div>}
             {store.phone && <div className="bill-store-detail">Tel: {store.phone}</div>}
             {store.taxId && <div className="bill-store-detail">Tax ID: {store.taxId}</div>}
@@ -140,7 +143,7 @@ export default function BillViewModal({ tx, onClose }) {
             <div className="info-row info-row-sm"><span className="info-label">Bill ID</span><span className="info-value">#{tx.id?.replace("tx_", "").slice(-8)}</span></div>
             <div className="info-row info-row-sm"><span className="info-label">Date</span><span className="info-value">{formatDate(tx.timestamp)}</span></div>
             <div className="info-row info-row-sm"><span className="info-label">Cashier</span><span className="info-value">{tx.cashierName || tx.cashierEmail || "—"}</span></div>
-            <div className="info-row info-row-sm"><span className="info-label">Payment</span><span className={`info-value`} style={{ color: tx.paymentMode === "Cash" ? "var(--primary)" : tx.paymentMode === "Udhaar" ? "var(--error)" : tx.paymentMode === "Bank Transfer" ? "#2563eb" : "var(--secondary)" }}>{tx.paymentMode}</span></div>
+            <div className="info-row info-row-sm"><span className="info-label">Payment</span><span className={`info-value`} style={{ color: tx.paymentMode === CASH_MODE ? "var(--primary)" : tx.paymentMode === UDHAAR_MODE ? "var(--error)" : tx.paymentMode === "Bank Transfer" ? "#2563eb" : "var(--secondary)" }}>{tx.paymentMode}</span></div>
           </div>
 
           <div className="bill-divider" />
@@ -164,7 +167,7 @@ export default function BillViewModal({ tx, onClose }) {
               <div key={i} className="bill-item-row">
                 <span className="bill-col-item">
                   <span className="bill-item-name">{item.name}</span>
-                  {item.isPack && <span className="bill-item-pack">(Pack of {item.packSize || 20})</span>}
+                  {item.isPack && <span className="bill-item-pack">(Pack of {item.packSize || DEFAULT_PACK_SIZE})</span>}
                   {itemDisc > 0 && (
                     <span className="bill-item-disc">−฿{itemDisc.toFixed(2)}{item.discountType === "percent" ? ` (${item.discountValue}%)` : ""}{item.discountReason ? ` · ${item.discountReason}` : ""}</span>
                   )}
@@ -205,8 +208,8 @@ export default function BillViewModal({ tx, onClose }) {
           <div className="bill-divider" />
 
           <div className="bill-footer">
-            <div className="bill-footer-text">Thank you for your purchase!</div>
-            <div className="bill-footer-sub">Visit again 😊</div>
+            <div className="bill-footer-text">{footerText}</div>
+            <div className="bill-footer-sub">{footerSub}</div>
           </div>
         </div>
 

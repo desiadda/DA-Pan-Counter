@@ -3,6 +3,7 @@ import { dbService } from "../firebase";
 import { getUsers } from "../db/auth";
 import { logError } from "../db/errorLog";
 import AccountStatementModal from "./AccountStatementModal";
+import { QUICK_CASH_CHIPS } from "../constants";
 
 export default function COHView({ user }) {
   const [users, setUsers] = useState([]);
@@ -193,10 +194,10 @@ export default function COHView({ user }) {
             <label className="input-label">Amount (use +/-, e.g. 500 or -200)</label>
             <input type="number" value={adjustAmt} onChange={e => { setAdjustAmt(e.target.value); setError(""); setMsg(""); }} className="input-field" placeholder="0" />
             <div className="filter-bar" style={{ marginTop: "0.35rem", marginBottom: 0 }}>
-              {[100, 500, 1000, 5000].map(v => (
+              {QUICK_CASH_CHIPS.map(v => (
                 <button key={v} className="quick-chip" onClick={() => { setAdjustAmt(String(v)); setError(""); setMsg(""); }}>+฿{v}</button>
               ))}
-              {[100, 500, 1000, 5000].map(v => (
+              {QUICK_CASH_CHIPS.map(v => (
                 <button key={"n" + v} className="quick-chip" onClick={() => { setAdjustAmt(String(-v)); setError(""); setMsg(""); }}>-฿{v}</button>
               ))}
             </div>

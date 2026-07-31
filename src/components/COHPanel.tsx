@@ -3,6 +3,7 @@ import { dbService } from "../firebase";
 import { logError } from "../db/errorLog";
 import { useLangStore } from "../stores/langStore";
 import ModalPortal from "./ModalPortal";
+import { DEFAULT_STORE_NAME } from "../constants";
 
 export default function COHPanel({ user, users, onClose }) {
   const lang = useLangStore((s) => s.lang);
@@ -223,6 +224,7 @@ export default function COHPanel({ user, users, onClose }) {
 
   const handlePrint = (data) => {
     const printWindow = window.open("", "_blank");
+    const store = JSON.parse(localStorage.getItem("pan_store_settings") || "{}");
     if (!printWindow) return;
 
     const formattedTxs = data.txs.map(tx => `
@@ -255,7 +257,7 @@ export default function COHPanel({ user, users, onClose }) {
         </head>
         <body>
           <div class="header">
-            <h2 style="margin: 0; color: #047857;">🍃 Paan Counter</h2>
+            <h2 style="margin: 0; color: #047857;">🍃 ${store.name || DEFAULT_STORE_NAME}</h2>
             <h3 style="margin: 5px 0 0 0; color: #475569;">Cash on Hand Statement</h3>
           </div>
           <div class="meta-grid">

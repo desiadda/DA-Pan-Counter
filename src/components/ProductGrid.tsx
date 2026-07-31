@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { SkeletonCard } from "./Skeleton";
+import { CATEGORIES, DEFAULT_PACK_SIZE } from "../constants";
 
 export default function ProductGrid({ products, onAddToCart }) {
   const [activeCategory, setActiveCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [hoveredId, setHoveredId] = useState(null);
 
-  const categories = ["All", "Paan Special", "Cigarettes", "Mouth Freshner", "Beverages"];
+  const categories = ["All", ...CATEGORIES];
 
   const getDisplayProducts = () => {
     let filtered = products;
@@ -81,8 +82,8 @@ export default function ProductGrid({ products, onAddToCart }) {
                 <div style={{ position: "absolute", top: "100%", left: 4, right: 4, zIndex: 100, background: "var(--text)", color: "#fff", borderRadius: 6, padding: "0.5rem", fontSize: "0.7rem", display: "flex", flexDirection: "column", gap: "0.25rem", marginTop: 2, boxShadow: "0 4px 12px rgba(0,0,0,0.2)" }}>
                   {p.isCigarette ? (
                     <>
-                      <div className="flex justify-between"><span>📦 Pack: {p.packSize || 20} pcs/box</span></div>
-                      <div className="flex justify-between"><span>📊 Stock: {(p.stockPack ?? Math.floor(p.stock / (p.packSize || 20)))} Box + {(p.stockLoose ?? (p.stock % (p.packSize || 20)))} Pcs</span></div>
+                      <div className="flex justify-between"><span>📦 Pack: {p.packSize || DEFAULT_PACK_SIZE} pcs/box</span></div>
+                      <div className="flex justify-between"><span>📊 Stock: {(p.stockPack ?? Math.floor(p.stock / (p.packSize || DEFAULT_PACK_SIZE)))} Box + {(p.stockLoose ?? (p.stock % (p.packSize || DEFAULT_PACK_SIZE)))} Pcs</span></div>
                     </>
                   ) : (
                     <div className="flex justify-between"><span>📊 Stock: {p.stock}</span></div>

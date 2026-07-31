@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { collection, onSnapshot } from "firebase/firestore";
 import { db, isFirebaseEnabled } from "../db/config";
+import { UDHAAR_MODE } from "../constants";
 
 export default function DashboardWidgets({ onNavigate }) {
   const [widgets, setWidgets] = useState({
@@ -21,7 +22,7 @@ export default function DashboardWidgets({ onNavigate }) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const todayTx = localTransactions.filter(t => t.timestamp >= today.getTime());
-      const sales = todayTx.reduce((sum, t) => t.paymentMode !== "Udhaar" ? sum + (t.totalAmount || 0) : sum, 0);
+      const sales = todayTx.reduce((sum, t) => t.paymentMode !== UDHAAR_MODE ? sum + (t.totalAmount || 0) : sum, 0);
       const khataDue = localCustomers.reduce((sum, c) => sum + (c.balance || 0), 0);
       const low = localProducts.filter(p => p.stock <= p.lowStockLimit).length;
 

@@ -9,6 +9,7 @@ import PriceHistoryModal from "./PriceHistoryModal";
 import PurchaseOrders from "./PurchaseOrders";
 import BulkPriceUpdate from "./BulkPriceUpdate";
 import SupplierDirectory from "./SupplierDirectory";
+import { CATEGORIES, DEFAULT_LOW_STOCK_LIMIT, DEFAULT_PACK_SIZE } from "../constants";
 
 export default function InventoryView({ subPath, onNavigate }) {
   const confirm = useConfirmStore((s) => s.confirm);
@@ -20,16 +21,16 @@ export default function InventoryView({ subPath, onNavigate }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState(null);
   const [name, setName] = useState("");
-  const [category, setCategory] = useState("Paan Special");
+  const [category, setCategory] = useState(CATEGORIES[0]);
   const [barcode, setBarcode] = useState("");
   
   const [costPrice, setCostPrice] = useState("");
   const [sellingPrice, setSellingPrice] = useState("");
   const [stock, setStock] = useState("");
-  const [lowStockLimit, setLowStockLimit] = useState("10");
+  const [lowStockLimit, setLowStockLimit] = useState(String(DEFAULT_LOW_STOCK_LIMIT));
   
   const [isCigarette, setIsCigarette] = useState(false);
-  const [packSize, setPackSize] = useState("20");
+  const [packSize, setPackSize] = useState(String(DEFAULT_PACK_SIZE));
   const [costPricePack, setCostPricePack] = useState("");
   const [sellingPricePack, setSellingPricePack] = useState("");
   const [stockPack, setStockPack] = useState("");
@@ -75,12 +76,12 @@ export default function InventoryView({ subPath, onNavigate }) {
     setBarcode(p.barcode || "");
     
     setIsCigarette(p.isCigarette || false);
-    setPackSize(p.packSize ? p.packSize.toString() : "20");
+    setPackSize(p.packSize ? p.packSize.toString() : String(DEFAULT_PACK_SIZE));
     setCostPricePack(p.costPricePack ? p.costPricePack.toString() : "");
     setSellingPricePack(p.sellingPricePack ? p.sellingPricePack.toString() : "");
     
     if (p.isCigarette) {
-      const pSize = p.packSize || 20;
+      const pSize = p.packSize || DEFAULT_PACK_SIZE;
       setStockPack(p.stockPack != null ? p.stockPack.toString() : Math.floor(p.stock / pSize).toString());
       setLooseStock(p.stockLoose != null ? p.stockLoose.toString() : (p.stock % pSize).toString());
     } else {
@@ -93,14 +94,14 @@ export default function InventoryView({ subPath, onNavigate }) {
     setIsEditing(false);
     setEditId(null);
     setName("");
-    setCategory("Paan Special");
+    setCategory(CATEGORIES[0]);
     setCostPrice("");
     setSellingPrice("");
     setStock("");
-    setLowStockLimit("10");
+    setLowStockLimit(String(DEFAULT_LOW_STOCK_LIMIT));
     setBarcode("");
     setIsCigarette(false);
-    setPackSize("20");
+    setPackSize(String(DEFAULT_PACK_SIZE));
     setCostPricePack("");
     setSellingPricePack("");
     setStockPack("");
@@ -129,7 +130,7 @@ export default function InventoryView({ subPath, onNavigate }) {
     let totalStock = parseInt(stock) || 0;
     if (isCigarette) {
       const bStock = parseInt(stockPack) || 0;
-      const pSize = parseInt(packSize) || 20;
+      const pSize = parseInt(packSize) || DEFAULT_PACK_SIZE;
       const lStock = parseInt(looseStock) || 0;
       totalStock = (bStock * pSize) + lStock;
     }
@@ -191,7 +192,7 @@ export default function InventoryView({ subPath, onNavigate }) {
     const newStock = p.stock + qty;
     const updated = { ...p, stock: newStock };
     if (p.isCigarette) {
-      const pSize = p.packSize || 20;
+      const pSize = p.packSize || DEFAULT_PACK_SIZE;
       updated.stockPack = Math.floor(newStock / pSize);
       updated.stockLoose = newStock % pSize;
     }
@@ -264,11 +265,7 @@ export default function InventoryView({ subPath, onNavigate }) {
           <div className="input-group">
             <label className="input-label">Category</label>
             <select value={category} onChange={(e) => setCategory(e.target.value)} className="input-field">
-              <option value="Paan Special">Paan Special</option>
-              <option value="Cigarettes">Cigarettes</option>
-              <option value="Mouth Freshner">Mouth Freshner</option>
-              <option value="Beverages">Beverages</option>
-              <option value="Other">Other</option>
+              {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
           <div className="input-group">
@@ -379,7 +376,7 @@ export default function InventoryView({ subPath, onNavigate }) {
                         <td data-label="Stock" style={{ padding: "0.6rem 0.5rem", verticalAlign: "middle" }}>
                           {p.isCigarette ? (
                             <span style={{ fontWeight: "bold", color: isLow ? "#ea580c" : "inherit" }}>
-                              {p.stock}p / {(p.stockPack != null ? p.stockPack : Math.floor(p.stock / (p.packSize || 20)))}box
+                              {p.stock}p / {(p.stockPack != null ? p.stockPack : Math.floor(p.stock / (p.packSize || DEFAULT_PACK_SIZE)))}box
                               {isLow && <span className="stock-badge stock-badge-low" style={{ marginLeft: 4 }}>⚠️</span>}
                             </span>
                           ) : (

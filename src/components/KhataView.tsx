@@ -5,6 +5,7 @@ import { useAuthStore } from "../stores/authStore";
 import { SkeletonList } from "./Skeleton";
 import { logError } from "../db/errorLog";
 import ReminderModal from "./ReminderModal";
+import { DEFAULT_STORE_NAME, UDHAAR_MODE } from "../constants";
 
 export default function KhataView({ subPath, onNavigate }) {
   const customers = useDBStore((s) => s.customers);
@@ -142,7 +143,7 @@ export default function KhataView({ subPath, onNavigate }) {
       </style></head>
       <body>
         <div class="header">
-          <div class="name">${store.name || "Paan Counter"}</div>
+          <div class="name">${store.name || DEFAULT_STORE_NAME}</div>
           <div class="info">Customer Statement</div>
           <div class="info">${cust.name}${cust.phone ? " | "+cust.phone : ""}</div>
         </div>
@@ -190,7 +191,7 @@ export default function KhataView({ subPath, onNavigate }) {
                     placeholder="Enter amount to pay" className="input-field" style={{ flex: 1, minWidth: "120px" }} />
                   
                   <select value={paymentMode} onChange={(e) => setPaymentMode(e.target.value)} className="input-field" style={{ width: "auto" }}>
-                    {paymentModes.filter(m => m.enabled && m.id !== "Udhaar").map(m => (
+                    {paymentModes.filter(m => m.enabled && m.id !== UDHAAR_MODE).map(m => (
                       <option key={m.id} value={m.id}>{m.name}</option>
                     ))}
                   </select>

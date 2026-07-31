@@ -4,6 +4,7 @@ import { getUsers } from "../db/auth";
 import { logError } from "../db/errorLog";
 import { useConfirmStore } from "../stores/confirmStore";
 import AccountStatementModal from "./AccountStatementModal";
+import { QUICK_CASH_CHIPS } from "../constants";
 
 export default function FinanceView({ user }) {
   const confirm = useConfirmStore((s) => s.confirm);
@@ -450,7 +451,7 @@ export default function FinanceView({ user }) {
             <label className="input-label">Amount (฿)</label>
             <input type="number" value={amount} onChange={e => { setAmount(e.target.value); setError(""); setMsg(""); }} className="input-field" placeholder="0" />
             <div className="filter-bar" style={{ marginTop: "0.35rem", marginBottom: 0 }}>
-              {[100, 500, 1000, 5000].map(v => (
+              {QUICK_CASH_CHIPS.map(v => (
                 <button key={v} className="quick-chip" onClick={() => { setAmount(String(v)); setError(""); setMsg(""); }}>฿{v}</button>
               ))}
             </div>

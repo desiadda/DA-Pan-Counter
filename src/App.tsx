@@ -111,6 +111,13 @@ function AppContent() {
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
   const [isMenuDrawerOpen, setIsMenuDrawerOpen] = useState(false);
+  const [storeName, setStoreName] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("pan_store_settings") || "{}").name || "Paan Counter";
+    } catch {
+      return "Paan Counter";
+    }
+  });
 
   const activeTabRef = useRef(activeTab);
   useEffect(() => {
@@ -219,6 +226,7 @@ function AppContent() {
         }
         link.href = store.logo;
       }
+      setStoreName(store.name || "Paan Counter");
     };
     updateFavicon();
     window.addEventListener("settings-changed", updateFavicon);
@@ -344,7 +352,7 @@ function AppContent() {
       <header className="header">
         <div className="header-title">
           <span>🍃</span>
-          <span style={{ fontWeight: 800, letterSpacing: "-0.5px" }}>Paan Counter</span>
+          <span style={{ fontWeight: 800, letterSpacing: "-0.5px" }}>{storeName}</span>
         </div>
         
         <div className="header-right">

@@ -4,6 +4,7 @@ import { db, isFirebaseEnabled } from "../db/config";
 import { collection, onSnapshot } from "firebase/firestore";
 import { useLangStore } from "../stores/langStore";
 import { useDBStore } from "../stores/dbStore";
+import { DEFAULT_PACK_SIZE, UDHAAR_MODE } from "../constants";
 
 export default function PurchaseOrders() {
   const lang = useLangStore((s) => s.lang);
@@ -209,7 +210,7 @@ function PurchaseOrderForm({ products, suppliers, orders, isDirect, onSave, onCa
           productName: prod?.name || "Unknown",
           quantity: parseInt(item.quantity) || 0,
           isPack: item.isPack || false,
-          packSize: prod?.packSize || 20,
+          packSize: prod?.packSize || DEFAULT_PACK_SIZE,
           costPrice: parseFloat(item.costPrice) || 0,
         };
       }),
@@ -248,8 +249,8 @@ function PurchaseOrderForm({ products, suppliers, orders, isDirect, onSave, onCa
           <label className="input-label">Payment Mode</label>
           <select value={paymentMode} onChange={e => setPaymentMode(e.target.value)} className="input-field" style={{ fontFamily: "inherit" }}>
             {paymentModes.filter(m => m.enabled).map(m => (
-              <option key={m.id} value={m.id === "Udhaar" ? "Credit" : m.id}>
-                {m.id === "Udhaar" ? "Credit (Khata)" : m.id === "Cash" ? "Cash (COH)" : m.name}
+              <option key={m.id} value={m.id === UDHAAR_MODE ? "Credit" : m.id}>
+                {m.id === UDHAAR_MODE ? "Credit (Khata)" : m.id === "Cash" ? "Cash (COH)" : m.name}
               </option>
             ))}
           </select>

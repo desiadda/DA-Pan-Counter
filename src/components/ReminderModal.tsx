@@ -3,13 +3,14 @@ import { dbService } from "../firebase";
 import { db, isFirebaseEnabled } from "../db/config";
 import { writeBatch, doc } from "firebase/firestore";
 import ModalPortal from "./ModalPortal";
+import { DEFAULT_STORE_NAME } from "../constants";
 
 export default function ReminderModal({ customers, onClose }) {
   const [selected, setSelected] = useState({});
   const [copiedId, setCopiedId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const store = JSON.parse(localStorage.getItem("pan_store_settings") || "{}");
-  const storeName = store.name || "Paan Counter";
+  const storeName = store.name || DEFAULT_STORE_NAME;
 
   const debtors = customers.filter(c => (c.balance || 0) > 0).sort((a, b) => b.balance - a.balance);
 

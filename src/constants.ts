@@ -85,3 +85,33 @@ export const ADMIN_PERMISSIONS = {
 };
 
 export const DEFAULT_VAT_RATE = 7;
+
+export const DEFAULT_PACK_SIZE = 20;
+
+export const DEFAULT_LOW_STOCK_LIMIT = 10;
+
+export const DEAD_STOCK_DAYS = 30;
+
+export const GOOD_MARGIN_PCT = 15;
+
+export const DEFAULT_STORE_NAME = "Paan Counter";
+
+export const DEFAULT_DISCOUNT_REASONS = [
+  "Loyalty Discount",
+  "Festival Offer",
+  "Damaged Product",
+  "Bulk Purchase",
+  "Staff Discount",
+];
+
+export const QUICK_CASH_CHIPS = [100, 500, 1000, 5000];
+
+export const QUICK_CASH_CHIPS_POS = [20, 50, 100, 500, 1000];
+
+export const CASH_MODE = "Cash";
+
+export const UDHAAR_MODE = "Udhaar";
+
+export const DEFAULT_RECEIPT_FOOTER = "Thank you for your purchase!";
+
+export const DEFAULT_RECEIPT_FOOTER_SUB = "Visit again 😊";

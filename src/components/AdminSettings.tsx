@@ -11,17 +11,28 @@ import { useAuthStore } from "../stores/authStore";
 import { getUsers } from "../db/auth";
 import { db, isFirebaseEnabled } from "../db/config";
 import { writeBatch, doc } from "firebase/firestore";
+import { DEFAULT_DISCOUNT_REASONS, DEFAULT_STORE_NAME, DEFAULT_VAT_RATE, CASH_MODE, UDHAAR_MODE } from "../constants";
 
 const LS = localStorage;
+
+const DEFAULT_STORE = {
+  name: DEFAULT_STORE_NAME,
+  address: "",
+  phone: "",
+  taxId: "",
+  logo: "",
+  footerText: "",
+  footerSub: "",
+};
 
 const getStore = () => {
   try {
     const raw = LS.getItem("pan_store_settings");
-    return raw ? JSON.parse(raw) : { name: "Paan Counter", address: "", phone: "", taxId: "", logo: "" };
+    return raw ? { ...DEFAULT_STORE, ...JSON.parse(raw) } : { ...DEFAULT_STORE };
   } catch (err: any) {
     logError("SETTINGS", err.message, err.stack);
     console.error(err);
-    return { name: "Paan Counter", address: "", phone: "", taxId: "", logo: "" };
+    return { ...DEFAULT_STORE };
   }
 };
 
@@ -180,11 +191,11 @@ export default function AdminSettings({ onBack }) {
   // PIN management is handled entirely in User Management (UserManager)
 
   // PromptPay
-  const [promptpayNumber, setPromptpayNumber] = useState(LS.getItem("pan_promptpay_number") || "0912345678");
+  const [promptpayNumber, setPromptpayNumber] = useState(LS.getItem("pan_promptpay_number") || "");
 
   // VAT
   const [taxEnabled, setTaxEnabled] = useState(LS.getItem("pan_tax_enabled") === "true");
-  const [taxRate, setTaxRate] = useState(LS.getItem("pan_tax_rate") || "7");
+  const [taxRate, setTaxRate] = useState(LS.getItem("pan_tax_rate") || String(DEFAULT_VAT_RATE));
 
   // Firebase
   const [firebaseConfigInput, setFirebaseConfigInput] = useState(JSON.stringify(dbService.getConfig(), null, 2));
@@ -198,11 +209,11 @@ export default function AdminSettings({ onBack }) {
   const [discountReasons, setDiscountReasons] = useState(() => {
     try {
       const raw = LS.getItem("pan_discount_reasons");
-      return raw ? JSON.parse(raw) : ["Loyalty Discount", "Festival Offer", "Damaged Product", "Bulk Purchase", "Staff Discount"];
+      return raw ? JSON.parse(raw) : [...DEFAULT_DISCOUNT_REASONS];
     } catch (err: any) {
       logError("SETTINGS", err.message, err.stack);
       console.error(err);
-      return ["Loyalty Discount", "Festival Offer", "Damaged Product", "Bulk Purchase", "Staff Discount"];
+      return [...DEFAULT_DISCOUNT_REASONS];
     }
   });
   const [newReason, setNewReason] = useState("");
@@ -304,6 +315,8 @@ export default function AdminSettings({ onBack }) {
             <div className="input-group"><label className="input-label">Address</label><textarea value={store.address} onChange={e => setStore({...store, address: e.target.value})} className="input-field" rows={2} /></div>
             <div className="input-group"><label className="input-label">Phone</label><input type="text" value={store.phone} onChange={e => setStore({...store, phone: e.target.value})} className="input-field" /></div>
             <div className="input-group"><label className="input-label">Tax ID</label><input type="text" value={store.taxId} onChange={e => setStore({...store, taxId: e.target.value})} className="input-field" /></div>
+            <div className="input-group"><label className="input-label">Receipt Footer Text</label><input type="text" value={store.footerText} onChange={e => setStore({...store, footerText: e.target.value})} className="input-field" placeholder="Thank you for your purchase!" /></div>
+            <div className="input-group"><label className="input-label">Receipt Footer Sub-text</label><input type="text" value={store.footerSub} onChange={e => setStore({...store, footerSub: e.target.value})} className="input-field" placeholder="Visit again 😊" /></div>
             <div className="input-group">
               <label className="input-label">Store Logo</label>
               <input type="file" accept="image/*" onChange={e => { const file = e.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = (ev: any) => setStore({...store, logo: ev.target.result}); reader.readAsDataURL(file); }} />
@@ -426,7 +439,7 @@ export default function AdminSettings({ onBack }) {
                           <input
                             type="checkbox"
                             checked={mode.enabled}
-                            disabled={mode.id === "Cash" || mode.id === "Udhaar"}
+                            disabled={mode.id === CASH_MODE || mode.id === UDHAAR_MODE}
                             onChange={async (e) => {
                               await dbService.savePaymentMode({ ...mode, enabled: e.target.checked });
                             }}
