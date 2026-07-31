@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { dbService } from "../firebase";
-import { hashPin, sha256 } from "../db/hash";
+import { sha256 } from "../db/hash";
 import { useConfirmStore } from "../stores/confirmStore";
 import { useUIStore } from "../stores/uiStore";
 import { useLangStore } from "../stores/langStore";
@@ -158,9 +158,7 @@ export default function AdminSettings({ onBack }) {
   // Store
   const [store, setStore] = useState(getStore);
 
-  // PIN
-  const [adminPin, setAdminPin] = useState(LS.getItem("pan_admin_pin") || "1234");
-  const [staffPin, setStaffPin] = useState(LS.getItem("pan_staff_pin") || "5555");
+  // PIN management is handled entirely in User Management (UserManager)
 
   // PromptPay
   const [promptpayNumber, setPromptpayNumber] = useState(LS.getItem("pan_promptpay_number") || "0912345678");
@@ -200,19 +198,6 @@ export default function AdminSettings({ onBack }) {
   const refreshLogs = () => setErrorLogs(getErrors(errorFilter));
   useEffect(() => { refreshLogs(); window.addEventListener("error-logged", refreshLogs); return () => window.removeEventListener("error-logged", refreshLogs); }, [errorFilter]);
   const errorCats = getCategories();
-
-  const handleSavePins = async () => {
-    if (adminPin.length !== 4 || staffPin.length !== 4 || isNaN(Number(adminPin)) || isNaN(Number(staffPin))) { alert("PIN codes must be exactly 4 digits."); return; }
-    try {
-      LS.setItem("pan_admin_pin", await hashPin(adminPin.trim()));
-      LS.setItem("pan_staff_pin", await hashPin(staffPin.trim()));
-      alert("PIN codes saved!");
-    } catch (err: any) {
-      logError("SETTINGS", err.message, err.stack);
-      alert("❌ " + (err.message || "Failed to save PIN codes"));
-      console.error(err);
-    }
-  };
 
   const handleSaveStore = () => {
     try {
@@ -558,12 +543,19 @@ export default function AdminSettings({ onBack }) {
       {/* ── Tab Content: Security ── */}
       {activeTab === "security" && (
         <div style={{display: "flex", flexDirection: "column", gap: "1rem"}}>
-          {/* PIN */}
+          {/* PIN managed in User Management */}
           <div style={styles.card}>
-            <h3 style={styles.cardHeader}>Security (PIN Setup)</h3>
-            <div className="input-group"><label className="input-label">Admin Pin (4 digits)</label><input type="text" maxLength={4} value={adminPin} onChange={e => setAdminPin(e.target.value.replace(/\D/g, ''))} className="input-field" /></div>
-            <div className="input-group"><label className="input-label">Staff Pin (4 digits)</label><input type="text" maxLength={4} value={staffPin} onChange={e => setStaffPin(e.target.value.replace(/\D/g, ''))} className="input-field" /></div>
-            <button onClick={handleSavePins} className="btn btn-primary" style={{padding: "0.6rem", width: "100%"}}>Save PIN Codes</button>
+            <h3 style={styles.cardHeader}>🔐 User PINs</h3>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: "0.75rem", padding: "0.25rem 0" }}>
+              <span style={{ fontSize: "1.5rem", lineHeight: 1 }}>ℹ️</span>
+              <div>
+                <p style={{ fontSize: "0.9rem", fontWeight: 600, color: "var(--text)", margin: 0 }}>PINs are managed in User Management</p>
+                <p style={{ fontSize: "0.82rem", color: "var(--text-muted)", marginTop: "0.3rem", lineHeight: 1.5 }}>
+                  Each user has their own individual PIN. To set or change a PIN, go to
+                  <strong> Menu → Users</strong> and click <strong>Edit</strong> on any user.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       )}
