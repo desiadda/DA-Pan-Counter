@@ -154,6 +154,7 @@ export default function PurchaseOrders({ prefill, onPrefillConsumed }) {
           products={products}
           suppliers={suppliers}
           orders={orders}
+          paymentModes={paymentModes}
           isDirect={isDirectPurchase}
           onSave={() => { setShowForm(false); onPrefillConsumed?.(); load(); }}
           onCancel={() => { setShowForm(false); onPrefillConsumed?.(); }}
@@ -218,7 +219,7 @@ export default function PurchaseOrders({ prefill, onPrefillConsumed }) {
   );
 }
 
-function PurchaseOrderForm({ initialItems, products, suppliers, orders, isDirect, onSave, onCancel }) {
+function PurchaseOrderForm({ initialItems, products, suppliers, orders, paymentModes, isDirect, onSave, onCancel }) {
   const [supplierId, setSupplierId] = useState("");
   const [paymentMode, setPaymentMode] = useState("Cash");
   const [items, setItems] = useState(initialItems && initialItems.length > 0 ? initialItems : [{ productId: "", quantity: 1, costPrice: 0, isPack: false }]);
