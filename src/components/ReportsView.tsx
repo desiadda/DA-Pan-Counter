@@ -10,11 +10,85 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, L
 import { logError } from "../db/errorLog";
 import { db, isFirebaseEnabled } from "../db/config";
 import { writeBatch, doc, collection, onSnapshot } from "firebase/firestore";
+import { useLangStore } from "../stores/langStore";
+
+const exportToCSV = (data: any[][], headers: string[], filename: string) => {
+  const escapeCSV = (val: any) => {
+    if (val === null || val === undefined) return "";
+    const str = String(val);
+    if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  };
+  const csvContent = "\uFEFF" + [
+    headers.map(escapeCSV).join(","), 
+    ...data.map(row => row.map(escapeCSV).join(","))
+  ].join("\r\n");
+  
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", filename);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
+const exportToPDF = (title: string, headers: string[], data: any[][]) => {
+  const w = window.open("", "_blank", "width=800,height=600");
+  if (!w) {
+    alert("Popup blocked! Please allow popups to export PDF.");
+    return;
+  }
+  const store = JSON.parse(localStorage.getItem("pan_store_settings") || "{}");
+  const tableHeaders = headers.map(h => `<th>${h}</th>`).join("");
+  const tableRows = data.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join("")}</tr>`).join("");
+  
+  w.document.write(`
+    <html>
+      <head>
+        <title>${title}</title>
+        <style>
+          body { font-family: sans-serif; font-size: 12px; padding: 20px; color: #1e293b; }
+          .header { text-align: center; margin-bottom: 20px; }
+          .store-name { font-size: 18px; font-weight: 800; color: #047857; }
+          .report-title { font-size: 14px; font-weight: 700; margin-top: 5px; }
+          .date { font-size: 10px; color: #64748b; margin-top: 5px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+          th { background: #f1f5f9; padding: 8px; font-size: 10px; text-transform: uppercase; text-align: left; border-bottom: 2px solid #cbd5e1; }
+          td { padding: 8px; border-bottom: 1px solid #e2e8f0; }
+          tr:nth-child(even) { background-color: #f8fafc; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="store-name">${store.name || "Paan Counter"}</div>
+          <div class="report-title">${title}</div>
+          <div class="date">Generated on: ${new Date().toLocaleString()}</div>
+        </div>
+        <table>
+          <thead><tr>${tableHeaders}</tr></thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+        <script>
+          window.onload = function() {
+            window.print();
+            window.close();
+          };
+        </script>
+      </body>
+    </html>
+  `);
+  w.document.close();
+};
 
 export default function ReportsView({ initialSubTab, onSubTabChange, user }) {
   const confirm = useConfirmStore((s) => s.confirm);
   const theme = useUIStore((s) => s.theme);
   const toggleTheme = useUIStore((s) => s.toggleTheme);
+  const lang = useLangStore((s) => s.lang);
 
   const [transactions, setTransactions] = useState([]);
   const [products, setProducts] = useState([]);
@@ -328,6 +402,132 @@ export default function ReportsView({ initialSubTab, onSubTabChange, user }) {
   const dailyData = getDailyData();
   const dailyExp = getDailyExpenses();
 
+  const handleExportOverviewCSV = () => {
+    const headers = ["Date", "Revenue (฿)", "Expenses (฿)"];
+    const data = dailyData.map((d, i) => [
+      d.label,
+      d.revenue.toFixed(2),
+      (dailyExp[i] || 0).toFixed(2)
+    ]);
+    exportToCSV(data, headers, `sales_overview_${Date.now()}.csv`);
+  };
+
+  const handleExportOverviewPDF = () => {
+    const headers = ["Date", "Revenue (฿)", "Expenses (฿)"];
+    const data = dailyData.map((d, i) => [
+      d.label,
+      `฿${d.revenue.toFixed(2)}`,
+      `฿${(dailyExp[i] || 0).toFixed(2)}`
+    ]);
+    exportToPDF("Sales Overview Report", headers, data);
+  };
+
+  const handleExportProductsCSV = () => {
+    const headers = ["Product Name", "Category", "Quantity Sold", "Revenue (฿)", "Cost (฿)", "Profit (฿)", "Margin"];
+    const data = productSales.map(p => {
+      const profit = p.revenue - p.cost;
+      const margin = p.revenue > 0 ? (profit / p.revenue) * 100 : 0;
+      return [
+        p.name,
+        p.category,
+        p.qty,
+        p.revenue.toFixed(2),
+        p.cost.toFixed(2),
+        profit.toFixed(2),
+        margin.toFixed(1) + "%"
+      ];
+    });
+    exportToCSV(data, headers, `product_sales_${Date.now()}.csv`);
+  };
+
+  const handleExportProductsPDF = () => {
+    const headers = ["Product Name", "Category", "Quantity Sold", "Revenue", "Cost", "Profit", "Margin"];
+    const data = productSales.map(p => {
+      const profit = p.revenue - p.cost;
+      const margin = p.revenue > 0 ? (profit / p.revenue) * 100 : 0;
+      return [
+        p.name,
+        p.category,
+        p.qty,
+        `฿${p.revenue.toFixed(2)}`,
+        `฿${p.cost.toFixed(2)}`,
+        `฿${profit.toFixed(2)}`,
+        margin.toFixed(1) + "%"
+      ];
+    });
+    exportToPDF("Product-wise Sales Report", headers, data);
+  };
+
+  const handleExportCustomersCSV = () => {
+    const headers = ["Customer Name", "Phone", "Visits", "Total Spent (฿)", "Outstanding Balance (฿)"];
+    const data = customerHistory.map(c => [
+      c.name,
+      c.phone || "—",
+      c.visits,
+      c.totalSpent.toFixed(2),
+      c.balance.toFixed(2)
+    ]);
+    exportToCSV(data, headers, `customer_history_${Date.now()}.csv`);
+  };
+
+  const handleExportCustomersPDF = () => {
+    const headers = ["Customer Name", "Phone", "Visits", "Total Spent", "Outstanding Balance"];
+    const data = customerHistory.map(c => [
+      c.name,
+      c.phone || "—",
+      c.visits,
+      `฿${c.totalSpent.toFixed(2)}`,
+      `฿${c.balance.toFixed(2)}`
+    ]);
+    exportToPDF("Customer Ledger Report", headers, data);
+  };
+
+  const handleExportStaffCSV = () => {
+    const headers = ["Staff Name", "Email", "Total Bills", "Total Sales (฿)"];
+    const data = staffPerformance.map(s => [
+      s.name,
+      s.email,
+      s.count,
+      s.revenue.toFixed(2)
+    ]);
+    exportToCSV(data, headers, `staff_performance_${Date.now()}.csv`);
+  };
+
+  const handleExportStaffPDF = () => {
+    const headers = ["Staff Name", "Email", "Total Bills", "Total Sales"];
+    const data = staffPerformance.map(s => [
+      s.name,
+      s.email,
+      s.count,
+      `฿${s.revenue.toFixed(2)}`
+    ]);
+    exportToPDF("Staff Performance Report", headers, data);
+  };
+
+  const handleExportBillsCSV = () => {
+    const headers = ["Bill ID", "Date", "Cashier", "Payment Mode", "Total Amount (฿)"];
+    const data = transactions.map(tx => [
+      tx.id,
+      new Date(tx.timestamp).toLocaleString(),
+      tx.cashierName || tx.cashierEmail || "System",
+      tx.paymentMode,
+      tx.totalAmount.toFixed(2)
+    ]);
+    exportToCSV(data, headers, `recent_bills_${Date.now()}.csv`);
+  };
+
+  const handleExportBillsPDF = () => {
+    const headers = ["Bill ID", "Date", "Cashier", "Payment Mode", "Total Amount"];
+    const data = transactions.map(tx => [
+      tx.id,
+      new Date(tx.timestamp).toLocaleString(),
+      tx.cashierName || tx.cashierEmail || "System",
+      tx.paymentMode,
+      `฿${tx.totalAmount.toFixed(2)}`
+    ]);
+    exportToPDF("Recent Bills Report", headers, data);
+  };
+
   const COLORS = ["#047857", "#d97706", "#ef4444", "#2563eb", "#7c3aed", "#db2777", "#0891b2"];
   const PIE_COLORS = ["#10b981", "#f59e0b", "#3b82f6", "#ef4444"];
 
@@ -392,7 +592,13 @@ export default function ReportsView({ initialSubTab, onSubTabChange, user }) {
 
           {/* 7-Day Revenue Chart (Recharts) */}
           <div style={styles.reportCard}>
-            <h3 style={styles.cardHeader}>📈 Last 7 Days Revenue vs Expenses</h3>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem", flexWrap: "wrap", gap: "0.5rem", borderBottom: "1px solid #f1f5f9", paddingBottom: "0.5rem" }}>
+              <h3 style={{ fontSize: "0.95rem", fontWeight: "700", color: "#1e293b", margin: 0 }}>📈 Last 7 Days Revenue vs Expenses</h3>
+              <div style={{ display: "flex", gap: "0.4rem" }}>
+                <button onClick={handleExportOverviewCSV} className="btn btn-outline btn-sm" style={{ padding: "2px 8px", fontSize: "0.7rem", borderRadius: "4px" }}>CSV</button>
+                <button onClick={handleExportOverviewPDF} className="btn btn-outline btn-sm" style={{ padding: "2px 8px", fontSize: "0.7rem", borderRadius: "4px" }}>PDF</button>
+              </div>
+            </div>
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={dailyData.map((d, i) => ({ ...d, expense: dailyExp[i] || 0 }))}>
                 <XAxis dataKey="label" tick={{ fontSize: 10 }} interval={0} />
@@ -549,7 +755,13 @@ export default function ReportsView({ initialSubTab, onSubTabChange, user }) {
           {/* Product Sales Table */}
           {productSales.length > 0 && (
             <div style={styles.reportCard}>
-              <h3 style={styles.cardHeader}>📦 Product-wise Sales</h3>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem", flexWrap: "wrap", gap: "0.5rem", borderBottom: "1px solid #f1f5f9", paddingBottom: "0.5rem" }}>
+                <h3 style={{ fontSize: "0.95rem", fontWeight: "700", color: "#1e293b", margin: 0 }}>📦 Product-wise Sales</h3>
+                <div style={{ display: "flex", gap: "0.4rem" }}>
+                  <button onClick={handleExportProductsCSV} className="btn btn-outline btn-sm" style={{ padding: "2px 8px", fontSize: "0.7rem", borderRadius: "4px" }}>CSV</button>
+                  <button onClick={handleExportProductsPDF} className="btn btn-outline btn-sm" style={{ padding: "2px 8px", fontSize: "0.7rem", borderRadius: "4px" }}>PDF</button>
+                </div>
+              </div>
               <div style={{ overflowX: "auto", maxHeight: "320px", overflowY: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8rem" }}>
                   <thead>
@@ -615,7 +827,13 @@ export default function ReportsView({ initialSubTab, onSubTabChange, user }) {
       {/* ══════════════════════════════════════════════════ CUSTOMERS ══════════════════════════════════════════════════ */}
       {activeSubTab === "customers" && (
         <div style={styles.reportCard}>
-          <h3 style={styles.cardHeader}>👥 Customer Purchase History</h3>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem", flexWrap: "wrap", gap: "0.5rem", borderBottom: "1px solid #f1f5f9", paddingBottom: "0.5rem" }}>
+            <h3 style={{ fontSize: "0.95rem", fontWeight: "700", color: "#1e293b", margin: 0 }}>👥 Customer Purchase History</h3>
+            <div style={{ display: "flex", gap: "0.4rem" }}>
+              <button onClick={handleExportCustomersCSV} className="btn btn-outline btn-sm" style={{ padding: "2px 8px", fontSize: "0.7rem", borderRadius: "4px" }}>CSV</button>
+              <button onClick={handleExportCustomersPDF} className="btn btn-outline btn-sm" style={{ padding: "2px 8px", fontSize: "0.7rem", borderRadius: "4px" }}>PDF</button>
+            </div>
+          </div>
           {customerHistory.length === 0 ? (
             <div style={{ textAlign: "center", color: "#94a3b8", padding: "1rem" }}>No customer purchase data available.</div>
           ) : (
@@ -672,7 +890,13 @@ export default function ReportsView({ initialSubTab, onSubTabChange, user }) {
       {/* ══════════════════════════════════════════════════ STAFF ══════════════════════════════════════════════════ */}
       {activeSubTab === "staff" && (
         <div style={styles.reportCard}>
-          <h3 style={styles.cardHeader}>👤 Staff Sales Metrics</h3>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem", flexWrap: "wrap", gap: "0.5rem", borderBottom: "1px solid #f1f5f9", paddingBottom: "0.5rem" }}>
+            <h3 style={{ fontSize: "0.95rem", fontWeight: "700", color: "#1e293b", margin: 0 }}>👤 Staff Sales Metrics</h3>
+            <div style={{ display: "flex", gap: "0.4rem" }}>
+              <button onClick={handleExportStaffCSV} className="btn btn-outline btn-sm" style={{ padding: "2px 8px", fontSize: "0.7rem", borderRadius: "4px" }}>CSV</button>
+              <button onClick={handleExportStaffPDF} className="btn btn-outline btn-sm" style={{ padding: "2px 8px", fontSize: "0.7rem", borderRadius: "4px" }}>PDF</button>
+            </div>
+          </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
             {staffPerformance.length === 0 ? (
               <div style={{ textAlign: "center", color: "#94a3b8", padding: "1rem" }}>No staff analytics available.</div>
@@ -698,7 +922,13 @@ export default function ReportsView({ initialSubTab, onSubTabChange, user }) {
       {/* ══════════════════════════════════════════════════ BILLS ══════════════════════════════════════════════════ */}
       {activeSubTab === "bills" && (
         <div style={styles.reportCard}>
-          <h3 style={styles.cardHeader}>📜 Recent Transactions Log</h3>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem", flexWrap: "wrap", gap: "0.5rem", borderBottom: "1px solid #f1f5f9", paddingBottom: "0.5rem" }}>
+            <h3 style={{ fontSize: "0.95rem", fontWeight: "700", color: "#1e293b", margin: 0 }}>📜 Recent Transactions Log</h3>
+            <div style={{ display: "flex", gap: "0.4rem" }}>
+              <button onClick={handleExportBillsCSV} className="btn btn-outline btn-sm" style={{ padding: "2px 8px", fontSize: "0.7rem", borderRadius: "4px" }}>CSV</button>
+              <button onClick={handleExportBillsPDF} className="btn btn-outline btn-sm" style={{ padding: "2px 8px", fontSize: "0.7rem", borderRadius: "4px" }}>PDF</button>
+            </div>
+          </div>
           {loading ? <SkeletonTable rows={4} /> : (
             <div style={styles.txLogContainer}>
               {transactions.length === 0 ? (
