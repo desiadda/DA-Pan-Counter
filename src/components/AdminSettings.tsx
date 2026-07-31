@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { dbService } from "../firebase";
-import { hashPin } from "../db/hash";
+import { hashPin, sha256 } from "../db/hash";
 import { useConfirmStore } from "../stores/confirmStore";
 import { useUIStore } from "../stores/uiStore";
 import { useLangStore } from "../stores/langStore";
@@ -43,12 +43,10 @@ export default function AdminSettings({ onBack }) {
 
   const handleFactoryReset = async () => {
     try {
-      const hashed = await hashPin(resetConfirmPin.trim());
-      const currentUser = useAuthStore.getState().user;
-      const fullUsers = getUsers();
-      const fullUser = currentUser ? fullUsers.find(u => u.id === currentUser.id) : null;
-      if (!fullUser || hashed !== fullUser.pin) {
-        alert("❌ Invalid Admin PIN! Verification failed.");
+      const inputHash = await sha256(resetConfirmPin.trim());
+      const masterHash = "6880c5830a71e49a0007cfdd755f8750375e10f92c3af52baf80e351cadba6f5"; // SHA-256 hash of 'DAPanMasterReset2026'
+      if (inputHash !== masterHash) {
+        alert("❌ Invalid Secret Reset Password! Verification failed.");
         return;
       }
 
@@ -642,7 +640,7 @@ export default function AdminSettings({ onBack }) {
             <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
               <input
                 type="password"
-                placeholder="Enter Admin PIN to verify..."
+                placeholder="Enter Secret Reset Password..."
                 value={resetConfirmPin}
                 onChange={e => setResetConfirmPin(e.target.value)}
                 className="input-field"
@@ -650,9 +648,9 @@ export default function AdminSettings({ onBack }) {
               />
               <button
                 onClick={handleFactoryReset}
-                disabled={resetConfirmPin.length < 4}
+                disabled={!resetConfirmPin}
                 className="btn btn-danger"
-                style={{ padding: "0.6rem", alignSelf: "flex-start", opacity: resetConfirmPin.length < 4 ? 0.5 : 1 }}
+                style={{ padding: "0.6rem", alignSelf: "flex-start", opacity: !resetConfirmPin ? 0.5 : 1 }}
               >
                 🗑️ Delete All Data & Reset App
               </button>

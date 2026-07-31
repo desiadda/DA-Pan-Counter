@@ -3,14 +3,14 @@ import { localizeError } from "./config";
 
 const SALT = "paan_counter_pos_v1";
 
-async function sha256(message) {
+export async function sha256(message) {
   try {
     const encoder = new TextEncoder();
     const data = encoder.encode(message);
     const hashBuffer = await crypto.subtle.digest("SHA-256", data);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-  } catch (err) {
+  } catch (err: any) {
     logError("SYSTEM", err.message, err.stack);
     console.error("sha256: Hashing error", err);
     throw new Error(localizeError(`Hash error: ${err.message}. Please try again.`, `हैश समस्या: ${err.message}। कृपया पुनः प्रयास करें।`));
