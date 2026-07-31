@@ -171,6 +171,8 @@ export default function AdminSettings({ onBack }) {
 
   // Payment Mode
   const [newModeName, setNewModeName] = useState("");
+  const [editingModeId, setEditingModeId] = useState<string | null>(null);
+  const [editingModeNameVal, setEditingModeNameVal] = useState("");
 
   // Discount reasons
   const [discountReasons, setDiscountReasons] = useState(() => {
@@ -345,8 +347,53 @@ export default function AdminSettings({ onBack }) {
                 <div key={mode.id} style={{display: "flex", flexDirection: "column", padding: "0.75rem", backgroundColor: "var(--bg-hover, #f8fafc)", borderRadius: "8px", border: "1px solid var(--border)", gap: "0.5rem"}}>
                   <div style={{display: "flex", justifyContent: "space-between", alignItems: "center"}}>
                     <div>
-                      <span style={{fontWeight: "bold", color: "var(--text)"}}>{mode.name}</span>
-                      {mode.isSystem && <span style={{fontSize: "0.75rem", color: "var(--text-muted)", marginLeft: "0.5rem"}}>(System Mode)</span>}
+                      {editingModeId === mode.id ? (
+                        <div style={{display: "flex", gap: "0.25rem", alignItems: "center"}}>
+                          <input
+                            type="text"
+                            value={editingModeNameVal}
+                            onChange={(e) => setEditingModeNameVal(e.target.value)}
+                            className="input-field"
+                            style={{padding: "2px 6px", fontSize: "0.8rem", width: "120px"}}
+                          />
+                          <button
+                            onClick={async () => {
+                              const trimmed = editingModeNameVal.trim();
+                              if (!trimmed) return;
+                              await dbService.savePaymentMode({ ...mode, name: trimmed });
+                              setEditingModeId(null);
+                            }}
+                            className="btn btn-primary"
+                            style={{padding: "2px 6px", fontSize: "0.75rem"}}
+                          >
+                            Save
+                          </button>
+                          <button
+                            onClick={() => setEditingModeId(null)}
+                            className="btn btn-outline"
+                            style={{padding: "2px 6px", fontSize: "0.75rem"}}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={{display: "flex", alignItems: "center", gap: "0.35rem"}}>
+                          <span style={{fontWeight: "bold", color: "var(--text)"}}>{mode.name}</span>
+                          {!mode.isSystem && (
+                            <button
+                              onClick={() => {
+                                setEditingModeId(mode.id);
+                                setEditingModeNameVal(mode.name);
+                              }}
+                              style={{background: "none", border: "none", color: "#475569", cursor: "pointer", fontSize: "0.75rem"}}
+                              title="Rename Payment Mode"
+                            >
+                              ✎
+                            </button>
+                          )}
+                          {mode.isSystem && <span style={{fontSize: "0.75rem", color: "var(--text-muted)", marginLeft: "0.5rem"}}>(System Mode)</span>}
+                        </div>
+                      )}
                     </div>
                     <div style={{display: "flex", gap: "0.5rem", alignItems: "center"}}>
                       <label style={{fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "0.25rem", cursor: "pointer", color: "var(--text)"}}>
