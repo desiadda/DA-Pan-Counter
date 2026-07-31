@@ -232,10 +232,24 @@ function AppContent() {
     if (key === "khata") return !!user?.permissions?.khata;
     if (key === "reports") return !!user?.permissions?.reports;
     if (key === "expenses") return !!user?.permissions?.expenses;
-    if (key === "users" || key === "settings") return !!user?.permissions?.settings;
-    if (key === "coh" || key === "errors") return true;
+    if (key === "settings") return !!user?.permissions?.settings;
+    if (key === "users") return !!user?.permissions?.settings && !!user?.permissions?.settingsManageUsers;
+    if (key === "coh") return !!user?.permissions?.settings;
+    if (key === "errors") return !!user?.permissions?.settings;
     return !!user?.permissions?.[key];
   }, [user]);
+
+  // Section-level permission guard for direct URL / render protection
+  const sectionPerm = (key: string) => {
+    if (key === "pos" || key === "menu") return null;
+    if (key === "inventory") return "stock";
+    if (key === "khata") return "khata";
+    if (key === "reports") return "reports";
+    if (key === "expenses") return "expenses";
+    if (key === "users") return "users";
+    if (key === "settings" || key === "coh" || key === "errors") return "settings";
+    return null;
+  };
 
   const handleTabClick = useCallback((tab) => {
     if (tab.key === "menu") {
@@ -263,6 +277,19 @@ function AppContent() {
   const handleCheckout = useCartStore((s) => s.handleCheckout);
 
   const renderMainContent = useCallback(() => {
+    const required = sectionPerm(activeTab);
+    if (required && !canAccessTab(required)) {
+      return (
+        <div className="access-denied">
+          <div style={{ fontSize: "2.5rem" }}>🔒</div>
+          <h3 style={{ margin: "0.5rem 0 0.25rem" }}>Access Denied</h3>
+          <p style={{ margin: 0, color: "var(--text-muted)" }}>You don't have permission for this section.</p>
+          <button className="btn btn-primary btn-sm" style={{ marginTop: "1rem" }} onClick={() => navigate("/pos")}>
+            Back to POS
+          </button>
+        </div>
+      );
+    }
     switch (activeTab) {
       case "pos":
         return <POSView user={user} />;
@@ -338,7 +365,7 @@ function AppContent() {
                       </div>
                     )}
                     {user.permissions?.settings && criticalErrors > 0 && (
-                      <div className="notif-dropdown-item" onClick={() => { navigate("/admin/errors", { replace: true }); setShowNotifDropdown(false); }}>
+                      <div className="notif-dropdown-item" onClick={() => { navigate("/errors", { replace: true }); setShowNotifDropdown(false); }}>
                         <span style={{ fontSize: "1.1rem" }}>❌</span>
                         <div>
                           <div className="notif-dropdown-title">System Error Logs</div>
@@ -443,49 +470,57 @@ function AppContent() {
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="4" /><path d="M6 6h12M6 12h12M6 18h6" /></svg>
                 POS Billing
               </button>
-              <button className="drawer-item" onClick={() => { setIsMenuDrawerOpen(false); navigate("/inventory"); }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" /></svg>
-                Inventory Stock
-              </button>
-              <button className="drawer-item" onClick={() => { setIsMenuDrawerOpen(false); navigate("/khata"); }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20M4 19.5L4 5A2.5 2.5 0 0 1 6.5 2.5H20M14 6h3M14 11h3" /></svg>
-                Credit Accounts (Khata)
-              </button>
+              {canAccessTab("inventory") && (
+                <button className="drawer-item" onClick={() => { setIsMenuDrawerOpen(false); navigate("/inventory"); }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" /></svg>
+                  Inventory Stock
+                </button>
+              )}
+              {canAccessTab("khata") && (
+                <button className="drawer-item" onClick={() => { setIsMenuDrawerOpen(false); navigate("/khata"); }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20M4 19.5L4 5A2.5 2.5 0 0 1 6.5 2.5H20M14 6h3M14 11h3" /></svg>
+                  Credit Accounts (Khata)
+                </button>
+              )}
               
               <div style={{ borderTop: "1px solid var(--border)", margin: "0.5rem 0" }} />
               
-              {user.permissions?.reports && (
+              {canAccessTab("reports") && (
                 <button className="drawer-item" onClick={() => { setIsMenuDrawerOpen(false); navigate("/reports"); }}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
                   Reports
                 </button>
               )}
-              {user.permissions?.expenses && (
+              {canAccessTab("expenses") && (
                 <button className="drawer-item" onClick={() => { setIsMenuDrawerOpen(false); navigate("/expenses"); }}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
                   Expenses
                 </button>
               )}
-              {user.permissions?.settings && (
+              {canAccessTab("users") && (
                 <button className="drawer-item" onClick={() => { setIsMenuDrawerOpen(false); navigate("/users"); }}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                   User Management
                 </button>
               )}
-              <button className="drawer-item" onClick={() => { setIsMenuDrawerOpen(false); navigate("/coh"); }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
-                Cash on Hand
-              </button>
-              {user.permissions?.settings && (
+              {canAccessTab("coh") && (
+                <button className="drawer-item" onClick={() => { setIsMenuDrawerOpen(false); navigate("/coh"); }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                  Cash on Hand
+                </button>
+              )}
+              {canAccessTab("settings") && (
                 <button className="drawer-item" onClick={() => { setIsMenuDrawerOpen(false); navigate("/settings"); }}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                   Settings
                 </button>
               )}
-              <button className="drawer-item" onClick={() => { setIsMenuDrawerOpen(false); navigate("/errors"); }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                Error Logs
-              </button>
+              {canAccessTab("errors") && (
+                <button className="drawer-item" onClick={() => { setIsMenuDrawerOpen(false); navigate("/errors"); }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                  Error Logs
+                </button>
+              )}
               
               <div style={{ borderTop: "1px solid var(--border)", margin: "0.5rem 0" }} />
               
