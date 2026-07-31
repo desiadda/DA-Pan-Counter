@@ -1,6 +1,14 @@
 import ModalPortal from "./ModalPortal";
+import ItemDiscountControl from "./ItemDiscountControl";
 
-export default function CartBottomSheet({ cart, cartSubtotal, taxEnabled, taxRate, taxAmount, cartTotal, onUpdateQty, onClear, onCheckout, onClose }) {
+export default function CartBottomSheet({ cart, cartSubtotal, taxEnabled, taxRate, taxAmount, cartTotal, onUpdateQty, onClear, onCheckout, onClose, onUpdateItemDiscount, discountReasons }) {
+  const lineAmount = (item) => {
+    const lineTotal = (item.sellingPrice || 0) * (item.quantity || 1);
+    if (item.discountType === "percent") return lineTotal * Math.min(item.discountValue || 0, 100) / 100;
+    if (item.discountType === "fixed") return Math.min(item.discountValue || 0, lineTotal);
+    return 0;
+  };
+
   return (
     <ModalPortal>
     <div className="modal-overlay" onClick={onClose}>
@@ -14,20 +22,33 @@ export default function CartBottomSheet({ cart, cartSubtotal, taxEnabled, taxRat
           {cart.length === 0 ? (
             <div className="cart-empty" style={{ padding: "1.5rem 0" }}>Cart is empty</div>
           ) : (
-            cart.map(item => (
-              <div key={item.productId} className="cart-item">
-                <div className="cart-item-info">
-                  <div className="cart-item-name">{item.name}</div>
-                  <div className="cart-item-price">฿{item.sellingPrice} each</div>
+            cart.map(item => {
+              const disc = lineAmount(item);
+              const net = (item.sellingPrice * item.quantity) - disc;
+              return (
+                <div key={item.productId} className="cart-item">
+                  <div className="cart-item-info">
+                    <div className="cart-item-name">{item.name}</div>
+                    <div className="cart-item-price">
+                      ฿{item.sellingPrice} each
+                      {disc > 0 && <span className="line-discount-label">−฿{disc.toFixed(2)}{item.discountType === "percent" ? ` (${item.discountValue}%)` : ""}</span>}
+                      {item.discountReason && <span className="line-discount-reason">· {item.discountReason}</span>}
+                    </div>
+                    <ItemDiscountControl item={item} onUpdate={onUpdateItemDiscount} reasons={discountReasons} />
+                  </div>
+                  <div className="qty-controls">
+                    <button onClick={() => onUpdateQty(item.productId, -1)} className="qty-btn">−</button>
+                    <span className="qty-display">{item.quantity}</span>
+                    <button onClick={() => onUpdateQty(item.productId, 1)} className="qty-btn">+</button>
+                  </div>
+                  {disc > 0 ? (
+                    <span className="cart-item-total"><s className="line-discount-strike">฿{(item.sellingPrice * item.quantity).toFixed(2)}</s> ฿{net.toFixed(2)}</span>
+                  ) : (
+                    <span className="cart-item-total">฿{(item.sellingPrice * item.quantity).toFixed(2)}</span>
+                  )}
                 </div>
-                <div className="qty-controls">
-                  <button onClick={() => onUpdateQty(item.productId, -1)} className="qty-btn">−</button>
-                  <span className="qty-display">{item.quantity}</span>
-                  <button onClick={() => onUpdateQty(item.productId, 1)} className="qty-btn">+</button>
-                </div>
-                <span className="cart-item-total">฿{(item.sellingPrice * item.quantity).toFixed(2)}</span>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
         <div className="cart-section-footer">

@@ -44,6 +44,13 @@ export default function CheckoutModal({
 
   const showDiscount = discountType && discountValue > 0;
 
+  const itemDiscounts = cart.reduce((sum, i) => {
+    const lineTotal = (i.sellingPrice || 0) * (i.quantity || 1);
+    if (i.discountType === "percent") return sum + lineTotal * Math.min(i.discountValue || 0, 100) / 100;
+    if (i.discountType === "fixed") return sum + Math.min(i.discountValue || 0, lineTotal);
+    return sum;
+  }, 0);
+
   return (
     <ModalPortal>
     <div className="modal-overlay" onClick={onClose}>
@@ -56,8 +63,14 @@ export default function CheckoutModal({
         <div style={styles.priceBreakdown}>
           <div style={styles.totalRow}>
             <span>Subtotal ({itemCount} items):</span>
-            <span>฿{cartSubtotal.toFixed(2)}</span>
+            <span>฿{(cartSubtotal + itemDiscounts).toFixed(2)}</span>
           </div>
+          {itemDiscounts > 0 && (
+            <div style={{...styles.totalRow, color: "#dc2626"}}>
+              <span>Item Discounts:</span>
+              <span>-฿{itemDiscounts.toFixed(2)}</span>
+            </div>
+          )}
           {showDiscount && (
             <div style={{...styles.totalRow, color: "#dc2626"}}>
               <span>Discount ({discountType === "percent" ? `${discountValue}%` : `฿${discountValue}`}):</span>

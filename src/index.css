@@ -1488,6 +1488,74 @@ textarea.input-field {
   text-align: right;
 }
 
+.line-discount-label {
+  color: #dc2626;
+  font-weight: 700;
+  margin-left: 0.3rem;
+}
+
+.line-discount-reason {
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 0.68rem;
+}
+
+.line-discount-strike {
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-right: 0.25rem;
+}
+
+.bill-item-disc {
+  display: block;
+  color: #dc2626;
+  font-weight: 700;
+  font-size: 0.65rem;
+  margin-top: 1px;
+}
+
+.item-discount-wrap {
+  margin-top: 0.3rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.item-discount-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px dashed var(--border);
+  background: var(--input-bg);
+  border-radius: var(--radius-sm);
+  padding: 0.15rem 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.item-discount-chip-active {
+  border: 1px solid #dc2626;
+  background: rgba(220, 38, 38, 0.08);
+  color: #dc2626;
+  border-style: solid;
+}
+
+.item-discount-panel {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  width: 100%;
+  padding: 0.35rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
 .qty-controls {
   display: flex;
   align-items: center;

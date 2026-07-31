@@ -217,6 +217,16 @@ export default function ReportsView({ initialSubTab, onSubTabChange, user }) {
 
   const getTotalDiscount = () => transactions.reduce((sum, tx) => sum + (tx.discountAmount || 0), 0);
 
+  const getTotalItemDiscount = () => transactions.reduce((sum, tx) => {
+    const items = tx.items || [];
+    return sum + items.reduce((s, item) => {
+      const lineTotal = (item.isPack ? item.sellingPricePack || item.sellingPrice : item.sellingPrice) * (item.quantity || 1);
+      if (item.discountType === "percent") return s + lineTotal * Math.min(item.discountValue || 0, 100) / 100;
+      if (item.discountType === "fixed") return s + Math.min(item.discountValue || 0, lineTotal);
+      return s;
+    }, 0);
+  }, 0);
+
   // ── Existing helpers ──
   const getDailyData = () => {
     const days = [];
@@ -479,8 +489,8 @@ export default function ReportsView({ initialSubTab, onSubTabChange, user }) {
             </div>
             <div style={styles.statCard}>
               <span style={styles.statLabel}>Total Discounts Given</span>
-              <span style={{...styles.statValProfit, color: "#d97706"}}>฿{getTotalDiscount().toFixed(2)}</span>
-              <span style={styles.statSubText}>{transactions.filter(tx => tx.discountAmount > 0).length} bills discounted</span>
+              <span style={{...styles.statValProfit, color: "#d97706"}}>฿{(getTotalDiscount() + getTotalItemDiscount()).toFixed(2)}</span>
+              <span style={styles.statSubText}>Bill: ฿{getTotalDiscount().toFixed(2)} · Items: ฿{getTotalItemDiscount().toFixed(2)} · {transactions.filter(tx => tx.discountAmount > 0 || (tx.items || []).some(i => i.discountType)).length} bills</span>
             </div>
           </div>
 
@@ -830,6 +840,11 @@ export default function ReportsView({ initialSubTab, onSubTabChange, user }) {
                       <div style={{fontSize: "0.75rem", color: "#475569", marginTop: "4px"}}>Items: {(tx.items || []).map(item => `${item.name} (${item.quantity}x)`).join(", ") || "—"}</div>
                       {tx.taxEnabled && <div style={{fontSize: "0.7rem", color: "#d97706", marginTop: "2px", fontWeight: "bold"}}>VAT {tx.taxRate}%: ฿{(tx.taxAmount || 0).toFixed(2)}</div>}
                       {tx.discountAmount > 0 && <div style={{fontSize: "0.7rem", color: "#dc2626", marginTop: "2px", fontWeight: "bold"}}>Discount: {tx.discountType === "percent" ? `${tx.discountValue}%` : `฿${tx.discountValue}`} (-฿{tx.discountAmount.toFixed(2)}){tx.discountReason ? ` · ${tx.discountReason}` : ""}</div>}
+                      {(tx.items || []).some(i => i.discountType) && (
+                        <div style={{fontSize: "0.7rem", color: "#dc2626", marginTop: "2px", fontWeight: "bold"}}>
+                          Item discounts: {(tx.items || []).filter(i => i.discountType).map(i => `${i.name.split(" (")[0]} ${i.discountType === "percent" ? `${i.discountValue}%` : `฿${i.discountValue}`}`).join(", ")}
+                        </div>
+                      )}
                     </div>
                     <div style={styles.txRowRight}>
                       <div style={styles.txTotal}>฿{(tx.totalAmount || 0).toFixed(2)}</div>

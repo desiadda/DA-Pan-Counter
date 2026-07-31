@@ -152,17 +152,29 @@ export default function BillViewModal({ tx, onClose }) {
             <span className="bill-col-total">Total</span>
           </div>
           <div className="bill-divider-light" />
-          {tx.items?.map((item, i) => (
-            <div key={i} className="bill-item-row">
-              <span className="bill-col-item">
-                <span className="bill-item-name">{item.name}</span>
-                {item.isPack && <span className="bill-item-pack">(Pack of {item.packSize || 20})</span>}
-              </span>
-              <span className="bill-col-qty">×{item.quantity}</span>
-              <span className="bill-col-price">฿{(item.isPack ? item.sellingPricePack || item.sellingPrice : item.sellingPrice).toFixed(2)}</span>
-              <span className="bill-col-total">฿{((item.isPack ? item.sellingPricePack || item.sellingPrice : item.sellingPrice) * item.quantity).toFixed(2)}</span>
-            </div>
-          ))}
+          {tx.items?.map((item, i) => {
+            const unitPrice = item.isPack ? item.sellingPricePack || item.sellingPrice : item.sellingPrice;
+            const lineTotal = unitPrice * item.quantity;
+            const itemDisc = item.discountType === "percent"
+              ? lineTotal * Math.min(item.discountValue || 0, 100) / 100
+              : item.discountType === "fixed"
+                ? Math.min(item.discountValue || 0, lineTotal)
+                : 0;
+            return (
+              <div key={i} className="bill-item-row">
+                <span className="bill-col-item">
+                  <span className="bill-item-name">{item.name}</span>
+                  {item.isPack && <span className="bill-item-pack">(Pack of {item.packSize || 20})</span>}
+                  {itemDisc > 0 && (
+                    <span className="bill-item-disc">−฿{itemDisc.toFixed(2)}{item.discountType === "percent" ? ` (${item.discountValue}%)` : ""}{item.discountReason ? ` · ${item.discountReason}` : ""}</span>
+                  )}
+                </span>
+                <span className="bill-col-qty">×{item.quantity}</span>
+                <span className="bill-col-price">฿{unitPrice.toFixed(2)}</span>
+                <span className="bill-col-total">{itemDisc > 0 && <s style={{ color: "var(--text-muted)", marginRight: "0.2rem" }}>฿{lineTotal.toFixed(2)}</s>}฿{(lineTotal - itemDisc).toFixed(2)}</span>
+              </div>
+            );
+          })}
 
           <div className="bill-divider" />
 

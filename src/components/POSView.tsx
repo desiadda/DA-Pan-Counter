@@ -145,8 +145,28 @@ export default function POSView({ user }) {
     });
   };
 
+  const getItemDiscountAmount = (item) => {
+    const lineTotal = (item.sellingPrice || 0) * (item.quantity || 1);
+    if (item.discountType === "percent") return lineTotal * Math.min(item.discountValue || 0, 100) / 100;
+    if (item.discountType === "fixed") return Math.min(item.discountValue || 0, lineTotal);
+    return 0;
+  };
+
+  const updateItemDiscount = (productId, discount) => {
+    setCart(prev => prev.map(item =>
+      item.productId === productId
+        ? {
+            ...item,
+            discountType: discount.type || null,
+            discountValue: discount.value || 0,
+            discountReason: discount.reason || null,
+          }
+        : item
+    ));
+  };
+
   const getCartSubtotal = () => {
-    return cart.reduce((total, item) => total + (item.sellingPrice * item.quantity), 0);
+    return cart.reduce((total, item) => total + (item.sellingPrice * item.quantity) - getItemDiscountAmount(item), 0);
   };
 
   const getTaxSettings = () => {
@@ -182,6 +202,8 @@ export default function POSView({ user }) {
       taxRate,
       taxAmount: taxAmountDisplay,
       cartTotal,
+      onUpdateItemDiscount: updateItemDiscount,
+      discountReasons: getDiscountReasons(),
     });
   }, [mobileCartOpen, cart, cartSubtotal, taxEnabled, taxRate, taxAmountDisplay, cartTotal, updateMobileCartProps]);
 
@@ -301,6 +323,8 @@ export default function POSView({ user }) {
       cartTotal,
       onUpdateQty: updateCartQty,
       onClear: handleClearCart,
+      onUpdateItemDiscount: updateItemDiscount,
+      discountReasons: getDiscountReasons(),
     }, checkoutCb);
   };
 
@@ -325,6 +349,8 @@ export default function POSView({ user }) {
             cartTotal={cartTotal}
             onUpdateQty={updateCartQty}
             onClear={handleClearCart}
+            onUpdateItemDiscount={updateItemDiscount}
+            discountReasons={getDiscountReasons()}
             onCheckout={() => setShowCheckout(true)}
           />
         </div>
