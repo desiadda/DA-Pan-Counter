@@ -215,6 +215,9 @@ export default function COHView({ user }) {
           <h4 className="section-subtitle" style={{ borderBottom: "1px solid var(--border)", paddingBottom: "0.5rem", marginBottom: "0.5rem" }}>
             Transaction History ({filteredTransactions.length})
           </h4>
+          <p className="text-muted" style={{ fontSize: "0.7rem", margin: "0 0 0.5rem" }}>
+            Cash movements only — bank↔cash transfers included here too. Full multi-account ledger: Finance tab.
+          </p>
           <div className="filter-bar">
             <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} className="input-field" style={{ fontFamily: "inherit", maxWidth: "140px", padding: "0.4rem", fontSize: "0.8rem" }}>
               <option value="all">All types</option>

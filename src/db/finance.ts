@@ -168,6 +168,25 @@ export async function financeTransfer({ fromType, fromId, fromName, toType, toId
         transaction.set(fromRef, { balance: fromBal - amt }, { merge: true });
         transaction.set(toRef, { balance: toBal + amt }, { merge: true });
         transaction.set(doc(db, "finance_transactions", txId), txData);
+        if (fromType === "coh" || toType === "coh") {
+          const cohTxId = "coh_" + Date.now();
+          transaction.set(doc(db, "coh_transactions", cohTxId), {
+            id: cohTxId,
+            type: "transfer",
+            finTxId: txId,
+            fromUserId: fromType === "coh" ? fromId : "bank_" + fromId,
+            fromUserName: fromName,
+            toUserId: toType === "coh" ? toId : "bank_" + toId,
+            toUserName: toName,
+            amount: amt,
+            sign: fromType === "coh" ? "debit" : "credit",
+            note: note || "",
+            status: "approved",
+            performedBy: actor || "System",
+            timestamp: Date.now(),
+            approvedAt: Date.now(),
+          });
+        }
       });
     } else {
       let fromBal, toBal;
@@ -211,6 +230,28 @@ export async function financeTransfer({ fromType, fromId, fromName, toType, toId
       const txs = getTxRaw();
       txs.unshift(txData);
       saveTxRaw(txs);
+
+      if (fromType === "coh" || toType === "coh") {
+        const cohTxs = getLocalData(LS_KEYS.COH_TRANSACTIONS, []);
+        cohTxs.unshift({
+          id: "coh_" + Date.now(),
+          type: "transfer",
+          finTxId: txId,
+          fromUserId: fromType === "coh" ? fromId : "bank_" + fromId,
+          fromUserName: fromName,
+          toUserId: toType === "coh" ? toId : "bank_" + toId,
+          toUserName: toName,
+          amount: amt,
+          sign: fromType === "coh" ? "debit" : "credit",
+          note: note || "",
+          status: "approved",
+          performedBy: actor || "System",
+          timestamp: Date.now(),
+          approvedAt: Date.now(),
+        });
+        setLocalData(LS_KEYS.COH_TRANSACTIONS, cohTxs);
+      }
+
       window.dispatchEvent(new CustomEvent("coh-changed"));
       window.dispatchEvent(new CustomEvent("finance-changed"));
     }

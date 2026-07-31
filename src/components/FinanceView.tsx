@@ -10,6 +10,7 @@ export default function FinanceView({ user }) {
   const [banks, setBanks] = useState([]);
   const [users, setUsers] = useState([]);
   const [transactions, setTransactions] = useState([]);
+  const [cohTransactions, setCohTransactions] = useState([]);
 
   const [activeTab, setActiveTab] = useState("overview"); // overview | banks | transfer | ledger
 
@@ -38,6 +39,7 @@ export default function FinanceView({ user }) {
       setBanks(dbService.getBanks());
       setUsers(getUsers());
       setTransactions(dbService.getFinanceTransactions());
+      setCohTransactions(dbService.getAllTransactions());
     } catch (err) {
       logError("FINANCE", err.message, err.stack);
       alert("❌ " + (err.message || "Failed to load finance data"));
@@ -48,9 +50,11 @@ export default function FinanceView({ user }) {
   useEffect(() => {
     load();
     window.addEventListener("finance-changed", load);
+    window.addEventListener("coh-changed", load);
     window.addEventListener("users-changed", load);
     return () => {
       window.removeEventListener("finance-changed", load);
+      window.removeEventListener("coh-changed", load);
       window.removeEventListener("users-changed", load);
     };
   }, []);
@@ -65,20 +69,32 @@ export default function FinanceView({ user }) {
     return d.getTime();
   }, []);
 
-  const todayTransfers = transactions.filter(tx => tx.timestamp >= todayStart);
+  const todayTransfers = useMemo(() => {
+    const unified = [...transactions, ...cohTransactions.filter(t => !t.finTxId)].sort((a, b) => b.timestamp - a.timestamp);
+    return unified.filter(tx => tx.timestamp >= todayStart);
+  }, [transactions, cohTransactions, todayStart]);
+
+  const unifiedTransactions = useMemo(() => {
+    return [...transactions, ...cohTransactions.filter(t => !t.finTxId)].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+  }, [transactions, cohTransactions]);
 
   const filteredTransactions = useMemo(() => {
-    return transactions.filter(tx => {
-      if (ledgerFilter === "bank" && tx.fromType !== "bank" && tx.toType !== "bank") return false;
-      if (ledgerFilter === "coh" && tx.fromType === "bank" && tx.toType === "bank") return false;
-      if (ledgerSearch.trim()) {
-        const q = ledgerSearch.trim().toLowerCase();
-        const hay = `${tx.fromName || ""} ${tx.toName || ""} ${tx.note || ""} ${tx.actor || ""}`.toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
-      return true;
-    });
-  }, [transactions, ledgerFilter, ledgerSearch]);
+    let list = unifiedTransactions;
+    if (ledgerFilter === "bank") list = transactions;
+    if (ledgerFilter === "coh") list = cohTransactions;
+    if (ledgerSearch.trim()) {
+      const q = ledgerSearch.trim().toLowerCase();
+      list = list.filter(tx => {
+        const isFin = !!tx.fromType;
+        const from = isFin ? tx.fromName : tx.fromUserName;
+        const to = isFin ? tx.toName : tx.toUserName;
+        const actor = isFin ? tx.actor : tx.performedBy;
+        const hay = `${from || ""} ${to || ""} ${tx.note || ""} ${actor || ""}`.toLowerCase();
+        return hay.includes(q);
+      });
+    }
+    return list;
+  }, [unifiedTransactions, transactions, cohTransactions, ledgerFilter, ledgerSearch]);
 
   const handleSaveBank = async () => {
     setError("");
@@ -155,23 +171,99 @@ export default function FinanceView({ user }) {
   const formatDate = (ts) => new Date(ts).toLocaleString();
 
   const openStatement = (type, id, name, icon, balance) => {
-    const rows = transactions
-      .filter(t =>
-        (t.fromType === type && t.fromId === id) ||
-        (t.toType === type && t.toId === id)
-      )
-      .map(t => {
-        const isOut = t.fromType === type && t.fromId === id;
-        return {
-          id: t.id,
-          timestamp: t.timestamp,
-          in: isOut ? null : t.amount,
-          out: isOut ? t.amount : null,
-          description: `${t.fromName || "?"} → ${t.toName || "?"}`,
-          detail: [t.note, t.actor ? `by ${t.actor}` : null].filter(Boolean).join(" · "),
-        };
-      });
-    setStmt({ title: name, subtitle: type === "bank" ? "Bank Account" : "User Cash on Hand", icon, balance, rows });
+    const finRows = type === "bank"
+      ? transactions
+        .filter(t =>
+          (t.fromType === type && t.fromId === id) ||
+          (t.toType === type && t.toId === id)
+        )
+        .map(t => {
+          const isOut = t.fromType === type && t.fromId === id;
+          return {
+            id: t.id,
+            timestamp: t.timestamp,
+            in: isOut ? null : t.amount,
+            out: isOut ? t.amount : null,
+            description: `${t.fromName || "?"} → ${t.toName || "?"}`,
+            detail: [t.note, t.actor ? `by ${t.actor}` : null].filter(Boolean).join(" · "),
+          };
+        })
+      : [];
+
+    const bankCohRows = type === "bank"
+      ? cohTransactions
+        .filter(t => t.fromUserId === "bank_" + id || t.toUserId === "bank_" + id)
+        .map(t => {
+          const isOut = t.fromUserId === "bank_" + id;
+          return {
+            id: t.id,
+            timestamp: t.timestamp,
+            in: isOut ? null : t.amount,
+            out: isOut ? t.amount : null,
+            description: `${t.fromUserName || "System"} → ${t.toUserName || t.toUserId || "System"}`,
+            detail: [t.performedBy ? `performed by ${t.performedBy}` : null, t.note || null].filter(Boolean).join(" · "),
+          };
+        })
+      : [];
+
+    const userCohRows = type === "coh"
+      ? cohTransactions
+        .filter(t => t.fromUserId === id || t.toUserId === id)
+        .map(t => {
+          const isIn = t.toUserId === id;
+          return {
+            id: t.id,
+            timestamp: t.timestamp,
+            in: isIn ? t.amount : null,
+            out: isIn ? null : t.amount,
+            description: `${typeLabel(t.type)} · ${t.fromUserName || "System"} → ${t.toUserName || t.toUserId || "System"}`,
+            detail: [t.performedBy ? `performed by ${t.performedBy}` : null, t.note || null].filter(Boolean).join(" · "),
+          };
+        })
+      : [];
+
+    const rows = [...finRows, ...bankCohRows, ...userCohRows].sort((a, b) => b.timestamp - a.timestamp);
+    setStmt({ title: name, subtitle: type === "bank" ? "Bank Account" : "Cash on Hand", icon, balance, rows });
+  };
+
+  const typeLabel = (t) => {
+    const map = { sale: "Sale", expense: "Expense", adjustment: "Adjustment", transfer: "Transfer", payment: "Khata Payment", refund: "Refund" };
+    return map[t] || "Transaction";
+  };
+
+  const renderTxRow = (tx) => {
+    const isFin = !!tx.fromType;
+    const src = isFin
+      ? (tx.fromType === "bank" ? "🏦" : "👤")
+      : (tx.fromUserId || "").startsWith("bank_") ? "🏦" : "💰";
+    const dst = isFin
+      ? (tx.toType === "bank" ? "🏦" : "👤")
+      : (tx.toUserId || "").startsWith("bank_") ? "🏦" : "💰";
+    const fromName = isFin ? tx.fromName : (tx.fromUserName || "System");
+    const toName = isFin ? tx.toName : (tx.toUserName || tx.toUserId || "System");
+    const actor = isFin ? tx.actor : tx.performedBy;
+    const debit = !isFin && tx.sign === "debit";
+    return (
+      <div key={tx.id} className="coh-tx-row">
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 600, fontSize: "0.85rem", color: "var(--text)" }}>
+            {src} {fromName} → {dst} {toName}
+            {!isFin && tx.status && tx.status !== "approved" && (
+              <span style={{ fontSize: "0.65rem", fontWeight: 700, color: tx.status === "rejected" ? "var(--error)" : "#d97706", marginLeft: "0.4rem" }}>
+                {tx.status === "rejected" ? "❌ rejected" : "⏳ pending"}
+              </span>
+            )}
+          </div>
+          <div className="text-muted" style={{ fontSize: "0.7rem" }}>
+            {formatDate(tx.timestamp)}{actor ? ` · 👤 ${actor}` : ""}
+          </div>
+          {tx.note && <div className="text-muted" style={{ fontSize: "0.7rem", fontStyle: "italic" }}>{tx.note}</div>}
+        </div>
+        <div style={{ fontWeight: 700, fontSize: "0.95rem", color: debit ? "var(--error)" : "var(--primary)" }}>
+          {debit ? "-" : "+"}฿{(tx.amount || 0).toFixed(2)}
+        </div>
+      </div>
+    );
   };
 
   const tabs = [
@@ -255,22 +347,10 @@ export default function FinanceView({ user }) {
               <button className="btn btn-outline btn-sm" onClick={() => setActiveTab("ledger")}>View All</button>
             </div>
             <div className="coh-tx-list">
-              {transactions.length === 0 ? (
+              {unifiedTransactions.length === 0 ? (
                 <div className="coh-empty">No transactions yet.</div>
               ) : (
-                transactions.slice(0, 5).map(tx => (
-                  <div key={tx.id} className="coh-tx-row">
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, fontSize: "0.85rem", color: "var(--text)" }}>
-                        {tx.fromType === "bank" ? "🏦" : "👤"} {tx.fromName} → {tx.toType === "bank" ? "🏦" : "👤"} {tx.toName}
-                      </div>
-                      <div className="text-muted" style={{ fontSize: "0.7rem" }}>
-                        {formatDate(tx.timestamp)}{tx.actor ? ` · 👤 ${tx.actor}` : ""}
-                      </div>
-                    </div>
-                    <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "var(--primary)" }}>฿{tx.amount.toFixed(2)}</div>
-                  </div>
-                ))
+                unifiedTransactions.slice(0, 5).map(tx => renderTxRow(tx))
               )}
             </div>
           </div>
@@ -387,8 +467,11 @@ export default function FinanceView({ user }) {
       {activeTab === "ledger" && (
         <div className="card">
           <h4 className="section-subtitle" style={{ borderBottom: "1px solid var(--border)", paddingBottom: "0.5rem", marginBottom: "0.5rem" }}>
-            Transaction Ledger ({filteredTransactions.length})
+            Unified Ledger — All Money Movement ({filteredTransactions.length})
           </h4>
+          <p className="text-muted" style={{ fontSize: "0.7rem", margin: "0 0 0.5rem" }}>
+            Every movement across banks and cash: transfers, sales, khata payments, expenses, purchases, adjustments.
+          </p>
           <div className="filter-bar">
             <select value={ledgerFilter} onChange={e => setLedgerFilter(e.target.value)} className="input-field" style={{ fontFamily: "inherit", maxWidth: "150px", padding: "0.4rem", fontSize: "0.8rem" }}>
               <option value="all">All accounts</option>
@@ -408,20 +491,7 @@ export default function FinanceView({ user }) {
             {filteredTransactions.length === 0 ? (
               <div className="coh-empty">No transactions match your filters.</div>
             ) : (
-              filteredTransactions.slice(0, 100).map(tx => (
-                <div key={tx.id} className="coh-tx-row">
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600, fontSize: "0.85rem", color: "var(--text)" }}>
-                      {tx.fromType === "bank" ? "🏦" : "👤"} {tx.fromName} → {tx.toType === "bank" ? "🏦" : "👤"} {tx.toName}
-                    </div>
-                    <div className="text-muted" style={{ fontSize: "0.7rem" }}>
-                      {formatDate(tx.timestamp)}{tx.actor ? ` · by ${tx.actor}` : ""}
-                    </div>
-                    {tx.note && <div className="text-muted" style={{ fontSize: "0.7rem", fontStyle: "italic" }}>{tx.note}</div>}
-                  </div>
-                  <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "var(--primary)" }}>฿{tx.amount.toFixed(2)}</div>
-                </div>
-              ))
+              filteredTransactions.slice(0, 100).map(tx => renderTxRow(tx))
             )}
           </div>
         </div>
