@@ -3,6 +3,7 @@ import { dbService } from "../firebase";
 import { hashPin } from "../db/hash";
 import { useConfirmStore } from "../stores/confirmStore";
 import { useUIStore } from "../stores/uiStore";
+import { useLangStore } from "../stores/langStore";
 import { getErrors, getCategories, getUnreadCount, markAsRead, markAllAsRead, deleteError, clearErrors } from "../db/errorLog";
 import { logError } from "../db/errorLog";
 import { useDBStore } from "../stores/dbStore";
@@ -24,7 +25,9 @@ const getStore = () => {
   }
 };
 
-export default function AdminSettings({ onBack }) {
+export default function AdminSettings({ subPath, onNavigate }) {
+  const lang = useLangStore((s) => s.lang);
+  const [activeTab, setActiveTab] = useState(subPath || "general");
   const confirm = useConfirmStore((s) => s.confirm);
   const theme = useUIStore((s) => s.theme);
   const toggleTheme = useUIStore((s) => s.toggleTheme);
@@ -364,7 +367,9 @@ export default function AdminSettings({ onBack }) {
 
       {/* Factory Reset */}
       <div style={{ ...styles.card, border: "1px solid #fee2e2", backgroundColor: "#fff5f5" }}>
-        <h3 style={{ ...styles.cardHeader, color: "#991b1b", borderBottom: "1px solid #fee2e2" }}>🚨 Factory Reset (फ़ैक्टरी रीसेट)</h3>
+        <h3 style={{ ...styles.cardHeader, color: "#991b1b", borderBottom: "1px solid #fee2e2" }}>
+          {lang === "hi" ? "🚨 फ़ैक्टरी रीसेट" : "🚨 Factory Reset"}
+        </h3>
         <p style={{ fontSize: "0.8rem", color: "#b91c1c", marginBottom: "0.75rem", fontWeight: "600" }}>
           ⚠️ Warning: This will permanently delete all transactions, products, stock history, credit accounts (Udhaar), suppliers, and expenses. The application will be reset to default settings. This cannot be undone.
         </p>

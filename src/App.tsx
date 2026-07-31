@@ -15,6 +15,7 @@ import CartBottomSheet from "./components/CartBottomSheet";
 import AppShell from "./components/AppShell";
 import ConfirmDialog from "./components/ConfirmDialog";
 import { useConfirmStore } from "./stores/confirmStore";
+import { useLangStore } from "./stores/langStore";
 import { getUsers } from "./db/auth";
 import { dbService } from "./firebase";
 import { getCriticalUnreadCount } from "./db/errorLog";
@@ -58,6 +59,7 @@ function AppContent() {
   const isOnline = useAuthStore((s) => s.isOnline);
   const theme = useUIStore((s) => s.theme);
   const toggleTheme = useUIStore((s) => s.toggleTheme);
+  const lang = useLangStore((s) => s.lang);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -165,7 +167,10 @@ function AppContent() {
       if (currentUser && currentUser.sessionId) {
         const matched = currentUsers.find(u => u.id === currentUser.id);
         if (matched && matched.sessionId && matched.sessionId !== currentUser.sessionId) {
-          alert("Your account has been logged in on another device. You will be logged out. / आपका खाता किसी अन्य डिवाइस पर लॉग इन किया गया है। आप लॉग आउट हो जाएंगे।");
+          const alertMsg = lang === "hi" 
+            ? "आपका खाता किसी अन्य डिवाइस पर लॉग इन किया गया है। आप लॉग आउट हो जाएंगे।"
+            : "Your account has been logged in on another device. You will be logged out.";
+          alert(alertMsg);
           localStorage.removeItem("pan_user");
           useAuthStore.setState({ user: null });
         }
@@ -338,7 +343,11 @@ function AppContent() {
       {!isOnline && (
         <div className="bg-red-500 text-white py-2 px-4 text-xs font-semibold text-center flex items-center justify-center gap-2">
           <span>⚠️</span>
-          <span>You are offline (इंटरनेट कनेक्शन नहीं है). Please check your internet connection.</span>
+          <span>
+            {lang === "hi" 
+              ? "आप ऑफ़लाइन हैं। कृपया अपना इंटरनेट कनेक्शन जांचें।" 
+              : "You are offline. Please check your internet connection."}
+          </span>
         </div>
       )}
 

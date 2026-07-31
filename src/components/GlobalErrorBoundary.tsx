@@ -1,5 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from "react";
 import { logError } from "../db/errorLog";
+import { useLangStore } from "../stores/langStore";
 
 interface Props {
   children: ReactNode;
@@ -54,11 +55,14 @@ export default class GlobalErrorBoundary extends Component<Props, State> {
 
   public render() {
     if (this.state.hasError) {
+      const lang = useLangStore.getState().lang;
       return (
         <div style={styles.container}>
           <div style={styles.card}>
             <div style={styles.iconContainer}>⚠️</div>
-            <h1 style={styles.title}>अरे! कुछ गड़बड़ हो गई</h1>
+            <h1 style={styles.title}>
+              {lang === "hi" ? "अरे! कुछ गड़बड़ हो गई" : "Oops! Something went wrong"}
+            </h1>
             <p style={styles.subtitle}>Something went wrong with the application layout.</p>
             
             <div style={styles.errorDetails}>

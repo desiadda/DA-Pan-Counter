@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { dbService } from "../firebase";
 import { db, isFirebaseEnabled } from "../db/config";
 import { collection, onSnapshot } from "firebase/firestore";
+import { useLangStore } from "../stores/langStore";
 
 export default function SupplierDirectory() {
+  const lang = useLangStore((s) => s.lang);
   const [suppliers, setSuppliers] = useState([]);
   const [purchases, setPurchases] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -232,7 +234,9 @@ export default function SupplierDirectory() {
                 {/* Ledger View */}
                 {selectedLedgerSup === s.id && s.ledger && (
                   <div style={{ marginTop: "0.5rem", borderTop: "1px solid #f1f5f9", paddingTop: "0.5rem" }}>
-                    <span style={{ fontSize: "0.7rem", fontWeight: 700, color: "#64748b" }}>TRANSACTION LEDGER / खाता विवरण</span>
+                    <span style={{ fontSize: "0.7rem", fontWeight: 700, color: "#64748b" }}>
+                      {lang === "hi" ? "खाता विवरण" : "TRANSACTION LEDGER"}
+                    </span>
                     <div style={{ display: "flex", flexDirection: "column", gap: "3px", marginTop: "0.25rem" }}>
                       {s.ledger.map((item, idx) => (
                         <div key={idx} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.72rem", borderBottom: "1px dashed #f1f5f9", paddingBottom: "2px" }}>

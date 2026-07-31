@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { dbService } from "../firebase";
 import { db, isFirebaseEnabled } from "../db/config";
 import { collection, onSnapshot } from "firebase/firestore";
+import { useLangStore } from "../stores/langStore";
 
 export default function PurchaseOrders() {
+  const lang = useLangStore((s) => s.lang);
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
@@ -252,7 +254,9 @@ function PurchaseOrderForm({ products, suppliers, orders, isDirect, onSave, onCa
 
       {!supplierId ? (
         <div style={{ padding: "1rem", textAlign: "center", color: "#64748b", border: "1px dashed #cbd5e1", borderRadius: "8px", margin: "1rem 0", fontSize: "0.85rem" }}>
-          ⚠️ Please select a supplier first to add items. / कृपया आइटम जोड़ने के लिए पहले सप्लायर चुनें।
+          {lang === "hi" 
+            ? "⚠️ कृपया आइटम जोड़ने के लिए पहले सप्लायर चुनें।"
+            : "⚠️ Please select a supplier first to add items."}
         </div>
       ) : (
         <div style={styles.itemsSection}>
