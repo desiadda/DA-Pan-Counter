@@ -20,6 +20,8 @@ export default function POSView({ user }) {
   const navigate = useNavigate();
   const confirm = useConfirmStore((s) => s.confirm);
   const openMobileCart = useCartStore((s) => s.openMobileCart);
+  const updateMobileCartProps = useCartStore((s) => s.updateMobileCartProps);
+  const mobileCartOpen = useCartStore((s) => s.mobileCartOpen);
   const closeMobileCart = useCartStore((s) => s.closeMobileCart);
   
   const products = useDBStore((s) => s.products);
@@ -164,6 +166,18 @@ export default function POSView({ user }) {
   const taxAmountDisplay = getTaxAmount(discountedSubtotal);
   const cartTotal = discountedSubtotal + taxAmountDisplay;
   const changeToReturn = parseFloat(receivedCash) >= cartTotal ? (parseFloat(receivedCash) - cartTotal) : 0;
+
+  useEffect(() => {
+    if (!mobileCartOpen) return;
+    updateMobileCartProps({
+      cart,
+      cartSubtotal,
+      taxEnabled,
+      taxRate,
+      taxAmount: taxAmountDisplay,
+      cartTotal,
+    });
+  }, [mobileCartOpen, cart, cartSubtotal, taxEnabled, taxRate, taxAmountDisplay, cartTotal, updateMobileCartProps]);
 
   const handleCashReceived = (amount) => {
     setReceivedCash(amount);

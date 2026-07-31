@@ -20,6 +20,7 @@ interface CartState {
   subtotal: () => number
   total: (taxEnabled: boolean, taxRate: number, discountAmount: number) => number
   openMobileCart: (props: Record<string, any>, onCheckout?: () => void) => void
+  updateMobileCartProps: (props: Record<string, any>) => void
   closeMobileCart: () => void
   handleCheckout: () => void
 }
@@ -66,6 +67,11 @@ export const useCartStore = create<CartState>((set, get) => ({
   openMobileCart: (props, onCheckout) => {
     set({ mobileCartOpen: true, mobileCartProps: props })
     if (onCheckout) window.__mobileCartCheckout = onCheckout
+  },
+
+  updateMobileCartProps: (props) => {
+    const { mobileCartProps } = get()
+    set({ mobileCartProps: { ...(mobileCartProps || {}), ...props } })
   },
 
   closeMobileCart: () => {
