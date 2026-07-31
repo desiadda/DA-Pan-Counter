@@ -3,6 +3,7 @@ import { db, isFirebaseEnabled, localizeError } from "./config";
 import { LS_KEYS } from "../constants";
 import { logError } from "./errorLog";
 import { getLocalData, setLocalData } from "./storage";
+import { logAudit } from "./audit";
 
 function getBalancesRaw() {
   return getLocalData(LS_KEYS.COH_BALANCES, {});
@@ -122,6 +123,7 @@ export async function adjustBalance(userId, amount, note, adminName) {
       });
       saveTransactionsRaw(txs);
     }
+    logAudit("coh_balance_adjusted", "coh", userId, `${amount >= 0 ? "Added" : "Deducted"} ฿${Math.abs(amount).toFixed(2)} · ${note || "No note"}`, { amount });
   } catch (err) {
     logError("COH", err.message, err.stack);
     console.error("adjustBalance: Error adjusting balance", err);
@@ -155,6 +157,7 @@ export async function initiateTransfer(fromUser, toUserId, toUserName, amount) {
       txs.unshift(txData);
       saveTransactionsRaw(txs);
     }
+    logAudit("coh_transfer_initiated", "coh", txId, `${fromUser.name} → ${toUserName} · ฿${amount.toFixed(2)}`, { amount });
   } catch (err) {
     logError("COH", err.message, err.stack);
     console.error("initiateTransfer: Error initiating transfer", err);
@@ -164,12 +167,14 @@ export async function initiateTransfer(fromUser, toUserId, toUserName, amount) {
 
 export async function approveTransfer(txId) {
   try {
+    let loggedTx = null;
     if (isFirebaseEnabled) {
       await runTransaction(db, async (transaction) => {
         const txRef = doc(db, "coh_transactions", txId);
         const txSnap = await transaction.get(txRef);
         if (!txSnap.exists()) throw new Error("Transfer not found.");
         const tx = txSnap.data();
+        loggedTx = tx;
         if (tx.status !== "pending") throw new Error(localizeError("Transfer not found or already processed.", "ट्रांसफर नहीं मिला या पहले ही प्रोसेस हो चुका।"));
 
         const fromRef = doc(db, "coh_balances", tx.fromUserId);
@@ -203,6 +208,10 @@ export async function approveTransfer(txId) {
       balances[localTx.fromUserId] = (balances[localTx.fromUserId] || 0) - localTx.amount;
       balances[localTx.toUserId] = (balances[localTx.toUserId] || 0) + localTx.amount;
       saveBalancesRaw(balances);
+      loggedTx = localTx;
+    }
+    if (loggedTx) {
+      logAudit("coh_transfer_approved", "coh", txId, `${loggedTx.fromUserName} → ${loggedTx.toUserName} · ฿${(loggedTx.amount || 0).toFixed(2)}`, { amount: loggedTx.amount || 0 });
     }
   } catch (err) {
     logError("COH", err.message, err.stack);
@@ -240,6 +249,9 @@ export async function rejectTransfer(txId) {
         localTx.approvedAt = Date.now();
         saveTransactionsRaw(txs);
       }
+    }
+    if (tx) {
+      logAudit("coh_transfer_rejected", "coh", txId, `${tx.fromUserName} → ${tx.toUserName} · ฿${(tx.amount || 0).toFixed(2)}`, { amount: tx.amount || 0 });
     }
   } catch (err) {
     logError("COH", err.message, err.stack);

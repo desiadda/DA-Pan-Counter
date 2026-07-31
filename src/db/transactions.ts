@@ -2,6 +2,7 @@ import { collection, doc, writeBatch, getDocs, deleteDoc, setDoc, getDoc, runTra
 import { db, isFirebaseEnabled, localizeError } from "./config";
 import { adjustBalance } from "./coh";
 import { logError } from "./errorLog";
+import { logAudit } from "./audit";
 
 export const getTransactions = async () => {
   try {
@@ -129,6 +130,7 @@ export const addTransaction = async (transaction) => {
 
         return txId;
       });
+      logAudit("sale_created", "transaction", fireId, `${transaction.paymentMode} sale · ${transaction.items?.length || 0} items · ฿${(transaction.totalAmount || 0).toFixed(2)}`, { amount: transaction.totalAmount || 0 });
       return fireId;
     } else {
       transaction.id = "tx_" + Date.now();
@@ -152,6 +154,7 @@ export const deleteTransaction = async (transactionId) => {
       if (targetTx.paymentMode === "Cash") {
         await adjustBalance(targetTx.cashierId || "system", -targetTx.totalAmount, `Voided cash bill: ${transactionId}`, targetTx.cashierName || "System");
       }
+      logAudit("sale_voided", "transaction", transactionId, `Voided bill · ${targetTx.paymentMode} · ฿${(targetTx.totalAmount || 0).toFixed(2)}`, { amount: targetTx.totalAmount || 0 });
     }
   } catch (err) {
     logError("TRANSACTION", err.message, err.stack);
@@ -269,6 +272,7 @@ export const returnTransaction = async (originalTx, returnItems, reason, userId,
 
         firestoreTx.set(returnTxRef, returnTx);
       });
+      logAudit("sale_returned", "transaction", originalTx.id, `Return of ฿${returnAmount.toFixed(2)} · ${returnItems.length} item(s) · ${reason || "Customer return"}`, { amount: returnAmount });
     } else {
       const returnTx = {
         id: "ret_" + Date.now(), originalBillId: originalTx.id, type: "return", timestamp: Date.now(),
@@ -394,6 +398,7 @@ export const updateTransactionPaymentMode = async (transactionId, newMode, chang
 
         firestoreTx.set(docRef, tx);
       });
+      logAudit("sale_mode_edited", "transaction", transactionId, `Payment mode changed by ${changedBy || "System"}`, { changedBy });
     }
   } catch (err) {
     logError("TRANSACTION", err.message, err.stack);

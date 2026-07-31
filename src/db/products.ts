@@ -2,6 +2,7 @@ import { collection, getDocs, doc, deleteDoc, runTransaction, setDoc } from "fir
 import { db, isFirebaseEnabled, localizeError } from "./config";
 import { logError } from "./errorLog";
 import { useDBStore } from "../stores/dbStore";
+import { logAudit } from "./audit";
 
 export const getLowStockCount = () => {
   return useDBStore.getState().products.filter(p => p.stock <= p.lowStockLimit).length;
@@ -128,6 +129,7 @@ export const saveProduct = async (product) => {
         const { id, _userId, _userName, ...data } = product;
         firestoreTx.set(docRef, { ...data, id: finalId });
       });
+      logAudit("product_saved", "product", product.id, `${product.name} · stock ${product.stock ?? "?"} · cost ฿${product.costPrice ?? 0} · sell ฿${product.sellingPrice ?? 0}`, { productName: product.name });
     }
   } catch (err) {
     logError("INVENTORY", err.message, err.stack);
@@ -139,6 +141,8 @@ export const deleteProduct = async (productId) => {
   try {
     if (isFirebaseEnabled) {
       await deleteProductFromFirebase(productId);
+      const p = useDBStore.getState().products.find(pr => pr.id === productId);
+      logAudit("product_deleted", "product", productId, p ? `Deleted "${p.name}"` : "Deleted product", { productName: p?.name || "" });
     }
   } catch (err) {
     logError("INVENTORY", err.message, err.stack);

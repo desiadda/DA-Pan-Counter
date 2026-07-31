@@ -4,6 +4,7 @@ import { LS_KEYS, ADMIN_PERMISSIONS, DEFAULT_PERMISSIONS } from "../constants";
 import { hashPin, verifyPin, isPlainPin } from "./hash";
 import { logError } from "./errorLog";
 import { getLocalData, setLocalData } from "./storage";
+import { logAudit } from "./audit";
 
 let usersListenerActive = false;
 
@@ -87,6 +88,7 @@ async function saveUsers(users) {
       });
       await batch.commit();
       setLocalData(LS_KEYS.USERS, Array.from(merged.values()));
+      logAudit("user_saved", "user", users.map(u => u.id).join(","), users.map(u => u.name).join(", "));
       // Firebase mode: onSnapshot listener handles session refresh automatically
     } else {
       // Local mode: refresh session immediately after save
@@ -102,6 +104,7 @@ async function saveUsers(users) {
         }
       }
       setLocalData(LS_KEYS.USERS, users);
+      logAudit("user_saved", "user", users.map(u => u.id).join(","), users.map(u => u.name).join(", "));
       try {
         const raw = localStorage.getItem(LS_KEYS.USER);
         if (raw) {
@@ -135,6 +138,7 @@ export async function deleteUsers(ids) {
     const localUsers = getUsers();
     const remaining = localUsers.filter(u => !ids.includes(u.id));
     setLocalData(LS_KEYS.USERS, remaining);
+    logAudit("user_deleted", "user", ids.join(","), ids.map(id => localUsers.find(u => u.id === id)?.name || id).join(", "));
     window.dispatchEvent(new CustomEvent("users-changed"));
   } catch (err) {
     logError("AUTH", err.message, err.stack);
@@ -233,6 +237,7 @@ export const login = async (email, password) => {
           sessionId: sessionId,
         };
         localStorage.setItem(LS_KEYS.USER, JSON.stringify(user));
+        logAudit("auth_login", "user", u.id, `Logged in as ${u.name} (${u.role})`, { actorId: u.id, actorName: u.name, role: u.role });
         return user;
       }
     }
@@ -266,6 +271,7 @@ export const login = async (email, password) => {
           sessionId: sessionId,
         };
         localStorage.setItem(LS_KEYS.USER, JSON.stringify(user));
+        logAudit("auth_login", "user", u.id, `Logged in as ${u.name} (${u.role})`, { actorId: u.id, actorName: u.name, role: u.role });
         return user;
       }
     }
@@ -283,6 +289,9 @@ export const login = async (email, password) => {
 
 export const logout = async () => {
   try {
+    const session = localStorage.getItem(LS_KEYS.USER);
+    const u = session ? JSON.parse(session) : null;
+    logAudit("auth_logout", "user", u?.id || "", u ? `Logged out ${u.name}` : "Logged out", u ? { actorId: u.id, actorName: u.name, role: u.role } : {});
     localStorage.removeItem(LS_KEYS.USER);
   } catch (err) {
     logError("AUTH", err.message, err.stack);

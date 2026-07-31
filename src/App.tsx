@@ -30,6 +30,7 @@ const COHView = lazy(() => import("./components/COHView"));
 const FinanceView = lazy(() => import("./components/FinanceView"));
 const AdminSettings = lazy(() => import("./components/AdminSettings"));
 const ErrorLogView = lazy(() => import("./components/ErrorLogView"));
+const AuditLogView = lazy(() => import("./components/AuditLogView"));
 
 const navItems = [
   {
@@ -89,6 +90,7 @@ function AppContent() {
     if (path.startsWith("/users")) return "users";
     if (path.startsWith("/settings")) return "settings";
     if (path.startsWith("/errors")) return "errors";
+    if (path.startsWith("/audit")) return "audit";
     if (path.startsWith("/coh")) return "coh";
     return "pos";
   };
@@ -247,6 +249,7 @@ function AppContent() {
     if (key === "users") return user?.role === "admin" || !!user?.permissions?.settingsManageUsers;
     if (key === "coh") return !!user?.permissions?.settings;
     if (key === "errors") return !!user?.permissions?.settings;
+    if (key === "audit") return user?.role === "admin" || !!user?.permissions?.settings;
     return !!user?.permissions?.[key];
   }, [user]);
 
@@ -259,7 +262,7 @@ function AppContent() {
     if (key === "expenses") return "expenses";
     if (key === "finance") return "finance";
     if (key === "users") return "users";
-    if (key === "settings" || key === "coh" || key === "errors") return "settings";
+    if (key === "settings" || key === "coh" || key === "errors" || key === "audit") return "settings";
     return null;
   };
 
@@ -323,6 +326,8 @@ function AppContent() {
         return <AdminSettings subPath={subPath} onNavigate={handleSubNavigate} />;
       case "errors":
         return <ErrorLogView onBack={() => navigate("/pos")} />;
+      case "audit":
+        return <AuditLogView onBack={() => navigate("/pos")} />;
       default:
         return <POSView user={user} />;
     }
@@ -539,6 +544,12 @@ function AppContent() {
                 <button className="drawer-item" onClick={() => { setIsMenuDrawerOpen(false); navigate("/errors"); }}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                   Error Logs
+                </button>
+              )}
+              {canAccessTab("audit") && (
+                <button className="drawer-item" onClick={() => { setIsMenuDrawerOpen(false); navigate("/audit"); }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/><path d="M7 18l6-6"/></svg>
+                  Activity Log
                 </button>
               )}
               

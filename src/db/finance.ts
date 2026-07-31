@@ -4,6 +4,7 @@ import { LS_KEYS } from "../constants";
 import { logError } from "./errorLog";
 import { getLocalData, setLocalData } from "./storage";
 import { getBalance, setBalanceLocal } from "./coh";
+import { logAudit } from "./audit";
 
 function getBanksRaw() {
   return getLocalData(LS_KEYS.BANKS, []);
@@ -78,6 +79,7 @@ export async function addBank(name, balance) {
       saveBanksRaw(list);
       window.dispatchEvent(new CustomEvent("finance-changed"));
     }
+    logAudit("bank_created", "bank", "", `Created bank "${trimmed}" with ฿${bal.toFixed(2)}`, { bankName: trimmed });
   } catch (err) {
     logError("FINANCE", err.message, err.stack);
     console.error("addBank: Error adding bank", err);
@@ -104,6 +106,7 @@ export async function updateBank(id, name, balance) {
         window.dispatchEvent(new CustomEvent("finance-changed"));
       }
     }
+    logAudit("bank_updated", "bank", id, `Updated bank "${trimmed}" balance to ฿${bal.toFixed(2)}`, { bankName: trimmed });
   } catch (err) {
     logError("FINANCE", err.message, err.stack);
     console.error("updateBank: Error updating bank", err);
@@ -119,6 +122,7 @@ export async function deleteBank(id) {
       saveBanksRaw(getBanksRaw().filter(b => b.id !== id));
       window.dispatchEvent(new CustomEvent("finance-changed"));
     }
+    logAudit("bank_deleted", "bank", id, `Deleted bank account`, {});
   } catch (err) {
     logError("FINANCE", err.message, err.stack);
     console.error("deleteBank: Error deleting bank", err);
@@ -210,6 +214,7 @@ export async function financeTransfer({ fromType, fromId, fromName, toType, toId
       window.dispatchEvent(new CustomEvent("coh-changed"));
       window.dispatchEvent(new CustomEvent("finance-changed"));
     }
+    logAudit("finance_transfer", "finance", txId, `${fromName} → ${toName} · ฿${amt.toFixed(2)}${note ? " · " + note : ""}`, { amount: amt });
   } catch (err) {
     logError("FINANCE", err.message, err.stack);
     console.error("financeTransfer: Error transferring", err);

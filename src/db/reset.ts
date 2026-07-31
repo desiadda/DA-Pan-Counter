@@ -2,6 +2,7 @@ import { collection, getDocs, doc, writeBatch } from "firebase/firestore";
 import { db, isFirebaseEnabled } from "./config";
 import { hashPin } from "./hash";
 import { logError } from "./errorLog";
+import { logAudit } from "./audit";
 
 export const factoryReset = async () => {
   try {
@@ -104,6 +105,7 @@ export const factoryReset = async () => {
       });
       await userCreateBatch.commit();
     }
+    logAudit("system_reset", "system", "", "Factory reset executed — all data wiped and defaults restored", {});
   } catch (err) {
     logError("SYSTEM", `Factory reset failed: ${err.message}`, err.stack);
     throw err;

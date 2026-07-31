@@ -2,6 +2,7 @@ import { collection, doc, setDoc, addDoc, getDocs, getDoc, runTransaction } from
 import { db, isFirebaseEnabled } from "./config";
 import { logError } from "./errorLog";
 import { getLocalData, setLocalData } from "./storage";
+import { logAudit } from "./audit";
 
 const LS_KEY = "pan_purchase_orders";
 
@@ -152,6 +153,7 @@ export const savePurchaseOrder = async (order) => {
         const { id, ...orderData } = order;
         firestoreTx.set(docRef, orderData);
       });
+      logAudit("purchase_saved", "purchase", order.id, `${order.supplier || "?"} · ฿${(order.total || 0).toFixed(2)} · ${order.paymentMode || "?"}`, { amount: order.total || 0 });
     } else {
       const list = getLocalData(LS_KEY, []);
       if (order.id) {
@@ -288,6 +290,7 @@ export const receivePurchaseOrder = async (orderId) => {
         const { id, ...orderData } = order;
         firestoreTx.set(docRef, orderData);
       });
+      logAudit("purchase_received", "purchase", orderId, `PO received · ${order.supplier || "?"} · ฿${(order.total || 0).toFixed(2)}`, { amount: order.total || 0 });
     } else {
       const list = getLocalData(LS_KEY, []);
       const order = list.find(o => o.id === orderId);
@@ -312,6 +315,7 @@ export const cancelPurchaseOrder = async (orderId) => {
       order.status = "cancelled";
       order.cancelledAt = Date.now();
       await syncPurchaseToFirebase(order);
+      logAudit("purchase_cancelled", "purchase", orderId, `PO cancelled · ${order.supplier || "?"} · ฿${(order.total || 0).toFixed(2)}`, { amount: order.total || 0 });
     } else {
       const list = getLocalData(LS_KEY, []);
       const order = list.find(o => o.id === orderId);

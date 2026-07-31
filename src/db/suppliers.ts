@@ -2,6 +2,7 @@ import { collection, doc, setDoc, addDoc, deleteDoc, getDocs, runTransaction } f
 import { db, isFirebaseEnabled } from "./config";
 import { logError } from "./errorLog";
 import { getLocalData, setLocalData } from "./storage";
+import { logAudit } from "./audit";
 
 const LS_KEY = "pan_suppliers";
 
@@ -53,6 +54,7 @@ export const saveSupplier = async (supplier) => {
       }
       setLocalData(LS_KEY, list);
     }
+    logAudit(supplier.id ? "supplier_updated" : "supplier_created", "supplier", supplier.id || "", `${supplier.name || "Supplier"}${supplier.phone ? " · " + supplier.phone : ""}`);
     return supplier;
   } catch (err) {
     logError("STORAGE", err.message, err.stack);
@@ -68,6 +70,7 @@ export const deleteSupplier = async (id) => {
       const list = getLocalData(LS_KEY, []).filter(s => s.id !== id);
       setLocalData(LS_KEY, list);
     }
+    logAudit("supplier_deleted", "supplier", id, "Deleted supplier");
   } catch (err) {
     logError("STORAGE", err.message, err.stack);
     throw new Error("Failed to delete supplier");
@@ -151,6 +154,7 @@ export const recordSupplierPayment = async (supplierId, supplierName, amount, pa
           });
         }
       });
+      logAudit("supplier_payment", "supplier", supplierId, `Paid ${supplierName} ฿${(amount || 0).toFixed(2)} via ${paymentMode}`, { amount });
     }
   } catch (err) {
     logError("STORAGE", err.message, err.stack);

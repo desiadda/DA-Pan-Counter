@@ -1,6 +1,7 @@
 import { collection, getDocs, doc, setDoc, deleteDoc } from "firebase/firestore";
 import { db, isFirebaseEnabled } from "./config";
 import { logError } from "./errorLog";
+import { logAudit } from "./audit";
 
 export const DEFAULT_PAYMENT_MODES = [
   { id: "Cash", name: "Cash", qrCode: "", isSystem: true, enabled: true },
@@ -46,6 +47,7 @@ export const savePaymentMode = async (mode: any) => {
       else current.push(mode);
       localStorage.setItem("pan_payment_modes", JSON.stringify(current));
     }
+    logAudit("payment_mode_saved", "settings", mode.id, `${mode.name} · ${mode.enabled ? "enabled" : "disabled"}${mode.qrCode ? " · QR set" : ""}`);
   } catch (err: any) {
     logError("SETTINGS", err.message, err.stack);
     throw err;
@@ -61,6 +63,7 @@ export const deletePaymentMode = async (modeId: string) => {
       const filtered = current.filter((m: any) => m.id !== modeId);
       localStorage.setItem("pan_payment_modes", JSON.stringify(filtered));
     }
+    logAudit("payment_mode_deleted", "settings", modeId, "Deleted payment mode");
   } catch (err: any) {
     logError("SETTINGS", err.message, err.stack);
     throw err;

@@ -2,6 +2,7 @@ import { collection, getDocs, doc, addDoc, deleteDoc, onSnapshot } from "firebas
 import { db, isFirebaseEnabled, localizeError } from "./config";
 import { logError } from "./errorLog";
 import { getLocalData, setLocalData } from "./storage";
+import { logAudit } from "./audit";
 
 const LS_KEY = "pan_expenses";
 const EXPENSE_CATEGORIES = ["Rent", "Electricity", "Salary", "Supplies", "Maintenance", "Other"];
@@ -55,6 +56,7 @@ export const addExpense = async (expense) => {
   try {
     if (isFirebaseEnabled) {
       const fireId = await syncExpenseToFirebase(expense);
+      logAudit("expense_added", "expense", fireId, `${expense.category || "Other"} · ฿${(expense.amount || 0).toFixed(2)} · ${expense.description || ""}`, { amount: expense.amount || 0 });
       return fireId;
     }
     throw new Error("Cannot add expense: Firebase is not initialized.");
@@ -68,6 +70,7 @@ export const deleteExpense = async (expenseId) => {
   try {
     if (isFirebaseEnabled) {
       await deleteExpenseFromFirebase(expenseId);
+      logAudit("expense_deleted", "expense", expenseId, "Deleted expense entry");
     }
   } catch (err) {
     logError("EXPENSE", err.message, err.stack);

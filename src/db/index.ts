@@ -15,6 +15,7 @@ import { getPurchaseOrders, savePurchaseOrder, receivePurchaseOrder, cancelPurch
 import { getSuppliers, saveSupplier, deleteSupplier, updateSupplierBalance, recordSupplierPayment } from "./suppliers";
 import { initFinanceListener, getBanks, addBank, updateBank, deleteBank, getFinanceTransactions, financeTransfer } from "./finance";
 import { initSettingsListener, saveAppSettings } from "./settings";
+import { initAuditListener, getAuditLogs, logAudit } from "./audit";
 
 
 export const dbService = {
@@ -74,6 +75,9 @@ export const dbService = {
   deletePaymentMode,
   initFinanceListener,
   initSettingsListener,
+  initAuditListener,
+  getAuditLogs,
+  logAudit,
   saveAppSettings,
   getBanks,
   addBank,

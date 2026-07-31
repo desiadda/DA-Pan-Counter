@@ -1,6 +1,7 @@
 import { collection, getDocs, doc, setDoc, updateDoc, getDoc, runTransaction } from "firebase/firestore";
 import { db, isFirebaseEnabled, localizeError } from "./config";
 import { logError } from "./errorLog";
+import { logAudit } from "./audit";
 
 async function syncCustomerToFirebase(customer) {
   const { id, ...data } = customer;
@@ -39,6 +40,7 @@ export const saveCustomer = async (customer) => {
 
     if (isFirebaseEnabled) {
       await syncCustomerToFirebase(customer);
+      logAudit(customer.id ? "customer_updated" : "customer_created", "customer", customer.id || "", `${customer.name || "Customer"}${customer.phone ? " · " + customer.phone : ""}`);
     }
   } catch (err) {
     logError("TRANSACTION", err.message, err.stack);
@@ -55,6 +57,7 @@ export const updateUdhaarBalance = async (
   paymentMode?: string
 ) => {
   try {
+    let customerName = "";
     if (isFirebaseEnabled && db) {
       await runTransaction(db, async (firestoreTx) => {
         const docRef = doc(db, "customers", customerId);
@@ -62,6 +65,7 @@ export const updateUdhaarBalance = async (
         if (!docSnap.exists()) throw new Error("Customer not found.");
 
         const data = docSnap.data();
+        customerName = data.name || "Customer";
         const currentBal = data.balance || 0;
         const currentLedger = data.ledger || [];
         const newBal = currentBal + amountChange;
@@ -105,6 +109,13 @@ export const updateUdhaarBalance = async (
           });
         }
       });
+      logAudit(
+        ledgerEntry?.type === "Payment" ? "khata_payment" : "khata_updated",
+        "customer",
+        customerId,
+        `${customerName} · ${ledgerEntry?.type || "Update"} · ${amountChange >= 0 ? "+" : "-"}฿${Math.abs(amountChange).toFixed(2)} · ${ledgerEntry?.description || ""}`,
+        { amount: amountChange }
+      );
     }
   } catch (err) {
     logError("TRANSACTION", err.message, err.stack);

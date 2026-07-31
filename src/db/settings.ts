@@ -1,6 +1,7 @@
 import { doc, setDoc, onSnapshot } from "firebase/firestore";
 import { db, isFirebaseEnabled } from "./config";
 import { logError } from "./errorLog";
+import { logAudit } from "./audit";
 
 const SETTINGS_DOC = "app_settings";
 
@@ -36,6 +37,7 @@ export async function saveAppSettings(patch) {
   if (isFirebaseEnabled && db) {
     try {
       await setDoc(doc(db, "settings", SETTINGS_DOC), patch, { merge: true });
+      logAudit("settings_changed", "settings", SETTINGS_DOC, `Updated: ${Object.keys(patch).join(", ")}`);
     } catch (err) {
       logError("SETTINGS", "Cloud settings save failed: " + err.message, err.stack);
       throw err;
