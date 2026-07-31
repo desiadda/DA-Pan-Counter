@@ -1,9 +1,13 @@
 import { useState, useMemo } from "react";
 import { dbService } from "../firebase";
 import { useConfirmStore } from "../stores/confirmStore";
+import { useLangStore } from "../stores/langStore";
+import { useT } from "../lang/translations";
 import { CATEGORIES } from "../constants";
 
 export default function BulkPriceUpdate({ products, onDone }) {
+  const lang = useLangStore((s) => s.lang);
+  const tr = useT(lang);
   const confirm = useConfirmStore((s) => s.confirm);
   const [selected, setSelected] = useState({});
   const [updateField, setUpdateField] = useState("sellingPrice");
@@ -86,10 +90,10 @@ export default function BulkPriceUpdate({ products, onDone }) {
   }, [selectedProducts, valid, updateField, updateType, updateValue]);
 
   const handleApply = async () => {
-    if (!valid) { alert("Select at least one product and enter a valid value."); return; }
+    if (!valid) { alert(tr("bulk.selectAtLeastOne")); return; }
     const ok = await confirm(
-      `Apply price change to ${selectedCount} product(s)?\nInventory value impact: ${inventoryImpact >= 0 ? "+" : "−"}฿${Math.abs(inventoryImpact).toFixed(0)}`,
-      { title: "Confirm Bulk Update", confirmLabel: "Apply", cancelLabel: "Back" }
+      `${tr("bulk.confirmQ")} ${selectedCount} ${tr("bulk.products")}?\n${tr("bulk.confirmImpact")}: ${inventoryImpact >= 0 ? "+" : "−"}฿${Math.abs(inventoryImpact).toFixed(0)}`,
+      { title: tr("bulk.title"), confirmLabel: tr("bulk.apply"), cancelLabel: tr("bulk.back") }
     );
     if (!ok) return;
 
@@ -116,67 +120,67 @@ export default function BulkPriceUpdate({ products, onDone }) {
       }
     }
 
-    alert(`Updated ${updated} product(s) successfully!`);
+    alert(`${tr("bulk.updated")} ${updated} ${tr("bulk.products")}`);
     setApplying(false);
     onDone?.();
   };
 
   return (
     <div style={styles.card}>
-      <h3 style={styles.title}>Bulk Price Update</h3>
-      <p style={styles.desc}>Select products and apply price changes in bulk.</p>
+      <h3 style={styles.title}>{tr("bulk.title")}</h3>
+      <p style={styles.desc}>{tr("bulk.desc")}</p>
 
       <div style={styles.filterBar}>
         <select value={categoryFilter} onChange={e => { setCategoryFilter(e.target.value); }} style={styles.filterSelect}>
-          {categories.map(c => <option key={c} value={c}>{c === "All" ? "All Categories" : c}</option>)}
+          {categories.map(c => <option key={c} value={c}>{c === "All" ? tr("bulk.allCategories") : c}</option>)}
         </select>
         <input
           type="text"
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
-          placeholder="Search products..."
+          placeholder={tr("bulk.searchProducts")}
           style={styles.filterInput}
         />
       </div>
 
       <div style={styles.toolbar}>
         <button onClick={toggleAll} style={styles.toggleBtn}>
-          {visibleProducts.length > 0 && visibleProducts.every(p => selected[p.id]) ? "Deselect All" : `Select Visible (${visibleProducts.length})`}
+          {visibleProducts.length > 0 && visibleProducts.every(p => selected[p.id]) ? tr("bulk.deselectAll") : `${tr("bulk.selectVisible")} (${visibleProducts.length})`}
         </button>
-        <span style={styles.count}>{selectedCount} selected</span>
+        <span style={styles.count}>{selectedCount} {tr("bulk.selected")}</span>
       </div>
 
       <div style={styles.options}>
         <select value={updateField} onChange={e => setUpdateField(e.target.value)} style={styles.select}>
-          <option value="sellingPrice">Selling Price</option>
-          <option value="costPrice">Cost Price</option>
-          {products.some(p => p.isCigarette) && <option value="sellingPricePack">Pack Selling Price</option>}
+          <option value="sellingPrice">{tr("bulk.sellingPrice")}</option>
+          <option value="costPrice">{tr("bulk.costPrice")}</option>
+          {products.some(p => p.isCigarette) && <option value="sellingPricePack">{tr("bulk.packSelling")}</option>}
         </select>
 
         <select value={updateType} onChange={e => setUpdateType(e.target.value)} style={styles.select}>
-          <option value="fixed">Set to (฿)</option>
-          <option value="percent">Increase by (%)</option>
+          <option value="fixed">{tr("bulk.setTo")}</option>
+          <option value="percent">{tr("bulk.increaseBy")}</option>
         </select>
 
         <input
           type="number"
           value={updateValue}
           onChange={e => setUpdateValue(e.target.value)}
-          placeholder={updateType === "percent" ? "% increase" : "New price"}
+          placeholder={updateType === "percent" ? tr("bulk.pctIncrease") : tr("bulk.newPrice")}
           style={styles.input}
         />
 
         <button onClick={handleApply} disabled={!valid || applying} className="btn btn-primary" style={{ padding: "0.5rem 1rem", fontSize: "0.85rem" }}>
-          {applying ? "Applying..." : `Apply to ${selectedCount} product(s)`}
+          {applying ? tr("purchase.processing") : `${tr("bulk.applyTo")} ${selectedCount} ${tr("bulk.products")}`}
         </button>
       </div>
 
       {valid && (
         <div style={styles.preview}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={styles.previewTitle}>PREVIEW ({selectedCount} products)</span>
+            <span style={styles.previewTitle}>{tr("bulk.preview")} ({selectedCount})</span>
             <span style={{ ...styles.previewImpact, color: inventoryImpact >= 0 ? "#047857" : "#dc2626" }}>
-              Inv. impact: {inventoryImpact >= 0 ? "+" : "−"}฿{Math.abs(inventoryImpact).toFixed(0)}
+              {tr("bulk.invImpact")}: {inventoryImpact >= 0 ? "+" : "−"}฿{Math.abs(inventoryImpact).toFixed(0)}
             </span>
           </div>
           <div style={styles.previewList}>
@@ -189,17 +193,17 @@ export default function BulkPriceUpdate({ products, onDone }) {
               </div>
             ))}
             {selectedCount > 5 && (
-              <div style={styles.previewMore}>+ {selectedCount - 5} more product(s)…</div>
+              <div style={styles.previewMore}>+ {selectedCount - 5} {tr("bulk.moreProducts")}</div>
             )}
           </div>
           {updateField === "costPrice" && selectedProducts.some(p => (p.sellingPrice || 0) > 0 && val() >= p.sellingPrice) && (
             <div style={styles.warn}>
-              ⚠️ Warning: cost price selected products ke selling price se zyada ya barabar hai — margin negative ho jayegi.
+              ⚠️ {tr("bulk.warnCost")}
             </div>
           )}
           {updateField === "sellingPrice" && selectedProducts.some(p => (p.costPrice || 0) > 0 && val() <= p.costPrice) && (
             <div style={styles.warn}>
-              ⚠️ Warning: selling price selected products ke cost se kam ya barabar hai — margin negative ho jayegi.
+              ⚠️ {tr("bulk.warnSelling")}
             </div>
           )}
         </div>
@@ -207,7 +211,7 @@ export default function BulkPriceUpdate({ products, onDone }) {
 
       <div style={styles.list}>
         {visibleProducts.length === 0 ? (
-          <div style={styles.emptyList}>No products match the filter.</div>
+          <div style={styles.emptyList}>{tr("bulk.noMatch")}</div>
         ) : visibleProducts.map(p => (
           <label key={p.id} style={{ ...styles.productRow, ...(selected[p.id] ? styles.selectedRow : {}) }}>
             <input type="checkbox" checked={!!selected[p.id]} onChange={() => toggleProduct(p.id)} />

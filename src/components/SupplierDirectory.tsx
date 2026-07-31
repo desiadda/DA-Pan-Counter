@@ -7,9 +7,11 @@ import { useConfirmStore } from "../stores/confirmStore";
 import { useDBStore } from "../stores/dbStore";
 import { UDHAAR_MODE } from "../constants";
 import SupplierStatementModal from "./SupplierStatementModal";
+import { useT } from "../lang/translations";
 
 export default function SupplierDirectory() {
   const lang = useLangStore((s) => s.lang);
+  const tr = useT(lang);
   const confirm = useConfirmStore((s) => s.confirm);
   const paymentModes = useDBStore((s) => s.paymentModes);
   const [suppliers, setSuppliers] = useState([]);
@@ -100,7 +102,7 @@ export default function SupplierDirectory() {
 
   const handleDelete = async (id) => {
     if (submitting) return;
-    if (await confirm("Are you sure you want to delete this supplier?", { title: "Delete Supplier", confirmLabel: "Delete", variant: "danger" })) {
+    if (await confirm(tr("supplier.deleteQ"), { title: tr("common.delete"), confirmLabel: tr("common.delete"), variant: "danger" })) {
       try {
         setSubmitting(true);
         await dbService.deleteSupplier(id);
@@ -174,22 +176,22 @@ export default function SupplierDirectory() {
   return (
     <div className="sup-wrapper">
       <div className="sup-header">
-        <h3 className="section-subtitle">📍 Supplier Directory & Khata</h3>
-        <button onClick={() => { reset(); setShowForm(true); }} className="btn btn-primary btn-sm">+ Add Supplier</button>
+        <h3 className="section-subtitle">📍 {tr("supplier.title")}</h3>
+        <button onClick={() => { reset(); setShowForm(true); }} className="btn btn-primary btn-sm">{tr("supplier.addSupplier")}</button>
       </div>
 
       <div style={styles.statsRow}>
         <div style={styles.statCard}>
           <span style={styles.statValue}>{suppliers.length}</span>
-          <span style={styles.statLabel}>Suppliers</span>
+          <span style={styles.statLabel}>{tr("supplier.suppliers")}</span>
         </div>
         <div style={styles.statCard}>
           <span style={{ ...styles.statValue, color: totalCredit > 0 ? "#dc2626" : "#047857" }}>฿{totalCredit.toFixed(0)}</span>
-          <span style={styles.statLabel}>Credit Outstanding</span>
+          <span style={styles.statLabel}>{tr("supplier.creditOutstanding")}</span>
         </div>
         <div style={styles.statCard}>
           <span style={{ ...styles.statValue, color: pendingPos > 0 ? "#d97706" : "#64748b" }}>{pendingPos}</span>
-          <span style={styles.statLabel}>Pending POs</span>
+          <span style={styles.statLabel}>{tr("supplier.pendingPos")}</span>
         </div>
       </div>
 
@@ -198,38 +200,38 @@ export default function SupplierDirectory() {
           type="text"
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
-          placeholder="Search name, phone, contact..."
+          placeholder={tr("supplier.searchPlaceholder")}
           style={styles.searchInput}
         />
         <select value={sortBy} onChange={e => setSortBy(e.target.value)} style={styles.sortSelect}>
-          <option value="name">Sort: Name (A–Z)</option>
-          <option value="balance">Sort: Highest Credit</option>
+          <option value="name">{tr("supplier.sortName")}</option>
+          <option value="balance">{tr("supplier.sortCredit")}</option>
         </select>
       </div>
 
       {showForm && (
         <form onSubmit={handleSubmit} className="card" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
           <div className="input-group" style={{ marginBottom: 0 }}>
-            <label className="input-label">Supplier Name</label>
-            <input type="text" value={name} onChange={e => setName(e.target.value)} className="input-field" placeholder="Name" required autoFocus />
+            <label className="input-label">{tr("supplier.name")}</label>
+            <input type="text" value={name} onChange={e => setName(e.target.value)} className="input-field" placeholder={tr("supplier.name")} required autoFocus />
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
             <div className="input-group" style={{ marginBottom: 0 }}>
-              <label className="input-label">Contact Person</label>
-              <input type="text" value={contact} onChange={e => setContact(e.target.value)} className="input-field" placeholder="Contact" />
+              <label className="input-label">{tr("supplier.contact")}</label>
+              <input type="text" value={contact} onChange={e => setContact(e.target.value)} className="input-field" placeholder={tr("supplier.contact")} />
             </div>
             <div className="input-group" style={{ marginBottom: 0 }}>
-              <label className="input-label">Phone</label>
-              <input type="text" value={phone} onChange={e => setPhone(e.target.value)} className="input-field" placeholder="Phone" />
+              <label className="input-label">{tr("supplier.phone")}</label>
+              <input type="text" value={phone} onChange={e => setPhone(e.target.value)} className="input-field" placeholder={tr("supplier.phone")} />
             </div>
           </div>
           <div className="input-group" style={{ marginBottom: 0 }}>
-            <label className="input-label">Address</label>
-            <input type="text" value={address} onChange={e => setAddress(e.target.value)} className="input-field" placeholder="Address" />
+            <label className="input-label">{tr("supplier.address")}</label>
+            <input type="text" value={address} onChange={e => setAddress(e.target.value)} className="input-field" placeholder={tr("supplier.address")} />
           </div>
           {!editSup && (
             <div className="input-group" style={{ marginBottom: 0 }}>
-              <label className="input-label">Opening Balance (฿) <span style={{ fontWeight: 400, color: "#94a3b8" }}>— optional, supplier ka pehle se udhaar</span></label>
+              <label className="input-label">{tr("supplier.openingBalance")} <span style={{ fontWeight: 400, color: "#94a3b8" }}>— {tr("supplier.openingBalanceHint")}</span></label>
               <input
                 type="number"
                 value={openingBalance}
@@ -242,9 +244,9 @@ export default function SupplierDirectory() {
           )}
           <div className="flex-btn-group">
             <button type="submit" disabled={submitting} className="btn btn-primary btn-sm">
-              {submitting ? "Saving..." : (editSup ? "Update" : "Save")}
+              {submitting ? tr("supplier.saving") : (editSup ? tr("supplier.update") : tr("supplier.save"))}
             </button>
-            <button type="button" onClick={reset} className="btn btn-outline btn-sm">Cancel</button>
+            <button type="button" onClick={reset} className="btn btn-outline btn-sm">{tr("supplier.cancel")}</button>
           </div>
         </form>
       )}
@@ -252,14 +254,14 @@ export default function SupplierDirectory() {
       {/* Record Payment Form Sheet */}
       {paymentSup && (
         <form onSubmit={handleRecordPayment} className="card" style={{ display: "flex", flexDirection: "column", gap: "0.5rem", border: "1.5px solid var(--primary)" }}>
-          <h4 style={{ margin: 0, fontSize: "0.85rem", fontWeight: 700, color: "var(--primary)" }}>Record Payment to {paymentSup.name}</h4>
+          <h4 style={{ margin: 0, fontSize: "0.85rem", fontWeight: 700, color: "var(--primary)" }}>{tr("supplier.recordPaymentTo")} {paymentSup.name}</h4>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
             <div className="input-group" style={{ marginBottom: 0 }}>
-              <label className="input-label">Amount (฿)</label>
+              <label className="input-label">{tr("supplier.amount")}</label>
               <input type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} className="input-field" placeholder="0.00" min="1" max={paymentSup.balance} required autoFocus />
             </div>
             <div className="input-group" style={{ marginBottom: 0 }}>
-              <label className="input-label">Payment Mode</label>
+              <label className="input-label">{tr("purchase.payMode")}</label>
               <select value={payMode} onChange={e => setPayMode(e.target.value)} className="input-field" style={{ fontFamily: "inherit" }}>
                 {payModeOptions.map(m => (
                   <option key={m.id} value={m.id === UDHAAR_MODE ? "Credit" : m.id === "Cash" ? "Cash" : m.id}>
@@ -270,16 +272,16 @@ export default function SupplierDirectory() {
             </div>
           </div>
           <div className="flex-btn-group">
-            <button type="submit" disabled={submitting} className="btn btn-primary btn-sm">Submit Payment</button>
-            <button type="button" onClick={() => setPaymentSup(null)} className="btn btn-outline btn-sm">Cancel</button>
+            <button type="submit" disabled={submitting} className="btn btn-primary btn-sm">{tr("supplier.submitPayment")}</button>
+            <button type="button" onClick={() => setPaymentSup(null)} className="btn btn-outline btn-sm">{tr("supplier.cancel")}</button>
           </div>
         </form>
       )}
 
       {suppliers.length === 0 ? (
-        <div className="sup-empty">No suppliers added yet.</div>
+        <div className="sup-empty">{tr("supplier.noSuppliers")}</div>
       ) : filteredSuppliers.length === 0 ? (
-        <div className="sup-empty">No suppliers match "{searchQuery}".</div>
+        <div className="sup-empty">{tr("supplier.noMatchQ")} "{searchQuery}"</div>
       ) : (
         <div className="coh-tx-list">
           {filteredSuppliers.map(s => {
@@ -299,7 +301,7 @@ export default function SupplierDirectory() {
                       <button onClick={() => handleDelete(s.id)} className="sup-edit-btn" style={{ color: "#dc2626" }} title="Delete">🗑️</button>
                     </div>
                     <div style={{ textAlign: "right", marginTop: "0.25rem" }}>
-                      <div style={{ fontSize: "0.7rem", color: "#64748b" }}>Udhaar / Credit</div>
+                      <div style={{ fontSize: "0.7rem", color: "#64748b" }}>{tr("supplier.udhaarCredit")}</div>
                       <div style={{ fontSize: "0.95rem", fontWeight: 800, color: (s.balance || 0) > 0 ? "#dc2626" : "#047857" }}>
                         ฿{(s.balance || 0).toFixed(2)}
                       </div>
@@ -309,16 +311,16 @@ export default function SupplierDirectory() {
 
                 <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.25rem", flexWrap: "wrap" }}>
                   <button onClick={() => setStatementSup(s)} className="btn btn-outline" style={{ padding: "3px 8px", fontSize: "0.7rem", borderRadius: "6px" }}>
-                    📄 Statement
+                    📄 {tr("supplier.statement")}
                   </button>
                   {(s.balance || 0) > 0 && (
                     <button onClick={() => setPaymentSup(s)} className="btn btn-primary" style={{ padding: "3px 8px", fontSize: "0.7rem", borderRadius: "6px" }}>
-                      💸 Pay Supplier
+                      💸 {tr("supplier.paySupplier")}
                     </button>
                   )}
                   {s.ledger && s.ledger.length > 0 && (
                     <button onClick={() => setSelectedLedgerSup(selectedLedgerSup === s.id ? null : s.id)} className="btn btn-outline" style={{ padding: "3px 8px", fontSize: "0.7rem", borderRadius: "6px" }}>
-                      {selectedLedgerSup === s.id ? "Hide Ledger" : "View Ledger"}
+                      {selectedLedgerSup === s.id ? tr("supplier.hideLedger") : tr("supplier.viewLedger")}
                     </button>
                   )}
                 </div>
@@ -327,7 +329,7 @@ export default function SupplierDirectory() {
                 {selectedLedgerSup === s.id && s.ledger && (
                   <div style={{ marginTop: "0.5rem", borderTop: "1px solid #f1f5f9", paddingTop: "0.5rem" }}>
                     <span style={{ fontSize: "0.7rem", fontWeight: 700, color: "#64748b" }}>
-                      {lang === "hi" ? "खाता विवरण" : "TRANSACTION LEDGER"}
+                      {tr("supplier.ledger")}
                     </span>
                     <div style={{ display: "flex", flexDirection: "column", gap: "3px", marginTop: "0.25rem" }}>
                       {(() => {
@@ -354,7 +356,7 @@ export default function SupplierDirectory() {
                         });
                       })()}
                       <div style={{ display: "flex", justifyContent: "flex-end", fontSize: "0.72rem", fontWeight: 800, color: (s.balance || 0) > 0 ? "#dc2626" : "#047857", paddingTop: "4px" }}>
-                        Closing Balance: ฿{(s.balance || 0).toFixed(0)}
+                        {tr("supplier.closingBalance")}: ฿{(s.balance || 0).toFixed(0)}
                       </div>
                     </div>
                   </div>
@@ -362,7 +364,7 @@ export default function SupplierDirectory() {
 
                 {supPurchases.length > 0 && !selectedLedgerSup && (
                   <div className="sup-purchases" style={{ marginTop: "0.25rem", borderTop: "1px solid #f1f5f9", paddingTop: "0.25rem" }}>
-                    <span className="sup-purch-label">Purchases ({supPurchases.length})</span>
+                    <span className="sup-purch-label">{tr("supplier.purchases")} ({supPurchases.length})</span>
                     <div className="flex-col gap-xs" style={{ marginTop: "0.25rem" }}>
                       {supPurchases.slice(0, 3).map(po => (
                         <div key={po.id} className="sup-purch-row" style={{ display: "flex", justifyContent: "space-between", fontSize: "0.72rem" }}>

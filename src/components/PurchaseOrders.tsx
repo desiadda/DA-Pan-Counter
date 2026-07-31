@@ -7,9 +7,11 @@ import { useDBStore } from "../stores/dbStore";
 import { useConfirmStore } from "../stores/confirmStore";
 import { DEFAULT_PACK_SIZE, UDHAAR_MODE, PAYMENT_TERMS } from "../constants";
 import ModalPortal from "./ModalPortal";
+import { useT } from "../lang/translations";
 
 export default function PurchaseOrders({ prefill, onPrefillConsumed }) {
   const lang = useLangStore((s) => s.lang);
+  const tr = useT(lang);
   const confirm = useConfirmStore((s) => s.confirm);
   const paymentModes = useDBStore((s) => s.paymentModes);
   const [orders, setOrders] = useState([]);
@@ -77,8 +79,8 @@ export default function PurchaseOrders({ prefill, onPrefillConsumed }) {
 
   const cancelOrder = async (order) => {
     const ok = await confirm(
-      `Cancel PO from ${order.supplier}?`,
-      { title: "Cancel Purchase Order", confirmLabel: "Cancel PO", cancelLabel: "Back" }
+      `${tr("purchase.cancelPoQ")} ${order.supplier}?`,
+      { title: tr("purchase.cancelledPo"), confirmLabel: tr("purchase.cancel"), cancelLabel: tr("common.back") }
     );
     if (!ok) return;
     await dbService.cancelPurchaseOrder(order.id);
@@ -92,10 +94,10 @@ export default function PurchaseOrders({ prefill, onPrefillConsumed }) {
     return m.id === UDHAAR_MODE ? "Credit (Khata)" : m.id === "Cash" ? "Cash (COH)" : m.name;
   };
   const receiveSettlementHint = receivePaymentMode === "Credit"
-    ? "💳 Supplier khata (balance) mein add hoga — baad mein '💸 Pay Supplier' se settle karenge."
+    ? tr("purchase.receiveHintCredit")
     : receivePaymentMode === "Cash"
-      ? "💰 Cash drawer (COH) se payment hoga — COH balance se kat jayega."
-      : "🏦 Is mode se payment record hoga — COH aur supplier balance change nahi hoga.";
+      ? tr("purchase.receiveHintCash")
+      : tr("purchase.receiveHintOther");
 
   const sortedOrders = [...orders].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   const q = searchQuery.trim().toLowerCase();
@@ -112,13 +114,13 @@ export default function PurchaseOrders({ prefill, onPrefillConsumed }) {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h2 style={styles.title}>📦 Purchases & POs</h2>
+        <h2 style={styles.title}>📦 {tr("purchase.title")}</h2>
         <div style={{ display: "flex", gap: "0.5rem" }}>
           <button onClick={() => { setIsDirectPurchase(false); setShowForm(true); }} className="btn btn-primary" style={{ padding: "0.4rem 0.75rem", fontSize: "0.8rem" }}>
-            + New PO
+            {tr("purchase.newPo")}
           </button>
           <button onClick={() => { setIsDirectPurchase(true); setShowForm(true); }} className="btn btn-outline" style={{ padding: "0.4rem 0.75rem", fontSize: "0.8rem", color: "var(--primary-color)" }}>
-            + Direct Purchase
+            {tr("purchase.directPurchase")}
           </button>
         </div>
       </div>
@@ -126,32 +128,32 @@ export default function PurchaseOrders({ prefill, onPrefillConsumed }) {
       <div style={styles.statsRow}>
         <div style={styles.statCard}>
           <span style={styles.statValue}>{orders.length}</span>
-          <span style={styles.statLabel}>Total POs</span>
+          <span style={styles.statLabel}>{tr("purchase.totalPos")}</span>
         </div>
         <div style={styles.statCard}>
           <span style={{ ...styles.statValue, color: "#d97706" }}>{pendingCount}</span>
-          <span style={styles.statLabel}>Pending</span>
+          <span style={styles.statLabel}>{tr("purchase.pendingCount")}</span>
         </div>
         <div style={styles.statCard}>
           <span style={{ ...styles.statValue, color: "#047857" }}>฿{receivedTotal.toFixed(0)}</span>
-          <span style={styles.statLabel}>Received Value</span>
+          <span style={styles.statLabel}>{tr("purchase.receivedValue")}</span>
         </div>
       </div>
 
       <div style={styles.filterBar}>
         <div style={styles.filterTabs}>
           {[
-            { key: "all", label: `All (${orders.length})` },
-            { key: "pending", label: `⏳ Pending (${orders.filter(o => o.status === "pending").length})` },
-            { key: "received", label: `✓ Received (${orders.filter(o => o.status === "received").length})` },
-            { key: "cancelled", label: `✕ Cancelled (${orders.filter(o => o.status === "cancelled").length})` },
-          ].map(t => (
+            { key: "all", label: `${tr("purchase.all")} (${orders.length})` },
+            { key: "pending", label: `⏳ ${tr("purchase.pending")} (${orders.filter(o => o.status === "pending").length})` },
+            { key: "received", label: `✓ ${tr("purchase.received")} (${orders.filter(o => o.status === "received").length})` },
+            { key: "cancelled", label: `✕ ${tr("purchase.cancelled")} (${orders.filter(o => o.status === "cancelled").length})` },
+          ].map(tab => (
             <button
-              key={t.key}
-              onClick={() => setStatusFilter(t.key)}
-              style={{ ...styles.filterTab, ...(statusFilter === t.key ? styles.filterTabActive : {}) }}
+              key={tab.key}
+              onClick={() => setStatusFilter(tab.key)}
+              style={{ ...styles.filterTab, ...(statusFilter === tab.key ? styles.filterTabActive : {}) }}
             >
-              {t.label}
+              {tab.label}
             </button>
           ))}
         </div>
@@ -159,7 +161,7 @@ export default function PurchaseOrders({ prefill, onPrefillConsumed }) {
           type="text"
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
-          placeholder="Search supplier..."
+          placeholder={tr("purchase.searchSupplier")}
           style={styles.searchInput}
         />
       </div>
@@ -180,9 +182,9 @@ export default function PurchaseOrders({ prefill, onPrefillConsumed }) {
       )}
 
       {orders.length === 0 ? (
-        <p style={styles.empty}>No purchase orders yet.</p>
+        <p style={styles.empty}>{tr("purchase.noOrders")}</p>
       ) : filteredOrders.length === 0 ? (
-        <p style={styles.empty}>No orders match the current filter.</p>
+        <p style={styles.empty}>{tr("purchase.noMatch")}</p>
       ) : (
         <div style={styles.list}>
           {filteredOrders.map(order => (
@@ -265,17 +267,17 @@ export default function PurchaseOrders({ prefill, onPrefillConsumed }) {
               onClick={e => e.stopPropagation()}
             >
               <div>
-                <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 800, color: "#1e293b" }}>📦 Receive PO</h3>
+                <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 800, color: "#1e293b" }}>📦 {tr("purchase.receivePo")}</h3>
                 <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "2px" }}>
-                  {receivingOrder.supplier} · {receivingOrder.items?.length || 0} item(s) · Total: <strong>฿{(receivingOrder.total || 0).toFixed(0)}</strong>
+                  {receivingOrder.supplier} · {receivingOrder.items?.length || 0} {tr("purchase.items").toLowerCase()} · {tr("pos.total")}: <strong>฿{(receivingOrder.total || 0).toFixed(0)}</strong>
                   {receivingOrder.paymentTerms && receivingOrder.paymentTerms.label !== "On Receipt" && (
-                    <span> · Terms: <strong>{receivingOrder.paymentTerms.label}</strong></span>
+                    <span> · {tr("purchase.terms")}: <strong>{receivingOrder.paymentTerms.label}</strong></span>
                   )}
                 </div>
               </div>
 
               <div>
-                <label className="input-label">Payment Mode</label>
+                <label className="input-label">{tr("purchase.payMode")}</label>
                 <select
                   value={receivePaymentMode}
                   onChange={e => setReceivePaymentMode(e.target.value)}
@@ -295,10 +297,10 @@ export default function PurchaseOrders({ prefill, onPrefillConsumed }) {
 
               <div style={{ display: "flex", gap: "0.5rem" }}>
                 <button onClick={confirmReceive} className="btn btn-primary" style={{ flex: 1, padding: "0.5rem", fontSize: "0.8rem" }}>
-                  ✅ Confirm Receive ({receiveModeLabel(receivePaymentMode)})
+                  ✅ {tr("purchase.confirmReceive")} ({receiveModeLabel(receivePaymentMode)})
                 </button>
                 <button onClick={() => setReceivingOrder(null)} className="btn btn-outline" style={{ flex: 1, padding: "0.5rem", fontSize: "0.8rem" }}>
-                  Cancel
+                  {tr("common.cancel")}
                 </button>
               </div>
             </div>
@@ -310,6 +312,7 @@ export default function PurchaseOrders({ prefill, onPrefillConsumed }) {
 }
 
 function PurchaseOrderForm({ initialItems, products, suppliers, orders, paymentModes, lang, isDirect, onSave, onCancel }) {
+  const tr = useT(lang);
   const [supplierId, setSupplierId] = useState("");
   const [paymentMode, setPaymentMode] = useState("Cash");
   const [paymentTermsId, setPaymentTermsId] = useState("immediate");
@@ -373,10 +376,10 @@ function PurchaseOrderForm({ initialItems, products, suppliers, orders, paymentM
   };
 
   const handleSubmit = async () => {
-    if (!supplierId || !selectedSupplier) { alert("Please select a supplier first."); return; }
+    if (!supplierId || !selectedSupplier) { alert(tr("purchase.selectFirst")); return; }
     if (submitting) return;
     const validItems = items.filter(i => i.productId && i.quantity > 0);
-    if (validItems.length === 0) { alert("Add at least one item"); return; }
+    if (validItems.length === 0) { alert(tr("purchase.atLeastOneItem")); return; }
     
     const total = validItems.reduce((sum, item) => sum + ((item.costPrice || 0) * item.quantity), 0);
     const user = JSON.parse(localStorage.getItem("pan_user") || "{}");
@@ -420,19 +423,19 @@ function PurchaseOrderForm({ initialItems, products, suppliers, orders, paymentM
 
   return (
     <div style={styles.formCard}>
-      <h3 style={styles.formTitle}>{isDirect ? "Direct Purchase / Bill Entry" : "New Purchase Order"}</h3>
+      <h3 style={styles.formTitle}>{isDirect ? `${tr("purchase.directPurchase")} / ${tr("purchase.received")}` : tr("purchase.newPo")}</h3>
       
       <div className="input-group" style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
         <div style={{ flex: isDirect ? 2 : 1 }}>
-          <label className="input-label">Supplier</label>
+          <label className="input-label">{tr("purchase.supplier")}</label>
           <select value={supplierId} onChange={e => { setSupplierId(e.target.value); setItems([{ productId: "", quantity: 1, costPrice: 0, isPack: false }]); }} className="input-field" style={{ fontFamily: "inherit" }}>
-            <option value="">Select supplier...</option>
+            <option value="">{tr("purchase.selectSupplier")}</option>
             {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </div>
         {isDirect && (
           <div style={{ flex: 1 }}>
-            <label className="input-label">Payment Mode</label>
+            <label className="input-label">{tr("purchase.payMode")}</label>
             <select value={paymentMode} onChange={e => setPaymentMode(e.target.value)} className="input-field" style={{ fontFamily: "inherit" }}>
               {paymentModes.filter(m => m.enabled).map(m => (
                 <option key={m.id} value={m.id === UDHAAR_MODE ? "Credit" : m.id}>
@@ -443,8 +446,8 @@ function PurchaseOrderForm({ initialItems, products, suppliers, orders, paymentM
           </div>
         )}
         {(isDirect ? paymentMode === "Credit" : true) && (
-          <div style={{ flex: isDirect ? 1 : 1 }}>
-            <label className="input-label">Payment Terms</label>
+          <div style={{ flex: 1 }}>
+            <label className="input-label">{tr("purchase.terms")}</label>
             <select value={paymentTermsId} onChange={e => setPaymentTermsId(e.target.value)} className="input-field" style={{ fontFamily: "inherit" }}>
               {PAYMENT_TERMS.map(t => (
                 <option key={t.id} value={t.id}>{t.label}</option>
@@ -456,7 +459,7 @@ function PurchaseOrderForm({ initialItems, products, suppliers, orders, paymentM
 
       {!isDirect && (
         <div style={{ padding: "0.5rem 0.75rem", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: "8px", fontSize: "0.75rem", color: "#92400e" }}>
-          📌 PO bina payment ke banega — goods receive karte time payment mode choose karenge. Credit (Khata) hua to baad mein '💸 Pay Supplier' se settle hoga, terms ke hisaab se due date lag jayegi.
+          📌 {tr("purchase.poNoPayHint")}
         </div>
       )}
 
@@ -464,17 +467,17 @@ function PurchaseOrderForm({ initialItems, products, suppliers, orders, paymentM
         <div style={{ padding: "1rem", textAlign: "center", color: "#64748b", border: "1px dashed #cbd5e1", borderRadius: "8px", margin: "1rem 0", fontSize: "0.85rem" }}>
           {lang === "hi" 
             ? "⚠️ कृपया आइटम जोड़ने के लिए पहले सप्लायर चुनें।"
-            : "⚠️ Please select a supplier first to add items."}
+            : `⚠️ ${tr("purchase.selectSupplierFirst")}`}
         </div>
       ) : (
         <div style={styles.itemsSection}>
-          <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "#475569" }}>Items</label>
+          <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "#475569" }}>{tr("purchase.items")}</label>
           {items.map((item, i) => {
             const prod = products.find(p => p.id === item.productId);
             return (
               <div key={i} style={styles.formItemRow}>
                 <select value={item.productId} onChange={e => updateItem(i, "productId", e.target.value)} className="input-field" style={{ flex: 1, fontSize: "0.8rem", padding: "0.4rem" }}>
-                  <option value="">Select product...</option>
+                  <option value="">{tr("purchase.selectProduct")}</option>
                   {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
                 
@@ -508,20 +511,20 @@ function PurchaseOrderForm({ initialItems, products, suppliers, orders, paymentM
               </div>
             );
           })}
-          <button onClick={addItem} style={{ ...styles.addItemBtn }}>+ Add Item</button>
+          <button onClick={addItem} style={{ ...styles.addItemBtn }}>{tr("purchase.addItem")}</button>
         </div>
       )}
 
       <div className="input-group">
-        <label className="input-label">Notes (optional)</label>
-        <input type="text" value={notes} onChange={e => setNotes(e.target.value)} className="input-field" placeholder="Order notes..." />
+        <label className="input-label">{tr("purchase.notes")}</label>
+        <input type="text" value={notes} onChange={e => setNotes(e.target.value)} className="input-field" placeholder={tr("purchase.notesPlaceholder")} />
       </div>
 
       <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
         <button onClick={handleSubmit} disabled={submitting || !supplierId} className="btn btn-primary" style={{ flex: 1 }}>
-          {submitting ? "Processing..." : isDirect ? "Record Purchase" : "Create PO"}
+          {submitting ? tr("purchase.processing") : isDirect ? tr("purchase.recordPurchase") : tr("purchase.createPo")}
         </button>
-        <button onClick={onCancel} className="btn btn-outline" style={{ flex: 1 }}>Cancel</button>
+        <button onClick={onCancel} className="btn btn-outline" style={{ flex: 1 }}>{tr("common.cancel")}</button>
       </div>
     </div>
   );

@@ -1,7 +1,11 @@
 import { useState, useMemo } from "react";
 import ModalPortal from "./ModalPortal";
+import { useLangStore } from "../stores/langStore";
+import { useT } from "../lang/translations";
 
 export default function SupplierStatementModal({ supplier, onClose }) {
+  const lang = useLangStore((s) => s.lang);
+  const tr = useT(lang);
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
 
@@ -60,26 +64,26 @@ export default function SupplierStatementModal({ supplier, onClose }) {
 
   const printStatement = () => {
     const w = window.open("", "_blank", "width=800,height=600");
-    if (!w) { alert("Popup blocked — print karne ke liye popup allow karein."); return; }
+    if (!w) { alert(tr("stmt.popupBlocked")); return; }
     const rangeLabel = fromDate || toDate
-      ? `${fromDate || "Start"} → ${toDate || "Today"}`
-      : "Full History";
-    const tr = (d, t, desc, debit, credit, bal) =>
+      ? `${fromDate || tr("stmt.from")} → ${toDate || tr("stmt.today")}`
+      : tr("stmt.fullHistory");
+    const row = (d, t, desc, debit, credit, bal) =>
       `<tr>
         <td>${d}</td><td>${t}</td><td>${desc}</td>
         <td style="text-align:right">${debit}</td><td style="text-align:right">${credit}</td>
         <td style="text-align:right;font-weight:700">${bal}</td>
       </tr>`;
     const rowsHtml = [
-      tr(fromDate ? fmtDate(new Date(fromDate).getTime()) : "—", "Opening Balance", "Balance B/F",
+      row(fromDate ? fmtDate(new Date(fromDate).getTime()) : "—", "Opening Balance", "Balance B/F",
         openingBalance > 0 ? openingBalance.toFixed(2) : "",
         openingBalance < 0 ? Math.abs(openingBalance).toFixed(2) : "",
         openingBalance.toFixed(2)),
-      ...rows.map(r => tr(fmtDate(r.ts), r.type, r.description || "",
+      ...rows.map(r => row(fmtDate(r.ts), r.type, r.description || "",
         r.change > 0 ? r.change.toFixed(2) : "",
         r.change < 0 ? Math.abs(r.change).toFixed(2) : "",
         r.running.toFixed(2))),
-      tr("", "", "Closing Balance (C/F)", "", "", closingBalance.toFixed(2)),
+      row("", "", "Closing Balance (C/F)", "", "", closingBalance.toFixed(2)),
     ].join("");
 
     w.document.write(`<!DOCTYPE html>
@@ -97,18 +101,18 @@ export default function SupplierStatementModal({ supplier, onClose }) {
 </style></head>
 <body>
   <h2>${store.name || "Dukaan"}</h2>
-  <div class="sub">Supplier Statement / Khata</div>
+  <div class="sub">${tr("supplier.statement")}</div>
   <div class="meta">
     <div><strong>${supplier.name}</strong><br>
       ${supplier.contact || ""}${supplier.contact && supplier.phone ? " · " : ""}${supplier.phone || ""}<br>
       ${supplier.address || ""}
     </div>
-    <div style="text-align:right">Period: ${rangeLabel}<br>Generated: ${new Date().toLocaleString("en-GB")}</div>
+    <div style="text-align:right">${tr("stmt.period")}: ${rangeLabel}<br>${tr("stmt.generated")}: ${new Date().toLocaleString("en-GB")}</div>
   </div>
   <table>
-    <thead><tr><th>Date</th><th>Type</th><th>Description</th><th>Debit (฿)</th><th>Credit (฿)</th><th>Balance (฿)</th></tr></thead>
+    <thead><tr><th>${tr("stmt.date")}</th><th>${tr("stmt.type")}</th><th>${tr("stmt.description")}</th><th>${tr("stmt.debit")} (฿)</th><th>${tr("stmt.credit")} (฿)</th><th>${tr("stmt.balance")} (฿)</th></tr></thead>
     <tbody>${rowsHtml}</tbody>
-    <tfoot><tr><td colspan="6" style="text-align:right">Outstanding Balance: ฿${closingBalance.toFixed(2)}</td></tr></tfoot>
+    <tfoot><tr><td colspan="6" style="text-align:right">${tr("stmt.outstanding")}: ฿${closingBalance.toFixed(2)}</td></tr></tfoot>
   </table>
   <script>window.onload = function(){ setTimeout(function(){ window.print(); }, 250); };</script>
 </body></html>`);
@@ -145,16 +149,16 @@ export default function SupplierStatementModal({ supplier, onClose }) {
 
             <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginTop: "0.6rem", alignItems: "center" }}>
               <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#475569", display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                From
+                {tr("stmt.from")}
                 <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} style={{ padding: "0.3rem 0.4rem", borderRadius: "6px", border: "1px solid #e2e8f0", fontSize: "0.75rem" }} />
               </label>
               <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#475569", display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                To
+                {tr("stmt.to")}
                 <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} style={{ padding: "0.3rem 0.4rem", borderRadius: "6px", border: "1px solid #e2e8f0", fontSize: "0.75rem" }} />
               </label>
               <div style={{ marginLeft: "auto", display: "flex", gap: "0.4rem" }}>
-                <button onClick={exportCSV} className="btn btn-outline" style={{ padding: "0.3rem 0.6rem", fontSize: "0.72rem", borderRadius: "6px" }}>⬇ CSV</button>
-                <button onClick={printStatement} className="btn btn-primary" style={{ padding: "0.3rem 0.6rem", fontSize: "0.72rem", borderRadius: "6px" }}>🖨 Print</button>
+                <button onClick={exportCSV} className="btn btn-outline" style={{ padding: "0.3rem 0.6rem", fontSize: "0.72rem", borderRadius: "6px" }}>⬇ {tr("stmt.csv")}</button>
+                <button onClick={printStatement} className="btn btn-primary" style={{ padding: "0.3rem 0.6rem", fontSize: "0.72rem", borderRadius: "6px" }}>🖨 {tr("stmt.print")}</button>
               </div>
             </div>
           </div>
@@ -163,23 +167,23 @@ export default function SupplierStatementModal({ supplier, onClose }) {
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.72rem" }}>
               <thead>
                 <tr style={{ color: "#64748b", textTransform: "uppercase", fontSize: "0.62rem", letterSpacing: "0.03em" }}>
-                  <th style={thStyle}>Date</th>
-                  <th style={thStyle}>Type</th>
-                  <th style={thStyle}>Description</th>
-                  <th style={{ ...thStyle, textAlign: "right" }}>Debit ฿</th>
-                  <th style={{ ...thStyle, textAlign: "right" }}>Credit ฿</th>
-                  <th style={{ ...thStyle, textAlign: "right" }}>Balance</th>
+                  <th style={thStyle}>{tr("stmt.date")}</th>
+                  <th style={thStyle}>{tr("stmt.type")}</th>
+                  <th style={thStyle}>{tr("stmt.description")}</th>
+                  <th style={{ ...thStyle, textAlign: "right" }}>{tr("stmt.debit")} ฿</th>
+                  <th style={{ ...thStyle, textAlign: "right" }}>{tr("stmt.credit")} ฿</th>
+                  <th style={{ ...thStyle, textAlign: "right" }}>{tr("stmt.balance")}</th>
                 </tr>
               </thead>
               <tbody>
                 <tr style={{ background: "#f8fafc" }}>
-                  <td colSpan={3} style={tdStyle}><strong>Opening Balance (B/F)</strong></td>
+                  <td colSpan={3} style={tdStyle}><strong>{tr("stmt.openingBf")}</strong></td>
                   <td style={{ ...tdStyle, textAlign: "right", fontWeight: 700 }}>{openingBalance > 0 ? openingBalance.toFixed(2) : ""}</td>
                   <td style={{ ...tdStyle, textAlign: "right", fontWeight: 700 }}>{openingBalance < 0 ? Math.abs(openingBalance).toFixed(2) : ""}</td>
                   <td style={{ ...tdStyle, textAlign: "right", fontWeight: 800 }}>{openingBalance.toFixed(2)}</td>
                 </tr>
                 {rows.length === 0 && (
-                  <tr><td colSpan={6} style={{ ...tdStyle, textAlign: "center", color: "#94a3b8", padding: "1rem" }}>Is range mein koi entry nahi.</td></tr>
+                  <tr><td colSpan={6} style={{ ...tdStyle, textAlign: "center", color: "#94a3b8", padding: "1rem" }}>{tr("stmt.noEntries")}</td></tr>
                 )}
                 {rows.map((r, i) => (
                   <tr key={i}>
@@ -192,7 +196,7 @@ export default function SupplierStatementModal({ supplier, onClose }) {
                   </tr>
                 ))}
                 <tr style={{ background: "#f0fdf4" }}>
-                  <td colSpan={5} style={tdStyle}><strong>Closing Balance</strong></td>
+                  <td colSpan={5} style={tdStyle}><strong>{tr("stmt.closingBalance")}</strong></td>
                   <td style={{ ...tdStyle, textAlign: "right", fontWeight: 800, color: closingBalance > 0 ? "#dc2626" : "#047857" }}>{closingBalance.toFixed(2)}</td>
                 </tr>
               </tbody>
