@@ -6,6 +6,7 @@ import { useLangStore } from "../stores/langStore";
 import { useDBStore } from "../stores/dbStore";
 import { useConfirmStore } from "../stores/confirmStore";
 import { DEFAULT_PACK_SIZE, UDHAAR_MODE } from "../constants";
+import ModalPortal from "./ModalPortal";
 
 export default function PurchaseOrders({ prefill, onPrefillConsumed }) {
   const lang = useLangStore((s) => s.lang);
@@ -19,6 +20,8 @@ export default function PurchaseOrders({ prefill, onPrefillConsumed }) {
   const [formKey, setFormKey] = useState(0);
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [receivingOrder, setReceivingOrder] = useState(null);
+  const [receivePaymentMode, setReceivePaymentMode] = useState("Credit");
 
   useEffect(() => {
     if (prefill && prefill.length > 0) {
@@ -61,12 +64,14 @@ export default function PurchaseOrders({ prefill, onPrefillConsumed }) {
   };
 
   const receiveOrder = async (order) => {
-    const ok = await confirm(
-      `Receive PO from ${order.supplier} (฿${order.total?.toFixed(0)})?\n\nStock aur supplier balance update hoga.`,
-      { title: "Receive Purchase", confirmLabel: "Receive", cancelLabel: "Back" }
-    );
-    if (!ok) return;
-    await dbService.receivePurchaseOrder(order.id);
+    setReceivePaymentMode("Credit");
+    setReceivingOrder(order);
+  };
+
+  const confirmReceive = async () => {
+    if (!receivingOrder || !receivePaymentMode) return;
+    await dbService.receivePurchaseOrder(receivingOrder.id, receivePaymentMode);
+    setReceivingOrder(null);
     load();
   };
 
@@ -79,6 +84,18 @@ export default function PurchaseOrders({ prefill, onPrefillConsumed }) {
     await dbService.cancelPurchaseOrder(order.id);
     load();
   };
+
+  const receiveModes = (paymentModes || []).filter(m => m.enabled);
+  const receiveModeLabel = (id) => {
+    const m = receiveModes.find(x => x.id === id);
+    if (!m) return id === UDHAAR_MODE ? "Credit (Khata)" : id;
+    return m.id === UDHAAR_MODE ? "Credit (Khata)" : m.id === "Cash" ? "Cash (COH)" : m.name;
+  };
+  const receiveSettlementHint = receivePaymentMode === "Credit"
+    ? "💳 Supplier khata (balance) mein add hoga — baad mein '💸 Pay Supplier' se settle karenge."
+    : receivePaymentMode === "Cash"
+      ? "💰 Cash drawer (COH) se payment hoga — COH balance se kat jayega."
+      : "🏦 Is mode se payment record hoga — COH aur supplier balance change nahi hoga.";
 
   const sortedOrders = [...orders].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   const q = searchQuery.trim().toLowerCase();
@@ -216,6 +233,61 @@ export default function PurchaseOrders({ prefill, onPrefillConsumed }) {
           ))}
         </div>
       )}
+
+      {receivingOrder && (
+        <ModalPortal onClose={() => setReceivingOrder(null)}>
+          <div
+            style={{
+              position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100,
+              display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem",
+            }}
+            onClick={() => setReceivingOrder(null)}
+          >
+            <div
+              style={{
+                background: "#fff", borderRadius: "14px", width: "100%", maxWidth: "420px",
+                display: "flex", flexDirection: "column", gap: "0.75rem", padding: "1rem",
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div>
+                <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 800, color: "#1e293b" }}>📦 Receive PO</h3>
+                <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "2px" }}>
+                  {receivingOrder.supplier} · {receivingOrder.items?.length || 0} item(s) · Total: <strong>฿{(receivingOrder.total || 0).toFixed(0)}</strong>
+                </div>
+              </div>
+
+              <div>
+                <label className="input-label">Payment Mode</label>
+                <select
+                  value={receivePaymentMode}
+                  onChange={e => setReceivePaymentMode(e.target.value)}
+                  className="input-field"
+                  style={{ fontFamily: "inherit" }}
+                >
+                  {receiveModes.map(m => (
+                    <option key={m.id} value={m.id === UDHAAR_MODE ? "Credit" : m.id}>
+                      {m.id === UDHAAR_MODE ? "Credit (Khata)" : m.id === "Cash" ? "Cash (COH)" : m.name}
+                    </option>
+                  ))}
+                </select>
+                <div style={{ fontSize: "0.75rem", color: "#475569", marginTop: "0.4rem", background: "#f8fafc", borderRadius: "8px", padding: "0.5rem 0.65rem" }}>
+                  {receiveSettlementHint}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <button onClick={confirmReceive} className="btn btn-primary" style={{ flex: 1, padding: "0.5rem", fontSize: "0.8rem" }}>
+                  ✅ Confirm Receive ({receiveModeLabel(receivePaymentMode)})
+                </button>
+                <button onClick={() => setReceivingOrder(null)} className="btn btn-outline" style={{ flex: 1, padding: "0.5rem", fontSize: "0.8rem" }}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </ModalPortal>
+      )}
     </div>
   );
 }
@@ -294,7 +366,7 @@ function PurchaseOrderForm({ initialItems, products, suppliers, orders, paymentM
     const order = {
       supplier: selectedSupplier.name,
       supplierId: selectedSupplier.id,
-      paymentMode,
+      ...(isDirect ? { paymentMode } : {}),
       items: validItems.map(item => {
         const prod = products.find(p => p.id === item.productId);
         return {
@@ -330,24 +402,32 @@ function PurchaseOrderForm({ initialItems, products, suppliers, orders, paymentM
       <h3 style={styles.formTitle}>{isDirect ? "Direct Purchase / Bill Entry" : "New Purchase Order"}</h3>
       
       <div className="input-group" style={{ display: "flex", gap: "1rem" }}>
-        <div style={{ flex: 2 }}>
+        <div style={{ flex: isDirect ? 2 : 1 }}>
           <label className="input-label">Supplier</label>
           <select value={supplierId} onChange={e => { setSupplierId(e.target.value); setItems([{ productId: "", quantity: 1, costPrice: 0, isPack: false }]); }} className="input-field" style={{ fontFamily: "inherit" }}>
             <option value="">Select supplier...</option>
             {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </div>
-        <div style={{ flex: 1 }}>
-          <label className="input-label">Payment Mode</label>
-          <select value={paymentMode} onChange={e => setPaymentMode(e.target.value)} className="input-field" style={{ fontFamily: "inherit" }}>
-            {paymentModes.filter(m => m.enabled).map(m => (
-              <option key={m.id} value={m.id === UDHAAR_MODE ? "Credit" : m.id}>
-                {m.id === UDHAAR_MODE ? "Credit (Khata)" : m.id === "Cash" ? "Cash (COH)" : m.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        {isDirect && (
+          <div style={{ flex: 1 }}>
+            <label className="input-label">Payment Mode</label>
+            <select value={paymentMode} onChange={e => setPaymentMode(e.target.value)} className="input-field" style={{ fontFamily: "inherit" }}>
+              {paymentModes.filter(m => m.enabled).map(m => (
+                <option key={m.id} value={m.id === UDHAAR_MODE ? "Credit" : m.id}>
+                  {m.id === UDHAAR_MODE ? "Credit (Khata)" : m.id === "Cash" ? "Cash (COH)" : m.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
+
+      {!isDirect && (
+        <div style={{ padding: "0.5rem 0.75rem", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: "8px", fontSize: "0.75rem", color: "#92400e" }}>
+          📌 PO bina payment ke banega — goods receive karte time payment mode choose karenge. Credit (Khata) hua to baad mein Pay Supplier se settle hoga.
+        </div>
+      )}
 
       {!supplierId ? (
         <div style={{ padding: "1rem", textAlign: "center", color: "#64748b", border: "1px dashed #cbd5e1", borderRadius: "8px", margin: "1rem 0", fontSize: "0.85rem" }}>

@@ -173,7 +173,7 @@ export const savePurchaseOrder = async (order) => {
   }
 };
 
-export const receivePurchaseOrder = async (orderId) => {
+export const receivePurchaseOrder = async (orderId, paymentMode) => {
   try {
     if (isFirebaseEnabled) {
       await runTransaction(db, async (firestoreTx) => {
@@ -185,6 +185,7 @@ export const receivePurchaseOrder = async (orderId) => {
 
         order.status = "received";
         order.receivedAt = Date.now();
+        if (paymentMode) order.paymentMode = paymentMode;
 
         // --- READ PHASE ---
 
@@ -300,6 +301,7 @@ export const receivePurchaseOrder = async (orderId) => {
       if (!order || order.status !== "pending") return;
       order.status = "received";
       order.receivedAt = Date.now();
+      if (paymentMode) order.paymentMode = paymentMode;
       setLocalData(LS_KEY, list);
     }
   } catch (err) {
