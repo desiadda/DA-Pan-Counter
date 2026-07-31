@@ -67,15 +67,22 @@ export const updateUdhaarBalance = async (
         const newBal = currentBal + amountChange;
         const newLedger = [...currentLedger, ledgerEntry];
 
+        // --- READ PHASE ---
+        // Read cashier COH balance if paymentMode is Cash BEFORE writing anything
+        let currentCohBal = 0;
+        let balRef = null;
+        if (paymentMode === "Cash" && cashierId) {
+          balRef = doc(db, "coh_balances", cashierId);
+          const balSnap = await firestoreTx.get(balRef);
+          currentCohBal = balSnap.exists() ? (balSnap.data().balance || 0) : 0;
+        }
+
+        // --- WRITE PHASE ---
         // 1. Update customer balance and ledger
         firestoreTx.update(docRef, { balance: newBal, ledger: newLedger });
 
         // 2. If paymentMode is Cash, adjust cashier COH balance and log transfer
-        if (paymentMode === "Cash" && cashierId) {
-          const balRef = doc(db, "coh_balances", cashierId);
-          const balSnap = await firestoreTx.get(balRef);
-          const currentCohBal = balSnap.exists() ? (balSnap.data().balance || 0) : 0;
-          // Note: amountChange is negative for payment (e.g. -paymentVal)
+        if (paymentMode === "Cash" && cashierId && balRef) {
           const newCohBal = currentCohBal + Math.abs(amountChange);
 
           const cohTxId = "coh_" + Date.now();
