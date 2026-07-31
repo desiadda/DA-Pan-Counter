@@ -355,7 +355,7 @@ export default function COHPanel({ user, users, onClose }) {
                       {tx.fromUserId === user.id ? `To: ${tx.toUserName || tx.toUserId}` : `From: ${tx.fromUserName}`}
                       {" · "}{formatDate(tx.timestamp)}
                     </span>
-                    {tx.actedBy && <span style={{ fontSize: "0.7rem", color: "#047857" }}>✓ processed by {tx.actedBy}</span>}
+                    {(tx.performedBy || tx.actedBy) && <span style={{ fontSize: "0.7rem", color: "#047857" }}>👤 performed by {tx.performedBy || tx.actedBy}</span>}
                     {tx.note && <span style={styles.historyNote}>{tx.note}</span>}
                   </div>
                   <span style={{ fontWeight: 700, color: tx.fromUserId === user.id ? "#dc2626" : "#047857", fontSize: "0.9rem" }}>

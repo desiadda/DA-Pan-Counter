@@ -3,7 +3,7 @@ import { db, isFirebaseEnabled, localizeError } from "./config";
 import { LS_KEYS } from "../constants";
 import { logError } from "./errorLog";
 import { getLocalData, setLocalData } from "./storage";
-import { logAudit } from "./audit";
+import { logAudit, getActorInfo } from "./audit";
 
 function getBalancesRaw() {
   return getLocalData(LS_KEYS.COH_BALANCES, {});
@@ -74,6 +74,8 @@ export function getAllBalances(users) {
 
 export async function adjustBalance(userId, amount, note, adminName) {
   try {
+    const actor = getActorInfo();
+    const performedBy = actor.actorName === "System" ? (adminName || "System") : actor.actorName;
     if (isFirebaseEnabled) {
       await runTransaction(db, async (transaction) => {
         const balRef = doc(db, "coh_balances", userId);
@@ -96,6 +98,7 @@ export async function adjustBalance(userId, amount, note, adminName) {
           sign: amount >= 0 ? "credit" : "debit",
           note: note || "",
           status: "approved",
+          performedBy,
           timestamp: Date.now(),
           approvedAt: Date.now(),
         });
@@ -118,6 +121,7 @@ export async function adjustBalance(userId, amount, note, adminName) {
         sign: amount >= 0 ? "credit" : "debit",
         note: note || "",
         status: "approved",
+        performedBy,
         timestamp: Date.now(),
         approvedAt: Date.now(),
       });
@@ -146,6 +150,7 @@ export async function initiateTransfer(fromUser, toUserId, toUserName, amount) {
       toUserName,
       amount,
       status: "pending",
+      performedBy: fromUser.name || "System",
       timestamp: Date.now(),
       approvedAt: null,
     };
@@ -194,6 +199,7 @@ export async function approveTransfer(txId, actedBy) {
           status: "approved",
           approvedAt: Date.now(),
           actedBy: actedBy || "System",
+          performedBy: actedBy || "System",
         });
       });
     } else {
@@ -204,6 +210,7 @@ export async function approveTransfer(txId, actedBy) {
       localTx.status = "approved";
       localTx.approvedAt = Date.now();
       localTx.actedBy = actedBy || "System";
+      localTx.performedBy = actedBy || "System";
       saveTransactionsRaw(txs);
 
       const balances = getBalancesRaw();
@@ -243,6 +250,7 @@ export async function rejectTransfer(txId, actedBy) {
         status: "rejected",
         approvedAt: Date.now(),
         actedBy: actedBy || "System",
+        performedBy: actedBy || "System",
       });
     } else {
       const txs = getTransactionsRaw();
@@ -251,6 +259,7 @@ export async function rejectTransfer(txId, actedBy) {
         localTx.status = "rejected";
         localTx.approvedAt = Date.now();
         localTx.actedBy = actedBy || "System";
+        localTx.performedBy = actedBy || "System";
         saveTransactionsRaw(txs);
       }
     }

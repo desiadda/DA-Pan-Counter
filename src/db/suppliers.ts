@@ -149,6 +149,7 @@ export const recordSupplierPayment = async (supplierId, supplierName, amount, pa
             sign: "debit",
             note: `Paid supplier: ${supplierName}`,
             status: "approved",
+            performedBy: cashierName || "System",
             timestamp: Date.now(),
             approvedAt: Date.now(),
           });

@@ -144,6 +144,7 @@ export const savePurchaseOrder = async (order) => {
               sign: "debit",
               note: `Direct Cash Purchase: ${order.supplier}`,
               status: "approved",
+              performedBy: order.createdBy || "System",
               timestamp: Date.now(),
               approvedAt: Date.now(),
             });
@@ -282,6 +283,7 @@ export const receivePurchaseOrder = async (orderId) => {
             sign: "debit",
             note: `PO Cash Payment: ${order.supplier}`,
             status: "approved",
+            performedBy: order.createdBy || "System",
             timestamp: Date.now(),
             approvedAt: Date.now(),
           });

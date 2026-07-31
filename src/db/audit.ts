@@ -13,7 +13,7 @@ const getDeviceLabel = () => {
 
 // Read the active session directly from localStorage — keeps the audit module
 // free of heavy imports (stores → firebase → dbService) so tests and startup stay light.
-const getActor = () => {
+export const getActorInfo = () => {
   try {
     const raw = localStorage.getItem("pan_user");
     if (raw) {
@@ -27,7 +27,7 @@ const getActor = () => {
 export async function logAudit(action, entityType, entityId = "", details = "", extra = {}) {
   try {
     if (!isFirebaseEnabled || !db) return;
-    const actor = getActor();
+    const actor = getActorInfo();
     const actorId = extra.actorId || actor.actorId;
     const actorName = extra.actorName || actor.actorName;
     const role = extra.role || actor.role;

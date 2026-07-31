@@ -104,6 +104,7 @@ export const updateUdhaarBalance = async (
             sign: "credit",
             note: `Khata Payment: Customer ${data.name || "Unknown"}`,
             status: "approved",
+            performedBy: cashierName || "System",
             timestamp: Date.now(),
             approvedAt: Date.now(),
           });

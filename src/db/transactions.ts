@@ -2,7 +2,7 @@ import { collection, doc, writeBatch, getDocs, deleteDoc, setDoc, getDoc, runTra
 import { db, isFirebaseEnabled, localizeError } from "./config";
 import { adjustBalance } from "./coh";
 import { logError } from "./errorLog";
-import { logAudit } from "./audit";
+import { logAudit, getActorInfo } from "./audit";
 
 export const getTransactions = async () => {
   try {
@@ -68,6 +68,7 @@ export const addTransaction = async (transaction) => {
             sign: "credit",
             note: `Cash sale: Bill ${txId}`,
             status: "approved",
+            performedBy: transaction.cashierName || "Cashier",
             timestamp: Date.now(),
             approvedAt: Date.now(),
           });
@@ -211,6 +212,7 @@ export const returnTransaction = async (originalTx, returnItems, reason, userId,
             sign: "debit",
             note: `Refund: Bill ${originalTx.id}`,
             status: "approved",
+            performedBy: userName || originalTx.cashierName || "System",
             timestamp: Date.now(),
             approvedAt: Date.now(),
           });
@@ -339,6 +341,7 @@ export const updateTransactionPaymentMode = async (transactionId, newMode, chang
             sign: "debit",
             note: `Payment mode change from Cash to ${newMode}: Bill ${transactionId}`,
             status: "approved",
+            performedBy: changedBy || "System",
             timestamp: Date.now(),
             approvedAt: Date.now(),
           });
@@ -359,6 +362,7 @@ export const updateTransactionPaymentMode = async (transactionId, newMode, chang
             sign: "credit",
             note: `Payment mode change from ${tx.paymentMode} to Cash: Bill ${transactionId}`,
             status: "approved",
+            performedBy: changedBy || "System",
             timestamp: Date.now(),
             approvedAt: Date.now(),
           });
