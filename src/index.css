@@ -2538,3 +2538,140 @@ textarea.input-field {
     @apply font-sans;
   }
 }
+
+/* ── AuthView (Login Screen) ── */
+.auth-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100svh;
+  background-color: var(--bg);
+  padding: 1rem;
+}
+.auth-card {
+  background-color: var(--card-bg);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 400px;
+  padding: 2rem;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border);
+}
+.auth-brand {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+.auth-logo {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+}
+.auth-title {
+  color: var(--primary);
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+.auth-subtitle {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+}
+.auth-form {
+  display: flex;
+  flex-direction: column;
+}
+.auth-pin-container {
+  background-color: var(--input-bg);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  padding: 1rem;
+  margin-bottom: 1rem;
+  display: flex;
+  justify-content: center;
+  cursor: pointer;
+}
+.auth-pin-dots {
+  display: flex;
+  gap: 1.25rem;
+}
+.auth-pin-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: var(--border);
+  transition: all 0.15s var(--ease-out);
+}
+.auth-pin-dot.active {
+  background-color: var(--primary);
+  transform: scale(1.2);
+}
+.auth-error {
+  color: var(--error);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: center;
+  background-color: var(--error-light);
+  padding: 0.5rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+}
+.auth-keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+.auth-key {
+  padding: 1rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text);
+  background-color: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.1s var(--ease-out);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  outline: none;
+}
+.auth-key:hover {
+  background-color: var(--hover-bg);
+}
+.auth-key:active {
+  transform: scale(0.95);
+}
+.auth-key-clear {
+  color: var(--error);
+  font-size: 0.95rem;
+  background-color: var(--error-light);
+  border-color: var(--error);
+}
+.auth-key-submit {
+  background-color: var(--primary);
+  color: var(--text-on-primary);
+  border: none;
+  font-size: 1rem;
+}
+.auth-key-submit:hover {
+  background-color: var(--primary-hover);
+}
+.auth-key-submit:disabled {
+  background-color: var(--border);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+.auth-instructions {
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.auth-hidden-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
