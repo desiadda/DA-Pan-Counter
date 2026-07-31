@@ -602,15 +602,6 @@ export default function ReportsView({ initialSubTab, onSubTabChange, user }) {
             </div>
           </div>
 
-          {/* Backup */}
-          <div style={styles.reportCard}>
-            <h3 style={styles.cardHeader}>Database Backup & Restore</h3>
-            <p style={{fontSize: "0.8rem", color: "#64748b", marginBottom: "1rem"}}>Download current shop data as a JSON file or import a backup file to restore records.</p>
-            <div style={styles.backupActions}>
-              <button onClick={handleExportBackup} className="btn btn-outline" style={{flex: 1, padding: "0.5rem"}}>📥 Export Backup</button>
-              <label style={{...styles.fileUploadLabel, flex: 1}}>📤 Import Restore<input type="file" accept=".json" onChange={handleImportBackup} style={{display: "none"}} /></label>
-            </div>
-          </div>
         </>
       )}
 
