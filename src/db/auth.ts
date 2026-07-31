@@ -17,9 +17,31 @@ export function initUsersListener() {
       list.push({ id: doc.id, ...doc.data() });
     });
     setLocalData(LS_KEYS.USERS, list);
+
+    // ── Auto-refresh active session permissions ──
+    // If the currently logged-in user exists in the fresh list, update their
+    // cached session so permissions are always up-to-date without re-login.
+    try {
+      const raw = localStorage.getItem(LS_KEYS.USER);
+      if (raw) {
+        const session = JSON.parse(raw);
+        const fresh = list.find(u => u.id === session.id);
+        if (fresh) {
+          const updated = {
+            ...session,
+            name: fresh.name,
+            role: fresh.role,
+            permissions: fresh.permissions,
+          };
+          localStorage.setItem(LS_KEYS.USER, JSON.stringify(updated));
+        }
+      }
+    } catch (_) { /* silent — session refresh is best-effort */ }
+
     window.dispatchEvent(new CustomEvent("users-changed"));
   });
 }
+
 
 function getUsers() {
   return getLocalData(LS_KEYS.USERS, []);
@@ -39,8 +61,23 @@ async function saveUsers(users) {
         }
       }
       await batch.commit();
+      // Firebase mode: onSnapshot listener handles session refresh automatically
+    } else {
+      // Local mode: refresh session immediately after save
+      setLocalData(LS_KEYS.USERS, users);
+      try {
+        const raw = localStorage.getItem(LS_KEYS.USER);
+        if (raw) {
+          const session = JSON.parse(raw);
+          const fresh = users.find(u => u.id === session.id);
+          if (fresh) {
+            const updated = { ...session, name: fresh.name, role: fresh.role, permissions: fresh.permissions };
+            localStorage.setItem(LS_KEYS.USER, JSON.stringify(updated));
+          }
+        }
+      } catch (_) { /* silent */ }
+      window.dispatchEvent(new CustomEvent("users-changed"));
     }
-    setLocalData(LS_KEYS.USERS, users);
   } catch (err) {
     logError("AUTH", err.message, err.stack);
     console.error("saveUsers: Error saving users", err);
