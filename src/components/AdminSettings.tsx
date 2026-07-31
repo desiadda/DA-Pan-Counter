@@ -44,7 +44,7 @@ export default function AdminSettings({ onBack }) {
   const handleFactoryReset = async () => {
     try {
       const inputHash = await sha256(resetConfirmPin.trim());
-      const masterHash = "6880c5830a71e49a0007cfdd755f8750375e10f92c3af52baf80e351cadba6f5"; // SHA-256 hash of 'DAPanMasterReset2026'
+      const masterHash = "956bea7e18228cf06bd92f62abf36bebfca5a608f43af333fec57a719774653d"; // SHA-256 hash of 'Swarnim@090909'
       if (inputHash !== masterHash) {
         alert("❌ Invalid Secret Reset Password! Verification failed.");
         return;
