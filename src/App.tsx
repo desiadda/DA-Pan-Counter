@@ -15,6 +15,7 @@ import AppShell from "./components/AppShell";
 import ConfirmDialog from "./components/ConfirmDialog";
 import { useConfirmStore } from "./stores/confirmStore";
 import { useLangStore } from "./stores/langStore";
+import { useT } from "./lang/translations";
 import { getUsers } from "./db/auth";
 import { dbService } from "./firebase";
 import { getCriticalUnreadCount } from "./db/errorLog";
@@ -28,6 +29,7 @@ const ExpensesView = lazy(() => import("./components/ExpensesView"));
 const UserManager = lazy(() => import("./components/UserManager"));
 const COHView = lazy(() => import("./components/COHView"));
 const FinanceView = lazy(() => import("./components/FinanceView"));
+const COAView = lazy(() => import("./components/COAView"));
 const AdminSettings = lazy(() => import("./components/AdminSettings"));
 const ErrorLogView = lazy(() => import("./components/ErrorLogView"));
 const AuditLogView = lazy(() => import("./components/AuditLogView"));
@@ -75,6 +77,7 @@ function AppContent() {
 
   const navigate = useNavigate();
   const location = useLocation();
+  const tr = useT(useLangStore((s) => s.lang));
 
   const showCOH = useUIStore((s) => s.showCOH);
   const setShowCOH = (show: boolean) => useUIStore.setState({ showCOH: show });
@@ -87,6 +90,7 @@ function AppContent() {
     if (path.startsWith("/reports")) return "reports";
     if (path.startsWith("/expenses")) return "expenses";
     if (path.startsWith("/finance")) return "finance";
+    if (path.startsWith("/coa")) return "coa";
     if (path.startsWith("/users")) return "users";
     if (path.startsWith("/settings")) return "settings";
     if (path.startsWith("/errors")) return "errors";
@@ -172,6 +176,7 @@ function AppContent() {
     dbService.initCOHListener();
     dbService.initUsersListener();
     dbService.initFinanceListener();
+    dbService.initCOAListener();
     dbService.initSettingsListener();
     dbService.migrateLocalDataToFirestore().finally(() => {
       // Clear stale offline caches — safe now because onSnapshot listeners are already active
@@ -253,6 +258,7 @@ function AppContent() {
     if (key === "reports") return !!user?.permissions?.reports;
     if (key === "expenses") return !!user?.permissions?.expenses;
     if (key === "finance") return user?.role === "admin" || !!user?.permissions?.finance;
+    if (key === "coa") return user?.role === "admin" || !!user?.permissions?.finance;
     if (key === "settings") return !!user?.permissions?.settings;
     if (key === "users") return user?.role === "admin" || !!user?.permissions?.settingsManageUsers;
     if (key === "coh") return !!user?.permissions?.settings;
@@ -269,6 +275,7 @@ function AppContent() {
     if (key === "reports") return "reports";
     if (key === "expenses") return "expenses";
     if (key === "finance") return "finance";
+    if (key === "coa") return "finance";
     if (key === "users") return "users";
     if (key === "settings" || key === "coh" || key === "errors" || key === "audit") return "settings";
     return null;
@@ -326,6 +333,8 @@ function AppContent() {
         return <ExpensesView />;
       case "finance":
         return <FinanceView user={user} />;
+      case "coa":
+        return <COAView user={user} />;
       case "users":
         return <UserManager />;
       case "coh":
@@ -539,7 +548,13 @@ function AppContent() {
               {canAccessTab("finance") && (
                 <button className="drawer-item" onClick={() => { setIsMenuDrawerOpen(false); navigate("/finance"); }}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
-                  Finance
+                  {tr("admin.finance")}
+                </button>
+              )}
+              {canAccessTab("coa") && (
+                <button className="drawer-item" onClick={() => { setIsMenuDrawerOpen(false); navigate("/coa"); }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20M4 19.5L4 5A2.5 2.5 0 0 1 6.5 2.5H20M14 6h3M14 11h3"/></svg>
+                  {tr("admin.coa")}
                 </button>
               )}
               {canAccessTab("settings") && (

@@ -59,7 +59,7 @@ const translations = {
     admin: {
       title: "Menu",
       reports: "Reports", expenses: "Expenses", users: "Users",
-      cashOnHand: "Cash on Hand", settings: "Settings", errorLogs: "Error Logs",
+      cashOnHand: "Cash on Hand", finance: "Finance", coa: "Chart of Accounts", settings: "Settings", errorLogs: "Error Logs",
     },
     reports: {
       overview: "Overview", products: "Products", customers: "Customers",
@@ -71,7 +71,7 @@ const translations = {
     },
     common: {
       close: "Close", save: "Save", delete: "Delete", edit: "Edit",
-      loading: "Loading...", noData: "No data available",
+      loading: "Loading...", noData: "No data available", optional: "Optional",
       confirm: "Are you sure?", yes: "Yes", no: "No", cancel: "Cancel",
       print: "Print / PDF", download: "Download", back: "Back",
       success: "Success", error: "Error",
@@ -181,6 +181,23 @@ const translations = {
       selectItems: "Select at least one item to return.",
       processed: "Return processed! Refund amount:",
     },
+    coa: {
+      title: "Chart of Accounts", accounts: "Accounts", trialBalance: "Trial Balance",
+      statement: "Statement", code: "Code", name: "Name", type: "Type", balance: "Balance",
+      addAccount: "Add Account", editAccount: "Edit Account", deleteAccount: "Delete Account",
+      asset: "Assets", liability: "Liabilities", equity: "Equity", income: "Income", expense: "Expenses",
+      live: "Live", manual: "Manual", openingBalance: "Opening Balance", description: "Description",
+      accountType: "Account Type", addEntry: "Add Entry", debit: "Debit", credit: "Credit",
+      note: "Note", date: "Date", entries: "Entries", runningBalance: "Running Balance",
+      totalDebit: "Total Debit", totalCredit: "Total Credit", balanced: "Trial balance is balanced",
+      notBalanced: "Trial balance does not match", noAccounts: "No accounts yet",
+      codeRequired: "Account code is required", nameRequired: "Account name is required",
+      cannotDeleteSystem: "System accounts cannot be deleted",
+      accountStatement: "Account Statement", selectAccount: "Select an account",
+      deleteAccountConfirm: "Delete this account? Its entries will also be removed.",
+      systemAccountHint: "Live account — balance updates automatically from your business data.",
+      total: "Total", outstanding: "Outstanding", deleteEntry: "Delete Entry",
+    },
     priceHistory: {
       title: "Price History", noChanges: "No price changes recorded yet.",
       current: "Current", cost: "Cost", by: "by",
@@ -236,7 +253,7 @@ const translations = {
     },
     admin: {
       title: "मेनू", reports: "रिपोर्ट", expenses: "खर्च", users: "उपयोगकर्ता",
-      cashOnHand: "नकद शेष", settings: "सेटिंग्स", errorLogs: "एरर लॉग",
+      cashOnHand: "नकद शेष", finance: "वित्त", coa: "खाता बही", settings: "सेटिंग्स", errorLogs: "एरर लॉग",
     },
     reports: {
       overview: "अवलोकन", products: "उत्पाद", customers: "ग्राहक",
@@ -248,7 +265,7 @@ const translations = {
     },
     common: {
       close: "बंद करें", save: "सेव करें", delete: "हटाएं", edit: "संपादित करें",
-      loading: "लोड हो रहा है...", noData: "कोई डेटा उपलब्ध नहीं",
+      loading: "लोड हो रहा है...", noData: "कोई डेटा उपलब्ध नहीं", optional: "ऐच्छिक",
       confirm: "क्या आपको यकीन है?", yes: "हाँ", no: "नहीं", cancel: "रद्द करें",
       print: "प्रिंट / PDF", download: "डाउनलोड", back: "वापस",
       success: "सफल", error: "त्रुटि",
@@ -350,6 +367,23 @@ const translations = {
       refundTotal: "रिफंड कुल", processReturn: "वापसी प्रक्रिया करें",
       selectItems: "कम से कम एक आइटम चुनें।", processed: "वापसी संसाधित! रिफंड राशि:",
     },
+    coa: {
+      title: "चार्ट ऑफ अकाउंट्स", accounts: "खाते", trialBalance: "ट्रायल बैलेंस",
+      statement: "विवरण", code: "कोड", name: "नाम", type: "प्रकार", balance: "बैलेंस",
+      addAccount: "खाता जोड़ें", editAccount: "खाता संपादित करें", deleteAccount: "खाता हटाएँ",
+      asset: "परिसंपत्तियाँ", liability: "देयताएँ", equity: "इक्विटी", income: "आय", expense: "खर्च",
+      live: "लाइव", manual: "मैनुअल", openingBalance: "प्रारंभिक बैलेंस", description: "विवरण",
+      accountType: "खाता प्रकार", addEntry: "एंट्री जोड़ें", debit: "डेबिट", credit: "क्रेडिट",
+      note: "नोट", date: "तारीख", entries: "एंट्रीज़", runningBalance: "चालू बैलेंस",
+      totalDebit: "कुल डेबिट", totalCredit: "कुल क्रेडिट", balanced: "ट्रायल बैलेंस बैलेंस्ड है",
+      notBalanced: "ट्रायल बैलेंस मेल नहीं खाता", noAccounts: "अभी कोई खाता नहीं",
+      codeRequired: "खाता कोड आवश्यक है", nameRequired: "खाता नाम आवश्यक है",
+      cannotDeleteSystem: "सिस्टम खाते हटाए नहीं जा सकते",
+      accountStatement: "खाता विवरण", selectAccount: "खाता चुनें",
+      deleteAccountConfirm: "यह खाता हटाएँ? इसकी एंट्रीज़ भी हट जाएँगी।",
+      systemAccountHint: "लाइव खाता — बैलेंस आपके बिज़नेस डेटा से अपने आप अपडेट होता है।",
+      total: "कुल", outstanding: "बकाया", deleteEntry: "एंट्री हटाएँ",
+    },
     priceHistory: {
       title: "मूल्य इतिहास", noChanges: "अभी तक कोई मूल्य परिवर्तन दर्ज नहीं हुआ।",
       current: "वर्तमान", cost: "लागत", by: "द्वारा",
@@ -393,7 +427,7 @@ const translations = {
     },
     admin: {
       title: "เมนู", reports: "รายงาน", expenses: "ค่าใช้จ่าย", users: "ผู้ใช้",
-      cashOnHand: "เงินสดในมือ", settings: "ตั้งค่า", errorLogs: "บันทึกข้อผิดพลาด",
+      cashOnHand: "เงินสดในมือ", finance: "การเงิน", coa: "ผังบัญชี", settings: "ตั้งค่า", errorLogs: "บันทึกข้อผิดพลาด",
     },
     reports: {
       overview: "ภาพรวม", products: "สินค้า", customers: "ลูกค้า",
@@ -402,9 +436,9 @@ const translations = {
     },
     common: {
       close: "ปิด", save: "บันทึก", delete: "ลบ", edit: "แก้ไข",
-      loading: "กำลังโหลด...", noData: "ไม่มีข้อมูล",
+      loading: "กำลังโหลด...", noData: "ไม่มีข้อมูล", optional: "ไม่บังคับ",
       confirm: "คุณแน่ใจหรือ?", yes: "ใช่", no: "ไม่ใช่", cancel: "ยกเลิก",
-      print: "พิมพ์ / PDF", back: "กลับ",
+      print: "พิมพ์ / PDF", download: "ดาวน์โหลด", back: "กลับ",
       success: "สำเร็จ", error: "ข้อผิดพลาด",
     },
     shift: {
@@ -485,6 +519,23 @@ const translations = {
     },
     auth: { enterPin: "ใส่ PIN ของคุณ", login: "เข้าสู่ระบบ", logout: "ออกจากระบบ" },
     return: { title: "คืนสินค้า", refundTotal: "ยอดคืนเงิน", processReturn: "ดำเนินการคืน" },
+    coa: {
+      title: "ผังบัญชี", accounts: "บัญชี", trialBalance: "งบทดลอง",
+      statement: "รายงาน", code: "รหัส", name: "ชื่อ", type: "ประเภท", balance: "ยอดคงเหลือ",
+      addAccount: "เพิ่มบัญชี", editAccount: "แก้ไขบัญชี", deleteAccount: "ลบบัญชี",
+      asset: "สินทรัพย์", liability: "หนี้สิน", equity: "ส่วนทุน", income: "รายได้", expense: "ค่าใช้จ่าย",
+      live: "สด", manual: "ด้วยตนเอง", openingBalance: "ยอดยกมา", description: "คำอธิบาย",
+      accountType: "ประเภทบัญชี", addEntry: "เพิ่มรายการ", debit: "เดบิต", credit: "เครดิต",
+      note: "หมายเหตุ", date: "วันที่", entries: "รายการ", runningBalance: "ยอดคงเหลือสะสม",
+      totalDebit: "เดบิตรวม", totalCredit: "เครดิตรวม", balanced: "งบทดลองถูกต้อง",
+      notBalanced: "งบทดลองไม่ตรงกัน", noAccounts: "ยังไม่มีบัญชี",
+      codeRequired: "ต้องระบุรหัสบัญชี", nameRequired: "ต้องระบุชื่อบัญชี",
+      cannotDeleteSystem: "ไม่สามารถลบบัญชีระบบได้",
+      accountStatement: "รายงานบัญชี", selectAccount: "เลือกบัญชี",
+      deleteAccountConfirm: "ลบบัญชีนี้หรือไม่? รายการที่เกี่ยวข้องจะถูกลบด้วย",
+      systemAccountHint: "บัญชีสด — ยอดอัปเดตอัตโนมัติจากข้อมูลธุรกิจของคุณ",
+      total: "รวม", outstanding: "ค้างชำระ", deleteEntry: "ลบรายการ",
+    },
   },
 
   my: {
@@ -512,7 +563,7 @@ const translations = {
     },
     admin: {
       title: "မီနူး", reports: "အစီရင်ခံစာများ", expenses: "ကုန်ကျစရိတ်များ", users: "အသုံးပြုသူများ",
-      cashOnHand: "လက်ထဲငွေ", settings: "ဆက်တင်များ", errorLogs: "အမှားမှတ်တမ်းများ",
+      cashOnHand: "လက်ထဲငွေ", finance: "ဘဏ္ဍာရေး", coa: "အကောင့်ဇယား", settings: "ဆက်တင်များ", errorLogs: "အမှားမှတ်တမ်းများ",
     },
     reports: {
       overview: "ခြုံငုံသုံးသပ်ချက်", products: "ထုတ်ကုန်များ", customers: "ဖောက်သည်များ",
@@ -521,9 +572,9 @@ const translations = {
     },
     common: {
       close: "ပိတ်ရန်", save: "သိမ်းရန်", delete: "ဖျက်ရန်", edit: "ပြင်ဆင်ရန်",
-      loading: "ဖွင့်နေသည်...", noData: "ဒေတာမရှိပါ",
+      loading: "ဖွင့်နေသည်...", noData: "ဒေတာမရှိပါ", optional: "ရွေးချယ်နိုင်သည်",
       confirm: "သေချာပါသလား?", yes: "ဟုတ်", no: "မဟုတ်", cancel: "ပယ်ဖျက်",
-      print: "ပုံနှိပ် / PDF", back: "နောက်သို့",
+      print: "ပုံနှိပ် / PDF", download: "ဒေါင်းလုဒ်", back: "နောက်သို့",
       success: "အောင်မြင်", error: "အမှား",
     },
     shift: {
@@ -603,6 +654,23 @@ const translations = {
     },
     auth: { enterPin: "သင့် PIN ထည့်ပါ", login: "ဝင်ရန်", logout: "ထွက်ရန်" },
     return: { title: "ပစ္စည်းပြန်အမ်းရန်", refundTotal: "ငွေပြန်အမ်းစုစုပေါင်း", processReturn: "ပြန်အမ်းခြင်းလုပ်ဆောင်ရန်" },
+    coa: {
+      title: "အကောင့်ဇယား", accounts: "အကောင့်များ", trialBalance: "စမ်းသပ်လက်ကျန်",
+      statement: "ရှင်းတမ်း", code: "ကုဒ်", name: "အမည်", type: "အမျိုးအစား", balance: "လက်ကျန်",
+      addAccount: "အကောင့်ထည့်ရန်", editAccount: "အကောင့်တည်းဖြတ်ရန်", deleteAccount: "အကောင့်ဖျက်ရန်",
+      asset: "ပိုင်ဆိုင်မှုများ", liability: "ကြွေးမြီများ", equity: "အရင်းရှင်", income: "ဝင်ငွေ", expense: "ကုန်ကျစရိတ်",
+      live: "တိုက်ရိုက်", manual: "ကိုယ်တိုင်", openingBalance: "အဖွင့်လက်ကျန်", description: "ဖော်ပြချက်",
+      accountType: "အကောင့်အမျိုးအစား", addEntry: "အကြောင်းထည့်ရန်", debit: "ဒက်ဘစ်", credit: "ခရက်ဒစ်",
+      note: "မှတ်ချက်", date: "ရက်စွဲ", entries: "အကြောင်းများ", runningBalance: "လက်ရှိလက်ကျန်",
+      totalDebit: "ဒက်ဘစ်စုစုပေါင်း", totalCredit: "ခရက်ဒစ်စုစုပေါင်း", balanced: "စမ်းသပ်လက်ကျန် ကိုက်ညီသည်",
+      notBalanced: "စမ်းသပ်လက်ကျန် မကိုက်ညီပါ", noAccounts: "အကောင့်မရှိသေးပါ",
+      codeRequired: "အကောင့်ကုဒ် လိုအပ်သည်", nameRequired: "အကောင့်အမည် လိုအပ်သည်",
+      cannotDeleteSystem: "စနစ်အကောင့်များ ဖျက်၍မရပါ",
+      accountStatement: "အကောင့်ရှင်းတမ်း", selectAccount: "အကောင့်ရွေးပါ",
+      deleteAccountConfirm: "ဤအကောင့်ဖျက်မည်လား? ၎င်း၏အကြောင်းများပါ ဖျက်မည်။",
+      systemAccountHint: "တိုက်ရိုက်အကောင့် — လက်ကျန်သည် သင့်စီးပွားရေးဒေတာမှ အလိုအလျောက် အပ်ဒိတ်ဖြစ်သည်။",
+      total: "စုစုပေါင်း", outstanding: "ကျန်ရှိ", deleteEntry: "အကြောင်းဖျက်ရန်",
+    },
   },
 };
 

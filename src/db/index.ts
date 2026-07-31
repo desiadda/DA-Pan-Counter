@@ -16,6 +16,7 @@ import { getSuppliers, saveSupplier, deleteSupplier, updateSupplierBalance, reco
 import { initFinanceListener, getBanks, addBank, updateBank, deleteBank, getFinanceTransactions, financeTransfer } from "./finance";
 import { initSettingsListener, saveAppSettings } from "./settings";
 import { initAuditListener, getAuditLogs, logAudit } from "./audit";
+import { getAccounts, saveAccount, deleteAccount, getEntries, addEntry, deleteEntry, initCOAListener, ACCOUNT_TYPES, SYSTEM_ACCOUNTS } from "./coa";
 
 
 export const dbService = {
@@ -88,6 +89,15 @@ export const dbService = {
   deleteBank,
   getFinanceTransactions,
   financeTransfer,
+  getCoaAccounts: getAccounts,
+  saveCoaAccount: saveAccount,
+  deleteCoaAccount: deleteAccount,
+  getCoaEntries: getEntries,
+  addCoaEntry: addEntry,
+  deleteCoaEntry: deleteEntry,
+  initCOAListener,
+  ACCOUNT_TYPES,
+  SYSTEM_ACCOUNTS,
 };
 
 import { getPaymentModes, savePaymentMode, deletePaymentMode } from "./paymentModes";

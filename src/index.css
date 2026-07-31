@@ -3338,3 +3338,24 @@ input:checked + .slider:before {
   border-color: var(--primary);
   background-color: rgba(4, 120, 87, 0.03);
 }
+/* ── Chart of Accounts ── */
+.coa-view { padding-bottom: 5rem; }
+.coa-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.coa-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: 999px;
+  font-size: 0.72rem; font-weight: 700; white-space: normal;
+}
+.coa-badge-live { background: #dbeafe; color: #1d4ed8; }
+.coa-badge-manual { background: var(--bg-hover, #f1f5f9); color: var(--text-muted); }
+.coa-badge-ok { background: #d1fae5; color: #047857; }
+.coa-badge-warn { background: #fef3c7; color: #b45309; }
+.coa-badge-info { background: #e0e7ff; color: #4338ca; }
+.coa-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-variant-numeric: tabular-nums; }
+.coa-actions { white-space: nowrap; text-align: right; }
+.coa-total-row td { font-weight: 700; background: var(--bg-hover, #f8fafc); border-top: 2px solid var(--border); }
+.coa-stmt-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.coa-stmt-meta { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 1rem 0.5rem; }
+.coa-modal { max-width: 420px; }
+.coa-modal-title { display: flex; justify-content: space-between; align-items: center; font-weight: 700; margin-bottom: 1rem; }
+.coa-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 1rem; }
