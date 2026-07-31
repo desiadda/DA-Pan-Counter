@@ -83,6 +83,8 @@ export default function UserManager() {
   const openEdit = (u) => {
     setForm({ name: u.name, pin: "", permissions: { ...u.permissions } });
     setEditingId(u.id);
+    setDuplicatingFrom(null);
+    setError("");
     setShowForm(true);
   };
 
@@ -102,7 +104,7 @@ export default function UserManager() {
 
       if (editingId) {
         const idx = list.findIndex(u => u.id === editingId);
-        if (idx === -1) return;
+        if (idx === -1) { setError("User not found. Please refresh and try again."); return; }
         list[idx].name = form.name.trim();
         list[idx].permissions = { ...form.permissions };
         if (form.pin.length === 4) {
