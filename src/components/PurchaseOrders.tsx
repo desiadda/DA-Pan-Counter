@@ -4,10 +4,12 @@ import { db, isFirebaseEnabled } from "../db/config";
 import { collection, onSnapshot } from "firebase/firestore";
 import { useLangStore } from "../stores/langStore";
 import { useDBStore } from "../stores/dbStore";
+import { useConfirmStore } from "../stores/confirmStore";
 import { DEFAULT_PACK_SIZE, UDHAAR_MODE } from "../constants";
 
 export default function PurchaseOrders({ prefill, onPrefillConsumed }) {
   const lang = useLangStore((s) => s.lang);
+  const confirm = useConfirmStore((s) => s.confirm);
   const paymentModes = useDBStore((s) => s.paymentModes);
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
@@ -15,6 +17,8 @@ export default function PurchaseOrders({ prefill, onPrefillConsumed }) {
   const [showForm, setShowForm] = useState(false);
   const [isDirectPurchase, setIsDirectPurchase] = useState(false);
   const [formKey, setFormKey] = useState(0);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     if (prefill && prefill.length > 0) {
@@ -56,6 +60,38 @@ export default function PurchaseOrders({ prefill, onPrefillConsumed }) {
     setSuppliers(suppliersList || []);
   };
 
+  const receiveOrder = async (order) => {
+    const ok = await confirm(
+      `Receive PO from ${order.supplier} (฿${order.total?.toFixed(0)})?\n\nStock aur supplier balance update hoga.`,
+      { title: "Receive Purchase", confirmLabel: "Receive", cancelLabel: "Back" }
+    );
+    if (!ok) return;
+    await dbService.receivePurchaseOrder(order.id);
+    load();
+  };
+
+  const cancelOrder = async (order) => {
+    const ok = await confirm(
+      `Cancel PO from ${order.supplier}?`,
+      { title: "Cancel Purchase Order", confirmLabel: "Cancel PO", cancelLabel: "Back" }
+    );
+    if (!ok) return;
+    await dbService.cancelPurchaseOrder(order.id);
+    load();
+  };
+
+  const sortedOrders = [...orders].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  const q = searchQuery.trim().toLowerCase();
+  const filteredOrders = sortedOrders.filter(o =>
+    (statusFilter === "all" || o.status === statusFilter) &&
+    (!q || (o.supplier || "").toLowerCase().includes(q))
+  );
+
+  const pendingCount = orders.filter(o => o.status === "pending").length;
+  const receivedTotal = orders
+    .filter(o => o.status === "received")
+    .reduce((sum, o) => sum + (o.total || 0), 0);
+
   return (
     <div style={styles.container}>
       <div style={styles.header}>
@@ -68,6 +104,47 @@ export default function PurchaseOrders({ prefill, onPrefillConsumed }) {
             + Direct Purchase
           </button>
         </div>
+      </div>
+
+      <div style={styles.statsRow}>
+        <div style={styles.statCard}>
+          <span style={styles.statValue}>{orders.length}</span>
+          <span style={styles.statLabel}>Total POs</span>
+        </div>
+        <div style={styles.statCard}>
+          <span style={{ ...styles.statValue, color: "#d97706" }}>{pendingCount}</span>
+          <span style={styles.statLabel}>Pending</span>
+        </div>
+        <div style={styles.statCard}>
+          <span style={{ ...styles.statValue, color: "#047857" }}>฿{receivedTotal.toFixed(0)}</span>
+          <span style={styles.statLabel}>Received Value</span>
+        </div>
+      </div>
+
+      <div style={styles.filterBar}>
+        <div style={styles.filterTabs}>
+          {[
+            { key: "all", label: `All (${orders.length})` },
+            { key: "pending", label: `⏳ Pending (${orders.filter(o => o.status === "pending").length})` },
+            { key: "received", label: `✓ Received (${orders.filter(o => o.status === "received").length})` },
+            { key: "cancelled", label: `✕ Cancelled (${orders.filter(o => o.status === "cancelled").length})` },
+          ].map(t => (
+            <button
+              key={t.key}
+              onClick={() => setStatusFilter(t.key)}
+              style={{ ...styles.filterTab, ...(statusFilter === t.key ? styles.filterTabActive : {}) }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          placeholder="Search supplier..."
+          style={styles.searchInput}
+        />
       </div>
 
       {showForm && (
@@ -85,9 +162,11 @@ export default function PurchaseOrders({ prefill, onPrefillConsumed }) {
 
       {orders.length === 0 ? (
         <p style={styles.empty}>No purchase orders yet.</p>
+      ) : filteredOrders.length === 0 ? (
+        <p style={styles.empty}>No orders match the current filter.</p>
       ) : (
         <div style={styles.list}>
-          {orders.map(order => (
+          {filteredOrders.map(order => (
             <div key={order.id} style={styles.card}>
               <div style={styles.cardHeader}>
                 <div>
@@ -121,10 +200,10 @@ export default function PurchaseOrders({ prefill, onPrefillConsumed }) {
                 <div style={styles.actions}>
                   {order.status === "pending" && (
                     <>
-                      <button onClick={async () => { await dbService.receivePurchaseOrder(order.id); load(); }} className="btn btn-primary" style={{ padding: "2px 8px", fontSize: "0.7rem", borderRadius: "4px" }}>
+                      <button onClick={() => receiveOrder(order)} className="btn btn-primary" style={{ padding: "2px 8px", fontSize: "0.7rem", borderRadius: "4px" }}>
                         Receive
                       </button>
-                      <button onClick={async () => { await dbService.cancelPurchaseOrder(order.id); load(); }} className="btn btn-outline" style={{ padding: "2px 8px", fontSize: "0.7rem", borderRadius: "4px" }}>
+                      <button onClick={() => cancelOrder(order)} className="btn btn-outline" style={{ padding: "2px 8px", fontSize: "0.7rem", borderRadius: "4px" }}>
                         Cancel
                       </button>
                     </>
@@ -339,6 +418,24 @@ const styles = {
   container: { display: "flex", flexDirection: "column", gap: "1rem" },
   header: { display: "flex", justifyContent: "space-between", alignItems: "center" },
   title: { color: "#047857", fontSize: "1.1rem", fontWeight: 700, margin: 0 },
+  statsRow: { display: "flex", gap: "0.5rem", flexWrap: "wrap" },
+  statCard: {
+    flex: 1, minWidth: "100px", background: "#fff", border: "1px solid #e2e8f0", borderRadius: "10px",
+    padding: "0.5rem 0.75rem", display: "flex", flexDirection: "column", gap: "2px",
+  },
+  statValue: { fontSize: "1.05rem", fontWeight: 800, color: "#1e293b" },
+  statLabel: { fontSize: "0.68rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.03em" },
+  filterBar: { display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" },
+  filterTabs: { display: "flex", gap: "0.35rem", flexWrap: "wrap" },
+  filterTab: {
+    background: "#fff", border: "1px solid #e2e8f0", borderRadius: "9999px",
+    padding: "0.3rem 0.65rem", fontSize: "0.72rem", fontWeight: 600, color: "#64748b", cursor: "pointer",
+  },
+  filterTabActive: { background: "#047857", borderColor: "#047857", color: "#fff" },
+  searchInput: {
+    padding: "0.4rem 0.65rem", borderRadius: "8px", border: "1px solid #e2e8f0",
+    fontSize: "0.8rem", minWidth: "150px", flex: "0 1 200px",
+  },
   empty: { textAlign: "center", color: "#94a3b8", fontSize: "0.9rem", padding: "2rem" },
   list: { display: "flex", flexDirection: "column", gap: "0.75rem" },
   card: {
