@@ -3,6 +3,7 @@ import { dbService } from "../firebase";
 import { getUsers } from "../db/auth";
 import { logError } from "../db/errorLog";
 import { useConfirmStore } from "../stores/confirmStore";
+import AccountStatementModal from "./AccountStatementModal";
 
 export default function FinanceView({ user }) {
   const confirm = useConfirmStore((s) => s.confirm);
@@ -28,6 +29,9 @@ export default function FinanceView({ user }) {
   // Ledger filters
   const [ledgerFilter, setLedgerFilter] = useState("all"); // all | bank | coh
   const [ledgerSearch, setLedgerSearch] = useState("");
+
+  // Statement drill-down
+  const [stmt, setStmt] = useState(null); // { type, id, name, icon, balance }
 
   const load = () => {
     try {
@@ -150,6 +154,26 @@ export default function FinanceView({ user }) {
 
   const formatDate = (ts) => new Date(ts).toLocaleString();
 
+  const openStatement = (type, id, name, icon, balance) => {
+    const rows = transactions
+      .filter(t =>
+        (t.fromType === type && t.fromId === id) ||
+        (t.toType === type && t.toId === id)
+      )
+      .map(t => {
+        const isOut = t.fromType === type && t.fromId === id;
+        return {
+          id: t.id,
+          timestamp: t.timestamp,
+          in: isOut ? null : t.amount,
+          out: isOut ? t.amount : null,
+          description: `${t.fromName || "?"} → ${t.toName || "?"}`,
+          detail: [t.note, t.actor ? `by ${t.actor}` : null].filter(Boolean).join(" · "),
+        };
+      });
+    setStmt({ title: name, subtitle: type === "bank" ? "Bank Account" : "User Cash on Hand", icon, balance, rows });
+  };
+
   const tabs = [
     { key: "overview", label: "📊 Overview" },
     { key: "banks", label: "🏦 Banks" },
@@ -177,22 +201,22 @@ export default function FinanceView({ user }) {
       {activeTab === "overview" && (
         <>
           <div className="kpi-grid">
-            <div className="kpi-card" style={{ background: "linear-gradient(135deg, #047857, #065f46)", border: "none" }}>
+            <div className="kpi-card" style={{ background: "linear-gradient(135deg, #047857, #065f46)", border: "none" }} onClick={() => { setLedgerFilter("all"); setActiveTab("ledger"); }}>
               <span className="kpi-label" style={{ color: "#a7f3d0" }}>Total Assets</span>
               <span className="kpi-value" style={{ color: "#ffffff" }}>฿{grandTotal.toFixed(2)}</span>
               <span className="kpi-sub" style={{ color: "#a7f3d0" }}>Banks + All User COH</span>
             </div>
-            <div className="kpi-card">
+            <div className="kpi-card" onClick={() => { setLedgerFilter("bank"); setActiveTab("ledger"); }}>
               <span className="kpi-label">Bank Balance</span>
               <span className="kpi-value" style={{ color: "#2563eb" }}>฿{totalBanks.toFixed(2)}</span>
               <span className="kpi-sub">{banks.length} bank account{banks.length !== 1 ? "s" : ""}</span>
             </div>
-            <div className="kpi-card">
+            <div className="kpi-card" onClick={() => { setLedgerFilter("coh"); setActiveTab("ledger"); }}>
               <span className="kpi-label">User COH</span>
               <span className="kpi-value" style={{ color: "#047857" }}>฿{totalCoh.toFixed(2)}</span>
               <span className="kpi-sub">{users.length} cashier{users.length !== 1 ? "s" : ""}</span>
             </div>
-            <div className="kpi-card">
+            <div className="kpi-card" onClick={() => { setLedgerFilter("all"); setActiveTab("ledger"); }}>
               <span className="kpi-label">Today's Transfers</span>
               <span className="kpi-value" style={{ color: "#d97706" }}>{todayTransfers.length}</span>
               <span className="kpi-sub">฿{todayTransfers.reduce((s, tx) => s + (tx.amount || 0), 0).toFixed(2)} moved</span>
@@ -206,13 +230,15 @@ export default function FinanceView({ user }) {
             </div>
             <div className="coh-balances-grid">
               {banks.map(b => (
-                <div key={b.id} className="coh-balance-card">
+                <div key={b.id} className="coh-balance-card" onClick={() => openStatement("bank", b.id, b.name, "🏦", b.balance || 0)}>
+                  <span className="coh-card-chevron">›</span>
                   <div className="coh-balance-name">🏦 {b.name}</div>
                   <div className="coh-balance-value">฿{(b.balance || 0).toFixed(2)}</div>
                 </div>
               ))}
               {users.map(u => (
-                <div key={u.id} className="coh-balance-card">
+                <div key={u.id} className="coh-balance-card" onClick={() => openStatement("coh", u.id, u.name, "👤", dbService.getBalance(u.id) || 0)}>
+                  <span className="coh-card-chevron">›</span>
                   <div className="coh-balance-name">👤 {u.name} <span style={{ fontSize: "0.65rem", color: "var(--text-muted)" }}>(COH)</span></div>
                   <div className="coh-balance-value">฿{(dbService.getBalance(u.id) || 0).toFixed(2)}</div>
                 </div>
@@ -399,6 +425,17 @@ export default function FinanceView({ user }) {
             )}
           </div>
         </div>
+      )}
+
+      {stmt && (
+        <AccountStatementModal
+          title={stmt.title}
+          subtitle={stmt.subtitle}
+          icon={stmt.icon}
+          balance={stmt.balance}
+          rows={stmt.rows}
+          onClose={() => setStmt(null)}
+        />
       )}
     </div>
   );

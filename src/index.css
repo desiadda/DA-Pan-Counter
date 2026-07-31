@@ -2071,6 +2071,27 @@ textarea.input-field {
   border: 1px solid #bbf7d0;
   padding: 0.75rem;
   text-align: center;
+  position: relative;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.coh-balance-card:hover {
+  border-color: var(--primary);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+}
+
+.coh-balance-card:active {
+  transform: translateY(0);
+}
+
+.coh-card-chevron {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
 }
 
 .coh-balance-name {
@@ -2163,6 +2184,17 @@ textarea.input-field {
   background: var(--bg-card);
   display: flex;
   flex-direction: column;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+}
+
+.kpi-card:active {
+  transform: translateY(0);
 }
 
 .kpi-label {
@@ -2217,6 +2249,196 @@ textarea.input-field {
   gap: 0.4rem;
   max-height: 480px;
   overflow-y: auto;
+}
+
+.quick-chip-active {
+  background: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+}
+
+.quick-chip-active:hover {
+  color: #ffffff;
+  border-color: var(--primary);
+}
+
+/* ── Account Statement Modal ── */
+.stmt-modal {
+  max-width: 560px;
+  width: 100%;
+}
+
+.stmt-header {
+  background: linear-gradient(135deg, #047857, #065f46);
+  border-radius: 12px;
+  padding: 1rem;
+  position: relative;
+  color: #ffffff;
+}
+
+.stmt-close {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s ease;
+}
+
+.stmt-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.stmt-title {
+  font-size: 1rem;
+  font-weight: 800;
+  padding-right: 2rem;
+}
+
+.stmt-subtitle {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #a7f3d0;
+  margin-top: 2px;
+}
+
+.stmt-balance {
+  font-size: 1.7rem;
+  font-weight: 800;
+  margin-top: 0.5rem;
+}
+
+.stmt-balance-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #a7f3d0;
+  margin-top: 2px;
+}
+
+.stmt-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.stmt-kpi {
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.6rem;
+  text-align: center;
+}
+
+.stmt-kpi-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.stmt-kpi-value {
+  font-size: 0.95rem;
+  font-weight: 800;
+  margin-top: 0.2rem;
+}
+
+.stmt-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 52vh;
+  overflow-y: auto;
+}
+
+.stmt-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.stmt-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: var(--input-bg);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.stmt-col-desc {
+  flex: 1;
+  min-width: 0;
+}
+
+.stmt-desc {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stmt-date {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+.stmt-note {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stmt-amount-in {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #047857;
+  min-width: 76px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.stmt-amount-out {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #dc2626;
+  min-width: 76px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.stmt-bal {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  min-width: 70px;
+  text-align: right;
+  flex-shrink: 0;
 }
 
 /* ── User Manager ── */

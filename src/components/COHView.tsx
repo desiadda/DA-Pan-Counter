@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { dbService } from "../firebase";
 import { getUsers } from "../db/auth";
 import { logError } from "../db/errorLog";
+import AccountStatementModal from "./AccountStatementModal";
 
 export default function COHView({ user }) {
   const [users, setUsers] = useState([]);
@@ -19,6 +20,9 @@ export default function COHView({ user }) {
   const [typeFilter, setTypeFilter] = useState("all"); // all | transfer | adjustment | sale | payment | expense
   const [userFilter, setUserFilter] = useState("all"); // all | userId
   const [statusFilter, setStatusFilter] = useState("all"); // all | approved | pending | rejected
+
+  // Statement drill-down
+  const [stmt, setStmt] = useState(null); // { name, balance, rows }
 
   const load = () => {
     try {
@@ -80,6 +84,26 @@ export default function COHView({ user }) {
 
   const formatDate = (ts) => new Date(ts).toLocaleString();
 
+  const openStatement = (u) => {
+    const typeLabel = (t) =>
+      t === "adjustment" ? "⚙️ Adjustment" : t === "sale" ? "🧾 Sale" : t === "payment" ? "💳 Khata Payment" : t === "expense" ? "💸 Expense" : "📤 Transfer";
+    const rows = transactions
+      .filter(t => t.fromUserId === u.id || t.toUserId === u.id)
+      .map(t => {
+        const isIn = t.toUserId === u.id;
+        return {
+          id: t.id,
+          timestamp: t.timestamp,
+          in: isIn ? t.amount : null,
+          out: isIn ? null : t.amount,
+          description: `${typeLabel(t.type)} · ${t.fromUserName} → ${t.toUserName || t.toUserId || "System"}`,
+          detail: t.note || "",
+          status: t.status,
+        };
+      });
+    setStmt({ name: u.name, balance: dbService.getBalance(u.id) || 0, rows });
+  };
+
   const tabs = [
     { key: "balances", label: "💰 Balances" },
     { key: "adjust", label: "⚙️ Adjust" },
@@ -106,22 +130,22 @@ export default function COHView({ user }) {
       {activeTab === "balances" && (
         <>
           <div className="kpi-grid">
-            <div className="kpi-card" style={{ background: "linear-gradient(135deg, #047857, #065f46)", border: "none" }}>
+            <div className="kpi-card" style={{ background: "linear-gradient(135deg, #047857, #065f46)", border: "none" }} onClick={() => { setTypeFilter("all"); setStatusFilter("all"); setActiveTab("history"); }}>
               <span className="kpi-label" style={{ color: "#a7f3d0" }}>Total Cash on Hand</span>
               <span className="kpi-value" style={{ color: "#ffffff" }}>฿{totalCoh.toFixed(2)}</span>
               <span className="kpi-sub" style={{ color: "#a7f3d0" }}>Across {balances.length} user{balances.length !== 1 ? "s" : ""}</span>
             </div>
-            <div className="kpi-card">
+            <div className="kpi-card" onClick={() => { setTypeFilter("transfer"); setStatusFilter("pending"); setActiveTab("history"); }}>
               <span className="kpi-label">Pending Transfers</span>
               <span className="kpi-value" style={{ color: pendingCount > 0 ? "#d97706" : "var(--text)" }}>{pendingCount}</span>
               <span className="kpi-sub">{pendingCount > 0 ? "Awaiting approval" : "All clear"}</span>
             </div>
-            <div className="kpi-card">
+            <div className="kpi-card" onClick={() => { setTypeFilter("all"); setStatusFilter("all"); setActiveTab("history"); }}>
               <span className="kpi-label">Today's Activity</span>
               <span className="kpi-value" style={{ color: "#2563eb" }}>{todayTx.length}</span>
               <span className="kpi-sub">฿{todayTx.reduce((s, tx) => s + (tx.amount || 0), 0).toFixed(2)} moved</span>
             </div>
-            <div className="kpi-card">
+            <div className="kpi-card" onClick={() => { setTypeFilter("transfer"); setStatusFilter("approved"); setActiveTab("history"); }}>
               <span className="kpi-label">Approved Transfers</span>
               <span className="kpi-value" style={{ color: "#047857" }}>{transactions.filter(t => t.status === "approved" && t.type === "transfer").length}</span>
               <span className="kpi-sub">Lifetime</span>
@@ -135,7 +159,8 @@ export default function COHView({ user }) {
             </div>
             <div className="coh-balances-grid">
               {balances.map(b => (
-                <div key={b.id} className="coh-balance-card">
+                <div key={b.id} className="coh-balance-card" onClick={() => openStatement(b)}>
+                  <span className="coh-card-chevron">›</span>
                   <div className="coh-balance-name">{b.name}</div>
                   <div className="coh-balance-value">฿{(b.coh || 0).toFixed(2)}</div>
                 </div>
@@ -240,6 +265,17 @@ export default function COHView({ user }) {
             )}
           </div>
         </div>
+      )}
+
+      {stmt && (
+        <AccountStatementModal
+          title={stmt.name}
+          subtitle="User Cash on Hand"
+          icon="👤"
+          balance={stmt.balance}
+          rows={stmt.rows}
+          onClose={() => setStmt(null)}
+        />
       )}
     </div>
   );
