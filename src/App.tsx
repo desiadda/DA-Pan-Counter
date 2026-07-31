@@ -117,26 +117,9 @@ function AppContent() {
     setActiveTab(getTabFromPath());
     setSubPath(getSubPath());
   }, [location.pathname]);
-  useEffect(() => {
-    dbService.initCOHListener();
-    dbService.initUsersListener();
-    dbService.migrateLocalDataToFirestore().finally(() => {
-      // Clear all offline database caches after migration checks to prevent old offline data rendering
-      const dbKeys = [
-        "pan_products",
-        "pan_customers",
-        "pan_transactions",
-        "pan_coh_balances",
-        "pan_coh_transactions",
-        "pan_expenses",
-        "pan_suppliers",
-        "pan_purchase_orders",
-        "pan_shifts"
-      ];
-      dbKeys.forEach(k => localStorage.removeItem(k));
-    });
 
-    // Direct Firestore real-time bindings
+    // Direct Firestore real-time bindings — set up FIRST before any cache clearing
+  useEffect(() => {
     let unsubProducts = () => {};
     let unsubCustomers = () => {};
     let unsubTransactions = () => {};
@@ -173,6 +156,22 @@ function AppContent() {
         useDBStore.getState().setPaymentModes(list);
       });
     }
+
+    // Init listeners and migrate AFTER bindings are ready
+    dbService.initCOHListener();
+    dbService.initUsersListener();
+    dbService.migrateLocalDataToFirestore().finally(() => {
+      // Clear stale offline caches — safe now because onSnapshot listeners are already active
+      if (isFirebaseEnabled) {
+        [
+          "pan_products", "pan_customers", "pan_transactions",
+          "pan_coh_balances", "pan_coh_transactions", "pan_expenses",
+          "pan_suppliers", "pan_purchase_orders", "pan_shifts",
+          "pan_khata", "pan_payment_modes",
+        ].forEach(k => localStorage.removeItem(k));
+      }
+    });
+
 
     const onError = () => setCriticalErrors(getCriticalUnreadCount());
     window.addEventListener("error-logged", onError);

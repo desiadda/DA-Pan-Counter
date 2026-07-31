@@ -1,6 +1,7 @@
 import { create } from "zustand"
 import { dbService } from "../firebase"
 import { logError } from "../db/errorLog"
+import { useConfirmStore } from "./confirmStore"
 
 interface User {
   id: string
@@ -29,11 +30,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   logout: async () => {
     try {
-      const ok = window.confirm("Are you sure you want to log out?")
-      if (ok) {
+      const ok = await useConfirmStore.getState().confirm(
+        "Are you sure you want to log out?",
+        { title: "Log Out", confirmLabel: "Log Out", variant: "danger" }
+      )
+      if (!ok) return
+      try {
         await dbService.logout()
-        set({ user: null })
+      } catch (e: any) {
+        // Even if server logout fails, clear local session
+        logError("AUTH", e.message, e.stack)
       }
+      localStorage.removeItem("pan_user")
+      set({ user: null })
     } catch (err: any) {
       logError("AUTH", err.message, err.stack)
       alert("❌ " + (err.message || "Logout failed"))
