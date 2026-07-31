@@ -109,7 +109,8 @@ export default function POSView({ user }) {
       const newQty = targetItem.quantity + change;
       if (newQty <= 0) {
         const user = useAuthStore.getState().user;
-        if (user && user.permissions && !user.permissions.posVoidCart) {
+        const _isAdmin = user?.role === "admin";
+    if (user && !_isAdmin && !user.permissions?.posVoidCart) {
           alert("❌ You do not have permission to delete items from the cart.");
           return prev;
         }
@@ -259,7 +260,8 @@ export default function POSView({ user }) {
 
   const handleClearCart = async () => {
     const user = useAuthStore.getState().user;
-    if (user && user.permissions && !user.permissions.posVoidCart) {
+    const _isAdmin = user?.role === "admin";
+    if (user && !_isAdmin && !user.permissions?.posVoidCart) {
       alert("❌ You do not have permission to clear/void cart.");
       return;
     }

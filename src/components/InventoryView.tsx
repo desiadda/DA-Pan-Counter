@@ -59,7 +59,8 @@ export default function InventoryView({ subPath, onNavigate }) {
   };
 
   const handleEdit = (p) => {
-    if (user && user.permissions && !user.permissions.stockEdit) {
+    const isAdmin = user?.role === "admin";
+    if (user && !isAdmin && !user.permissions?.stockEdit) {
       alert("❌ You do not have permission to add/edit products.");
       return;
     }
@@ -108,7 +109,8 @@ export default function InventoryView({ subPath, onNavigate }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (user && user.permissions && !user.permissions.stockEdit) {
+    const isAdmin = user?.role === "admin";
+    if (user && !isAdmin && !user.permissions?.stockEdit) {
       alert("❌ You do not have permission to add/edit products.");
       return;
     }
@@ -160,7 +162,8 @@ export default function InventoryView({ subPath, onNavigate }) {
   };
 
   const handleDelete = async (id) => {
-    if (user && user.permissions && !user.permissions.stockDelete) {
+    const isAdmin = user?.role === "admin";
+    if (user && !isAdmin && !user.permissions?.stockDelete) {
       alert("❌ You do not have permission to delete products.");
       return;
     }
@@ -180,7 +183,8 @@ export default function InventoryView({ subPath, onNavigate }) {
   };
 
   const quickReplenish = async (p, qty) => {
-    if (user && user.permissions && !user.permissions.stockAdjust) {
+    const isAdminR = user?.role === "admin";
+    if (user && !isAdminR && !user.permissions?.stockAdjust) {
       alert("❌ You do not have permission to adjust stock levels.");
       return;
     }

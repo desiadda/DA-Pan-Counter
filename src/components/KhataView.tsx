@@ -65,7 +65,8 @@ export default function KhataView({ subPath, onNavigate }) {
 
   const handleSettlePayment = async (e) => {
     e.preventDefault();
-    if (user && user.permissions && !user.permissions.khataPay) {
+    const _isAdmin = user?.role === "admin";
+    if (user && !_isAdmin && !user.permissions?.khataPay) {
       alert("❌ You do not have permission to settle payments on credit accounts.");
       return;
     }
