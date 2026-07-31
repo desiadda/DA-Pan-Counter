@@ -16,12 +16,13 @@ vi.mock("firebase/firestore", () => {
       mockProducts = mockProducts.filter(p => p.id !== id);
       localStorage.setItem("pan_products", JSON.stringify(mockProducts));
     }),
-    getDocs: vi.fn(async (col) => {
+    getDocs: vi.fn(async () => {
       return {
         docs: mockProducts.map(p => ({
           id: p.id,
           data: () => {
-            const { id, ...rest } = p;
+            const rest = { ...p };
+            delete rest.id;
             return rest;
           }
         }))
@@ -67,7 +68,7 @@ vi.mock("../db/config", () => ({
   isFirebaseEnabled: true,
   db: {},
   auth: null,
-  localizeError: (en, hi) => en,
+  localizeError: (en) => en,
 }));
 
 const { getProducts, saveProduct, deleteProduct } = await import("../db/products");

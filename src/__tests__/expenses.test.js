@@ -14,12 +14,13 @@ vi.mock("firebase/firestore", () => ({
     mockExpenses = mockExpenses.filter(e => e.id !== docRef);
     localStorage.setItem("pan_expenses", JSON.stringify(mockExpenses));
   }),
-  getDocs: vi.fn(async (col) => {
+  getDocs: vi.fn(async () => {
     return {
       docs: mockExpenses.map(e => ({
         id: e.id,
         data: () => {
-          const { id, ...rest } = e;
+          const rest = { ...e };
+          delete rest.id;
           return rest;
         }
       }))
@@ -32,7 +33,7 @@ vi.mock("../db/config", () => ({
   isFirebaseEnabled: true,
   db: {},
   auth: null,
-  localizeError: (en, hi) => en,
+  localizeError: (en) => en,
 }));
 
 const { getExpenses, addExpense, deleteExpense, EXPENSE_CATEGORIES } = await import("../db/expenses");
