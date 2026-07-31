@@ -96,13 +96,7 @@ export default function ReportsView({ initialSubTab, onSubTabChange, user }) {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const [promptpayNumber, setPromptpayNumber] = useState(localStorage.getItem("pan_promptpay_number") || "0912345678");
-  const [taxEnabled, setTaxEnabled] = useState(localStorage.getItem("pan_tax_enabled") === "true");
-  const [taxRate, setTaxRate] = useState(localStorage.getItem("pan_tax_rate") || "7");
-  const [firebaseConfigInput, setFirebaseConfigInput] = useState(JSON.stringify(dbService.getConfig(), null, 2));
-  
   const paymentModes = useDBStore((s) => s.paymentModes);
-  const [newModeName, setNewModeName] = useState("");
 
   useEffect(() => { loadData(); }, []);
 
@@ -271,111 +265,12 @@ export default function ReportsView({ initialSubTab, onSubTabChange, user }) {
     return split;
   };
 
-  // ── Existing handlers ──
-  const handleSavePromptPay = () => { try { localStorage.setItem("pan_promptpay_number", promptpayNumber.trim()); alert("PromptPay Phone Number updated successfully!"); } catch (err) { logError("SETTINGS", err.message, err.stack); alert("❌ " + (err.message || "Failed to save PromptPay")); console.error(err); } };
-  const handleSaveFirebaseConfig = () => { try { const parsed = JSON.parse(firebaseConfigInput); dbService.saveConfig(parsed); alert("Firebase Config updated! Application will now refresh."); } catch (e) { alert("Invalid JSON format! Please double check your Firebase configuration syntax."); } };
-  const handleClearFirebaseConfig = async () => { try { const ok = await confirm("Are you sure you want to delete the Firebase credentials? App will revert to LocalStorage.", { title: "Disconnect Cloud", confirmLabel: "Disconnect", variant: "danger" }); if (ok) dbService.clearConfig();     } catch (err) { logError("SETTINGS", err.message, err.stack); alert("❌ " + (err.message || "Failed to clear Firebase config")); console.error(err); } };
-  const handleExportBackup = () => { try { const backupData = { products, transactions, customers, exportDate: Date.now(), version: "1.0.0" }; const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2)); const downloadAnchor = document.createElement('a'); downloadAnchor.setAttribute("href", dataStr); downloadAnchor.setAttribute("download", `paan_pos_backup_${new Date().toISOString().split('T')[0]}.json`); document.body.appendChild(downloadAnchor); downloadAnchor.click(); downloadAnchor.remove(); } catch (err) { logError("TRANSACTION", err.message, err.stack); alert("❌ " + (err.message || "Failed to export backup")); console.error(err); } };
-  
-  const restoreToFirestore = async (collectionName, items) => {
-    let batch = writeBatch(db);
-    let count = 0;
-    for (const item of items) {
-      const { id, ...data } = item;
-      const ref = doc(db, collectionName, id);
-      batch.set(ref, data);
-      count++;
-      if (count === 500) {
-        await batch.commit();
-        batch = writeBatch(db);
-        count = 0;
-      }
-    }
-    if (count > 0) {
-      await batch.commit();
-    }
-  };
-
-  const handleImportBackup = (e) => {
-    const fileReader = new FileReader();
-    const file = e.target.files[0];
-    if (!file) return;
-    fileReader.onload = async (event) => {
-      try {
-        const parsed = JSON.parse(event.target.result);
-        if (parsed.products && parsed.transactions) {
-          const ok = await confirm(
-            isFirebaseEnabled
-              ? "Do you want to restore this backup? This will overwrite your Cloud Firestore database."
-              : "Do you want to restore this backup? This will overwrite the local database.",
-            { title: "Restore Backup", confirmLabel: "Restore", variant: "danger" }
-          );
-          if (ok) {
-            setLoading(true);
-            if (isFirebaseEnabled && db) {
-              if (parsed.products) await restoreToFirestore("products", parsed.products);
-              if (parsed.transactions) await restoreToFirestore("transactions", parsed.transactions);
-              if (parsed.customers) await restoreToFirestore("customers", parsed.customers);
-            } else {
-              localStorage.setItem("pan_products", JSON.stringify(parsed.products));
-              localStorage.setItem("pan_transactions", JSON.stringify(parsed.transactions));
-              if (parsed.customers) localStorage.setItem("pan_customers", JSON.stringify(parsed.customers));
-            }
-            alert("Database successfully restored! Re-loading...");
-            await loadData();
-          }
-        } else {
-          alert("Invalid backup file format!");
-        }
-      } catch (err) {
-        logError("TRANSACTION", err.message, err.stack);
-        alert("Failed to restore backup: " + err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fileReader.readAsText(file);
-  };
-  
   const handleVoidTransaction = async (txId) => { const ok = await confirm(`Are you sure you want to void Bill ID: ${txId}?`, { title: "Void Bill", message: "This will restore all items back to stock and reverse customer debt updates.", confirmLabel: "Void Bill", variant: "danger" }); if (ok) { setLoading(true); try { await dbService.deleteTransaction(txId); alert("Transaction voided successfully and inventory restocked!"); await loadData(); } catch (err) { logError("TRANSACTION", err.message, err.stack); alert("Failed to void transaction: " + err.message); } finally { setLoading(false); } } };
   const [editingModeTx, setEditingModeTx] = useState(null);
   const [editingModeVal, setEditingModeVal] = useState("");
   const [viewBillTx, setViewBillTx] = useState(null);
   const [returnTx, setReturnTx] = useState(null);
-  const [discountReasons, setDiscountReasons] = useState(() => {
-    try {
-      const raw = localStorage.getItem("pan_discount_reasons");
-      return raw ? JSON.parse(raw) : ["Loyalty Discount", "Festival Offer", "Damaged Product", "Bulk Purchase", "Staff Discount"];
-    } catch (err) {
-      logError("SETTINGS", err.message, err.stack);
-      console.error(err);
-      return ["Loyalty Discount", "Festival Offer", "Damaged Product", "Bulk Purchase", "Staff Discount"];
-    }
-  });
-  const [newReason, setNewReason] = useState("");
-  const [editReasonIdx, setEditReasonIdx] = useState(-1);
-  const [editReasonVal, setEditReasonVal] = useState("");
 
-  const saveReasons = (list) => {
-    try {
-      localStorage.setItem("pan_discount_reasons", JSON.stringify(list));
-      setDiscountReasons(list);
-    } catch (err) {
-      logError("SETTINGS", err.message, err.stack);
-      alert("❌ " + (err.message || "Failed to save discount reasons"));
-      console.error(err);
-    }
-  };
-  const [storeSettings, setStoreSettings] = useState(() => {
-    try {
-      const raw = localStorage.getItem("pan_store_settings");
-      return raw ? JSON.parse(raw) : { name: "Paan Counter", address: "", phone: "", taxId: "", logo: "" };
-    } catch (err) {
-      logError("SETTINGS", err.message, err.stack);
-      console.error(err);
-      return { name: "Paan Counter", address: "", phone: "", taxId: "", logo: "" };
-    }
-  });
   const handleEditMode = async (txId) => {
     const ok = await confirm(`Change payment mode to "${editingModeVal}" for Bill ${txId}? COH will be adjusted automatically.`, { title: "Edit Payment Mode", confirmLabel: "Change", variant: "warning" });
     if (!ok) { setEditingModeTx(null); return; }
@@ -386,11 +281,7 @@ export default function ReportsView({ initialSubTab, onSubTabChange, user }) {
       await loadData();
     } catch (err) { logError("TRANSACTION", err.message, err.stack); alert("Failed to update: " + err.message); }
   };
-  const [adminPin, setAdminPin] = useState(localStorage.getItem("pan_admin_pin") || "1234");
-  const [staffPin, setStaffPin] = useState(localStorage.getItem("pan_staff_pin") || "5555");
-  const handleSavePins = async () => { if (adminPin.length !== 4 || staffPin.length !== 4 || isNaN(adminPin) || isNaN(staffPin)) { alert("PIN codes must be exactly 4 digits."); return; } try { const hashedAdmin = await hashPin(adminPin.trim()); const hashedStaff = await hashPin(staffPin.trim()); localStorage.setItem("pan_admin_pin", hashedAdmin); localStorage.setItem("pan_staff_pin", hashedStaff); alert("PIN configurations updated! Next logins will require new credentials."); } catch (err) { logError("SETTINGS", err.message, err.stack); alert("❌ " + (err.message || "Failed to save PIN codes")); console.error(err); } };
   const getStaffStats = () => { const staffSales = {}; transactions.forEach(tx => { const email = tx.cashierEmail || "staff@pan.com"; if (!staffSales[email]) staffSales[email] = { revenue: 0, count: 0 }; staffSales[email].revenue += tx.totalAmount; staffSales[email].count += 1; }); return Object.entries(staffSales).map(([email, stats]) => ({ email, name: email === "admin@pan.com" ? "Owner (Admin)" : "Cashier (Staff)", ...stats })); };
-  const handleSaveTaxSettings = () => { const rate = parseFloat(taxRate); if (isNaN(rate) || rate < 0 || rate > 100) { alert("Tax rate must be between 0 and 100."); return; } try { localStorage.setItem("pan_tax_enabled", taxEnabled ? "true" : "false"); localStorage.setItem("pan_tax_rate", rate.toString()); alert(`VAT ${taxEnabled ? "enabled" : "disabled"} at ${rate}%`); } catch (err) { logError("SETTINGS", err.message, err.stack); alert("❌ " + (err.message || "Failed to save tax settings")); console.error(err); } };
 
   const paySplit = getPaymentSplit();
   const profitVal = getProfitTotal();
@@ -541,8 +432,7 @@ export default function ReportsView({ initialSubTab, onSubTabChange, user }) {
     { key: "customers", label: "👥 Customers" },
     { key: "hours", label: "⏰ Hours" },
     { key: "staff", label: "👤 Staff" },
-    { key: "bills", label: "📜 Bills" },
-    ...(user?.permissions?.settings ? [{ key: "settings", label: "⚙️ Settings" }] : []),
+    { key: "bills", label: "📜 Bills" }
   ];
   const [activeSubTab, setActiveSubTab] = useState(initialSubTab || "overview");
 
@@ -982,234 +872,7 @@ export default function ReportsView({ initialSubTab, onSubTabChange, user }) {
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════════ SETTINGS ══════════════════════════════════════════════════ */}
-      {activeSubTab === "settings" && (
-        <div style={{display: "flex", flexDirection: "column", gap: "1rem"}}>
-          <div style={styles.reportCard}>
-            <h3 style={styles.cardHeader}>🏪 Store Details</h3>
-            <div style={{display: "flex", flexDirection: "column", gap: "0.75rem"}}>
-              <div className="input-group"><label className="input-label">Store Name</label><input type="text" value={storeSettings.name} onChange={e => setStoreSettings({...storeSettings, name: e.target.value})} className="input-field" /></div>
-              <div className="input-group"><label className="input-label">Address</label><textarea value={storeSettings.address} onChange={e => setStoreSettings({...storeSettings, address: e.target.value})} className="input-field" rows={2} /></div>
-              <div className="input-group"><label className="input-label">Phone</label><input type="text" value={storeSettings.phone} onChange={e => setStoreSettings({...storeSettings, phone: e.target.value})} className="input-field" /></div>
-              <div className="input-group"><label className="input-label">Tax ID</label><input type="text" value={storeSettings.taxId} onChange={e => setStoreSettings({...storeSettings, taxId: e.target.value})} className="input-field" /></div>
-              <div className="input-group">
-                <label className="input-label">Store Logo</label>
-                <input type="file" accept="image/*" onChange={e => {
-                  const file = e.target.files[0];
-                  if (!file) return;
-                  const reader = new FileReader();
-                  reader.onload = (ev) => setStoreSettings({...storeSettings, logo: ev.target.result});
-                  reader.readAsDataURL(file);
-                }} />
-                {storeSettings.logo && (
-                  <div style={{marginTop: "0.5rem", display: "flex", alignItems: "center", gap: "0.5rem"}}>
-                    <img src={storeSettings.logo} alt="Logo" style={{height: "48px", borderRadius: "8px", objectFit: "contain"}} />
-                    <button onClick={() => setStoreSettings({...storeSettings, logo: ""})} className="btn btn-outline" style={{padding: "0.2rem 0.5rem", fontSize: "0.75rem"}}>Remove</button>
-                  </div>
-                )}
-              </div>
-              <button onClick={() => { try { const str = JSON.stringify(storeSettings); if (str.length > 4_500_000) { alert("Logo image too large! Please use a smaller image (under ~4.5MB)."); return; } localStorage.setItem("pan_store_settings", str); const link = document.querySelector("link[rel~='icon']"); if (link) link.href = storeSettings.logo; alert("Store details saved!"); } catch (err) { logError("SETTINGS", err.message, err.stack); alert("❌ " + (err.message || "Failed to save store details")); console.error(err); } }} className="btn btn-primary" style={{padding: "0.6rem"}}>Save Store Details</button>
-            </div>
-          </div>
-          <div style={styles.reportCard}>
-            <h3 style={styles.cardHeader}>Security (PIN Setup)</h3>
-            <div style={{display: "flex", gap: "1rem", flexDirection: "column"}}>
-              <div className="input-group"><label className="input-label">Admin Pin (4 digits)</label><input type="text" maxLength={4} value={adminPin} onChange={(e) => setAdminPin(e.target.value.replace(/\D/g, ''))} className="input-field" /></div>
-              <div className="input-group"><label className="input-label">Staff Pin (4 digits)</label><input type="text" maxLength={4} value={staffPin} onChange={(e) => setStaffPin(e.target.value.replace(/\D/g, ''))} className="input-field" /></div>
-              <button onClick={handleSavePins} className="btn btn-primary" style={{padding: "0.6rem"}}>Save PIN Codes</button>
-            </div>
-          </div>
-          <div style={styles.reportCard}>
-            <h3 style={styles.cardHeader}>Merchant Payment</h3>
-            <div className="input-group">
-              <label className="input-label">PromptPay Phone / Tax ID</label>
-              <div style={{display: "flex", gap: "0.5rem"}}>
-                <input type="text" value={promptpayNumber} onChange={(e) => setPromptpayNumber(e.target.value)} className="input-field" style={{flex: 1}} />
-                <button onClick={handleSavePromptPay} className="btn btn-primary" style={{padding: "0.5rem 1rem"}}>Save</button>
-              </div>
-            </div>
-          </div>
-          <div style={styles.reportCard}>
-            <h3 style={styles.cardHeader}>Appearance</h3>
-            <label style={{fontSize: "0.9rem", fontWeight: "600", color: "#1e293b", display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer"}}>
-              <input type="checkbox" checked={theme === "dark"} onChange={toggleTheme} />
-              Dark Mode
-            </label>
-          </div>
-          <div style={styles.reportCard}>
-            <h3 style={styles.cardHeader}>🏷️ Discount Reasons</h3>
-            <p style={{fontSize: "0.8rem", color: "#64748b", marginBottom: "0.75rem"}}>Manage predefined reasons for giving discounts.</p>
-            <div style={{display: "flex", flexDirection: "column", gap: "0.5rem"}}>
-              {discountReasons.map((r, i) => (
-                <div key={i} style={{display: "flex", alignItems: "center", gap: "0.5rem"}}>
-                  {editReasonIdx === i ? (
-                    <>
-                      <input value={editReasonVal} onChange={e => setEditReasonVal(e.target.value)} className="input-field" style={{flex: 1, fontSize: "0.85rem"}} />
-                      <button onClick={() => { if (editReasonVal.trim()) { const u = [...discountReasons]; u[i] = editReasonVal.trim(); saveReasons(u); setEditReasonIdx(-1); } }} className="btn btn-primary" style={{padding: "0.3rem 0.6rem", fontSize: "0.75rem"}}>Save</button>
-                      <button onClick={() => setEditReasonIdx(-1)} className="btn btn-outline" style={{padding: "0.3rem 0.6rem", fontSize: "0.75rem"}}>Cancel</button>
-                    </>
-                  ) : (
-                    <>
-                      <span style={{flex: 1, fontSize: "0.85rem", color: "#1e293b"}}>• {r}</span>
-                      <button onClick={() => { setEditReasonIdx(i); setEditReasonVal(r); }} style={{background: "none", border: "none", color: "#475569", cursor: "pointer", fontSize: "0.75rem"}}>✎</button>
-                      <button onClick={() => { saveReasons(discountReasons.filter((_, j) => j !== i)); }} style={{background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "0.75rem"}}>✕</button>
-                    </>
-                  )}
-                </div>
-              ))}
-              <div style={{display: "flex", gap: "0.5rem", marginTop: "0.5rem"}}>
-                <input value={newReason} onChange={e => setNewReason(e.target.value)} className="input-field" style={{flex: 1, fontSize: "0.85rem"}} placeholder="New reason..." />
-                <button onClick={() => { if (newReason.trim()) { saveReasons([...discountReasons, newReason.trim()]); setNewReason(""); } }} className="btn btn-primary" style={{padding: "0.4rem 0.75rem", fontSize: "0.8rem"}}>Add</button>
-              </div>
-            </div>
-          </div>
-          {/* Payment Modes */}
-          <div style={styles.reportCard}>
-            <h3 style={styles.cardHeader}>💳 Payment Modes</h3>
-            <p style={{fontSize: "0.8rem", color: "#64748b", marginBottom: "0.75rem"}}>
-              Toggle, add, upload QR code images, or delete payment modes.
-            </p>
-            <div style={{display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1rem"}}>
-              {paymentModes.map((mode) => (
-                <div key={mode.id} style={{display: "flex", flexDirection: "column", padding: "0.75rem", backgroundColor: "#f8fafc", borderRadius: "8px", border: "1px solid #cbd5e1", gap: "0.5rem"}}>
-                  <div style={{display: "flex", justifyContent: "space-between", alignItems: "center"}}>
-                    <div>
-                      <span style={{fontWeight: "bold", color: "#1e293b"}}>{mode.name}</span>
-                      {mode.isSystem && <span style={{fontSize: "0.75rem", color: "#64748b", marginLeft: "0.5rem"}}>(System Mode)</span>}
-                    </div>
-                    <div style={{display: "flex", gap: "0.5rem", alignItems: "center"}}>
-                      <label style={{fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "0.25rem", cursor: "pointer"}}>
-                        <input
-                          type="checkbox"
-                          checked={mode.enabled}
-                          disabled={mode.id === "Cash" || mode.id === "Udhaar"}
-                          onChange={async (e) => {
-                            await dbService.savePaymentMode({ ...mode, enabled: e.target.checked });
-                          }}
-                        />
-                        Enabled
-                      </label>
-                      {!mode.isSystem && (
-                        <button
-                          onClick={async () => {
-                            if (window.confirm(`Are you sure you want to delete ${mode.name}?`)) {
-                              await dbService.deletePaymentMode(mode.id);
-                            }
-                          }}
-                          className="btn btn-outline"
-                          style={{padding: "2px 6px", fontSize: "0.7rem", color: "#dc2626", borderColor: "#dc2626"}}
-                        >
-                          Delete
-                        </button>
-                      )}
-                    </div>
-                  </div>
 
-                  <div style={{display: "flex", alignItems: "center", gap: "1rem"}}>
-                    <div style={{flex: 1}}>
-                      <label className="input-label" style={{fontSize: "0.75rem", marginBottom: "2px"}}>Upload QR Code</label>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          const reader = new FileReader();
-                          reader.onload = async (ev) => {
-                            const base64 = ev.target?.result as string;
-                            if (base64.length > 3_000_000) {
-                              alert("QR Image is too large! Please use a smaller file under ~3MB.");
-                              return;
-                            }
-                            await dbService.savePaymentMode({ ...mode, qrCode: base64 });
-                            alert("QR Code updated successfully!");
-                          };
-                          reader.readAsDataURL(file);
-                        }}
-                        style={{fontSize: "0.75rem"}}
-                      />
-                    </div>
-                    {mode.qrCode && (
-                      <div style={{display: "flex", alignItems: "center", gap: "0.25rem"}}>
-                        <img src={mode.qrCode} alt="QR Preview" style={{width: "40px", height: "40px", objectFit: "contain", border: "1px solid #cbd5e1", borderRadius: "4px"}} />
-                        <button
-                          onClick={async () => {
-                            await dbService.savePaymentMode({ ...mode, qrCode: "" });
-                          }}
-                          style={{border: "none", background: "none", color: "#dc2626", cursor: "pointer", fontSize: "0.75rem"}}
-                        >
-                          Clear
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Add Payment Mode Form */}
-            <div style={{padding: "0.75rem", backgroundColor: "#eff6ff", borderRadius: "8px", border: "1px solid #bfdbfe", display: "flex", flexDirection: "column", gap: "0.5rem"}}>
-              <h4 style={{fontSize: "0.85rem", fontWeight: "bold", color: "#1e40af", margin: 0}}>Add Custom Payment Mode</h4>
-              <div style={{display: "flex", gap: "0.5rem"}}>
-                <input
-                  type="text"
-                  placeholder="e.g. GPay, Card, Gulla..."
-                  value={newModeName}
-                  onChange={(e) => setNewModeName(e.target.value)}
-                  className="input-field"
-                  style={{flex: 1, fontSize: "0.8rem", padding: "0.4rem"}}
-                />
-                <button
-                  onClick={async () => {
-                    const name = newModeName.trim();
-                    if (!name) return;
-                    const id = name.replace(/\s+/g, '_').toLowerCase();
-                    if (paymentModes.some(m => m.id === id || m.name.toLowerCase() === name.toLowerCase())) {
-                      alert("A payment mode with this name already exists.");
-                      return;
-                    }
-                    const newMode = {
-                      id,
-                      name,
-                      qrCode: "",
-                      isSystem: false,
-                      enabled: true
-                    };
-                    await dbService.savePaymentMode(newMode);
-                    setNewModeName("");
-                    alert("Payment mode added!");
-                  }}
-                  className="btn btn-primary"
-                  style={{padding: "0.4rem 0.8rem", fontSize: "0.8rem"}}
-                >
-                  Add
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div style={styles.reportCard}>
-            <h3 style={styles.cardHeader}>VAT Configuration</h3>
-            <p style={{fontSize: "0.8rem", color: "#64748b", marginBottom: "0.75rem"}}>Thailand VAT is 7%. Businesses with annual revenue under 1.8M THB are exempt.</p>
-            <div style={{display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.75rem"}}>
-              <label style={{fontSize: "0.9rem", fontWeight: "600", color: "#1e293b", display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer"}}>
-                <input type="checkbox" checked={taxEnabled} onChange={(e) => setTaxEnabled(e.target.checked)} /> Enable VAT
-              </label>
-            </div>
-            {taxEnabled && <div className="input-group"><label className="input-label">VAT Rate (%)</label><input type="number" value={taxRate} onChange={(e) => setTaxRate(e.target.value)} className="input-field" style={{maxWidth: "120px"}} min="0" max="100" step="0.5" /></div>}
-            <button onClick={handleSaveTaxSettings} className="btn btn-primary" style={{padding: "0.6rem"}}>Save Tax Settings</button>
-          </div>
-          <div style={styles.reportCard}>
-            <h3 style={styles.cardHeader}>Cloud Database (Firebase)</h3>
-            <div style={styles.statusRow}><span>Current Database:</span><span className={`status-badge ${dbService.isFirebase() ? 'status-online' : 'status-offline'}`}>{dbService.isFirebase() ? '☁️ Cloud Firestore' : '💾 Local Storage'}</span></div>
-            <div className="input-group" style={{marginTop: "1rem"}}><label className="input-label">Firebase Web Config (JSON)</label><textarea value={firebaseConfigInput} onChange={(e) => setFirebaseConfigInput(e.target.value)} className="input-field" style={{fontFamily: "monospace", fontSize: "0.75rem", minHeight: "150px"}} /></div>
-            <div style={styles.backupActions}>
-              <button onClick={handleSaveFirebaseConfig} className="btn btn-primary" style={{flex: 1, padding: "0.6rem"}}>Save & Connect Cloud</button>
-              {dbService.isFirebase() && <button onClick={handleClearFirebaseConfig} className="btn btn-danger" style={{flex: 1, padding: "0.6rem"}}>Disconnect Cloud</button>}
-            </div>
-          </div>
-        </div>
-      )}
 
       {viewBillTx && <BillViewModal tx={viewBillTx} onClose={() => setViewBillTx(null)} />}
       {returnTx && <ReturnModal tx={returnTx} onClose={() => setReturnTx(null)} onReturned={loadData} />}
