@@ -75,6 +75,9 @@ export const savePurchaseOrder = async (order) => {
         
         if (order.status === "received" && !order.receivedAt) {
           order.receivedAt = Date.now();
+          if (order.paymentMode === "Credit" && (order.paymentTerms?.days || 0) > 0 && !order.dueDate) {
+            order.dueDate = Date.now() + order.paymentTerms.days * 86400000;
+          }
           for (const { item, prodRef, prodSnap } of prodDataList) {
             if (prodSnap.exists()) {
               const prod = prodSnap.data();
@@ -186,6 +189,9 @@ export const receivePurchaseOrder = async (orderId, paymentMode) => {
         order.status = "received";
         order.receivedAt = Date.now();
         if (paymentMode) order.paymentMode = paymentMode;
+        if (order.paymentMode === "Credit" && (order.paymentTerms?.days || 0) > 0) {
+          order.dueDate = Date.now() + order.paymentTerms.days * 86400000;
+        }
 
         // --- READ PHASE ---
 
@@ -302,6 +308,9 @@ export const receivePurchaseOrder = async (orderId, paymentMode) => {
       order.status = "received";
       order.receivedAt = Date.now();
       if (paymentMode) order.paymentMode = paymentMode;
+      if (order.paymentMode === "Credit" && (order.paymentTerms?.days || 0) > 0) {
+        order.dueDate = Date.now() + order.paymentTerms.days * 86400000;
+      }
       setLocalData(LS_KEY, list);
     }
   } catch (err) {

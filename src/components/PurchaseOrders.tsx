@@ -5,7 +5,7 @@ import { collection, onSnapshot } from "firebase/firestore";
 import { useLangStore } from "../stores/langStore";
 import { useDBStore } from "../stores/dbStore";
 import { useConfirmStore } from "../stores/confirmStore";
-import { DEFAULT_PACK_SIZE, UDHAAR_MODE } from "../constants";
+import { DEFAULT_PACK_SIZE, UDHAAR_MODE, PAYMENT_TERMS } from "../constants";
 import ModalPortal from "./ModalPortal";
 
 export default function PurchaseOrders({ prefill, onPrefillConsumed }) {
@@ -195,6 +195,20 @@ export default function PurchaseOrders({ prefill, onPrefillConsumed }) {
                       {order.paymentMode}
                     </span>
                   )}
+                  {order.paymentTerms && order.paymentTerms.label !== "On Receipt" && (
+                    <span style={{ fontSize: "0.7rem", color: "#92400e", background: "#fffbeb", padding: "2px 6px", borderRadius: "4px", marginLeft: "0.5rem", fontWeight: 600 }}>
+                      ⏳ {order.paymentTerms.label}
+                    </span>
+                  )}
+                  {order.dueDate && (
+                    <span style={{
+                      fontSize: "0.7rem", padding: "2px 6px", borderRadius: "4px", marginLeft: "0.5rem", fontWeight: 700,
+                      color: order.dueDate < Date.now() ? "#dc2626" : "#047857",
+                      background: order.dueDate < Date.now() ? "#fef2f2" : "#f0fdf4",
+                    }}>
+                      {order.dueDate < Date.now() ? "⛔ Overdue" : "📅 Due"}: {new Date(order.dueDate).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                    </span>
+                  )}
                   <span style={styles.date}>{new Date(order.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
                 </div>
                 <span style={{
@@ -254,6 +268,9 @@ export default function PurchaseOrders({ prefill, onPrefillConsumed }) {
                 <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 800, color: "#1e293b" }}>📦 Receive PO</h3>
                 <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "2px" }}>
                   {receivingOrder.supplier} · {receivingOrder.items?.length || 0} item(s) · Total: <strong>฿{(receivingOrder.total || 0).toFixed(0)}</strong>
+                  {receivingOrder.paymentTerms && receivingOrder.paymentTerms.label !== "On Receipt" && (
+                    <span> · Terms: <strong>{receivingOrder.paymentTerms.label}</strong></span>
+                  )}
                 </div>
               </div>
 
@@ -295,6 +312,7 @@ export default function PurchaseOrders({ prefill, onPrefillConsumed }) {
 function PurchaseOrderForm({ initialItems, products, suppliers, orders, paymentModes, lang, isDirect, onSave, onCancel }) {
   const [supplierId, setSupplierId] = useState("");
   const [paymentMode, setPaymentMode] = useState("Cash");
+  const [paymentTermsId, setPaymentTermsId] = useState("immediate");
   const [items, setItems] = useState(initialItems && initialItems.length > 0 ? initialItems : [{ productId: "", quantity: 1, costPrice: 0, isPack: false }]);
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -362,11 +380,14 @@ function PurchaseOrderForm({ initialItems, products, suppliers, orders, paymentM
     
     const total = validItems.reduce((sum, item) => sum + ((item.costPrice || 0) * item.quantity), 0);
     const user = JSON.parse(localStorage.getItem("pan_user") || "{}");
+    const terms = PAYMENT_TERMS.find(t => t.id === paymentTermsId) || PAYMENT_TERMS[0];
 
     const order = {
       supplier: selectedSupplier.name,
       supplierId: selectedSupplier.id,
       ...(isDirect ? { paymentMode } : {}),
+      paymentTerms: terms,
+      ...(isDirect && paymentMode === "Credit" && terms.days > 0 ? { dueDate: Date.now() + terms.days * 86400000 } : {}),
       items: validItems.map(item => {
         const prod = products.find(p => p.id === item.productId);
         return {
@@ -401,7 +422,7 @@ function PurchaseOrderForm({ initialItems, products, suppliers, orders, paymentM
     <div style={styles.formCard}>
       <h3 style={styles.formTitle}>{isDirect ? "Direct Purchase / Bill Entry" : "New Purchase Order"}</h3>
       
-      <div className="input-group" style={{ display: "flex", gap: "1rem" }}>
+      <div className="input-group" style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
         <div style={{ flex: isDirect ? 2 : 1 }}>
           <label className="input-label">Supplier</label>
           <select value={supplierId} onChange={e => { setSupplierId(e.target.value); setItems([{ productId: "", quantity: 1, costPrice: 0, isPack: false }]); }} className="input-field" style={{ fontFamily: "inherit" }}>
@@ -421,11 +442,21 @@ function PurchaseOrderForm({ initialItems, products, suppliers, orders, paymentM
             </select>
           </div>
         )}
+        {(isDirect ? paymentMode === "Credit" : true) && (
+          <div style={{ flex: isDirect ? 1 : 1 }}>
+            <label className="input-label">Payment Terms</label>
+            <select value={paymentTermsId} onChange={e => setPaymentTermsId(e.target.value)} className="input-field" style={{ fontFamily: "inherit" }}>
+              {PAYMENT_TERMS.map(t => (
+                <option key={t.id} value={t.id}>{t.label}</option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {!isDirect && (
         <div style={{ padding: "0.5rem 0.75rem", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: "8px", fontSize: "0.75rem", color: "#92400e" }}>
-          📌 PO bina payment ke banega — goods receive karte time payment mode choose karenge. Credit (Khata) hua to baad mein Pay Supplier se settle hoga.
+          📌 PO bina payment ke banega — goods receive karte time payment mode choose karenge. Credit (Khata) hua to baad mein '💸 Pay Supplier' se settle hoga, terms ke hisaab se due date lag jayegi.
         </div>
       )}
 

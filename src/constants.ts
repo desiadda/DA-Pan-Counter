@@ -112,6 +112,13 @@ export const CASH_MODE = "Cash";
 
 export const UDHAAR_MODE = "Udhaar";
 
+export const PAYMENT_TERMS = [
+  { id: "immediate", label: "On Receipt", days: 0 },
+  { id: "net7", label: "Net 7 Days", days: 7 },
+  { id: "net15", label: "Net 15 Days", days: 15 },
+  { id: "net30", label: "Net 30 Days", days: 30 },
+];
+
 export const DEFAULT_RECEIPT_FOOTER = "Thank you for your purchase!";
 
 export const DEFAULT_RECEIPT_FOOTER_SUB = "Visit again 😊";
