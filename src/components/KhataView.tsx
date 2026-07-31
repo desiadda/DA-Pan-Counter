@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { dbService } from "../firebase";
 import { useDBStore } from "../stores/dbStore";
+import { useAuthStore } from "../stores/authStore";
 import { SkeletonList } from "./Skeleton";
 import { logError } from "../db/errorLog";
 import ReminderModal from "./ReminderModal";
 
 export default function KhataView({ subPath, onNavigate }) {
   const customers = useDBStore((s) => s.customers);
+  const user = useAuthStore((s) => s.user);
   const [selectedCust, setSelectedCust] = useState(null);
   const [payAmount, setPayAmount] = useState("");
+  const [paymentMode, setPaymentMode] = useState("Cash");
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [showReminders, setShowReminders] = useState(false);
@@ -67,9 +70,21 @@ export default function KhataView({ subPath, onNavigate }) {
       alert("Payment cannot be greater than the current balance.");
       return;
     }
-    const ledgerEntry = { date: Date.now(), type: "Payment", amount: paymentVal, description: "Cash payment settled at counter" };
+    const ledgerEntry = { 
+      date: Date.now(), 
+      type: "Payment", 
+      amount: paymentVal, 
+      description: `${paymentMode} payment settled at counter` 
+    };
     try {
-      await dbService.updateUdhaarBalance(selectedCust.id, -paymentVal, ledgerEntry);
+      await dbService.updateUdhaarBalance(
+        selectedCust.id, 
+        -paymentVal, 
+        ledgerEntry, 
+        user?.id, 
+        user?.name, 
+        paymentMode
+      );
     } catch (err) {
       logError("CREDIT", err.message, err.stack);
       alert("❌ " + (err.message || "Failed to record payment"));
@@ -79,7 +94,7 @@ export default function KhataView({ subPath, onNavigate }) {
     const updatedCust = { ...selectedCust, balance: selectedCust.balance - paymentVal, ledger: [...(selectedCust.ledger || []), ledgerEntry] };
     setSelectedCust(updatedCust);
     setPayAmount("");
-    alert("Payment of ฿" + paymentVal + " recorded successfully!");
+    alert("Payment of ฿" + paymentVal + " (" + paymentMode + ") recorded successfully!");
   };
 
   const getFilteredCustomers = () => {
@@ -163,9 +178,16 @@ export default function KhataView({ subPath, onNavigate }) {
             {selectedCust.balance > 0 && (
               <form onSubmit={handleSettlePayment} style={{ background: "var(--warning-light)", border: "1px solid #fef3c7", borderRadius: "var(--radius-sm)", padding: "0.75rem" }}>
                 <h4 style={{ marginBottom: "0.5rem" }}>Record Settle Payment</h4>
-                <div className="flex items-center gap-sm">
+                <div className="flex items-center gap-sm flex-wrap">
                   <input type="number" value={payAmount} onChange={(e) => setPayAmount(e.target.value)}
-                    placeholder="Enter amount to pay" className="input-field" style={{ flex: 1 }} />
+                    placeholder="Enter amount to pay" className="input-field" style={{ flex: 1, minWidth: "120px" }} />
+                  
+                  <select value={paymentMode} onChange={(e) => setPaymentMode(e.target.value)} className="input-field" style={{ width: "auto" }}>
+                    <option value="Cash">💵 Cash</option>
+                    <option value="PromptPay">📱 PromptPay</option>
+                    <option value="Bank Transfer">🏦 Bank Transfer</option>
+                  </select>
+
                   <button type="button" onClick={() => setPayAmount(selectedCust.balance.toString())}
                     className="user-btn-sm user-btn-edit" style={{ borderColor: "var(--secondary)", color: "var(--secondary)" }}>Pay All</button>
                   <button type="submit" className="btn btn-primary">Record</button>

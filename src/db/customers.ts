@@ -1,4 +1,4 @@
-import { collection, getDocs, doc, setDoc, updateDoc, getDoc } from "firebase/firestore";
+import { collection, getDocs, doc, setDoc, updateDoc, getDoc, runTransaction } from "firebase/firestore";
 import { db, isFirebaseEnabled, localizeError } from "./config";
 import { logError } from "./errorLog";
 
@@ -46,23 +46,58 @@ export const saveCustomer = async (customer) => {
   }
 };
 
-export const updateUdhaarBalance = async (customerId, amountChange, ledgerEntry) => {
+export const updateUdhaarBalance = async (
+  customerId: string,
+  amountChange: number,
+  ledgerEntry: any,
+  cashierId?: string,
+  cashierName?: string,
+  paymentMode?: string
+) => {
   try {
-    let currentBal = 0;
-    let currentLedger = [];
+    if (isFirebaseEnabled && db) {
+      await runTransaction(db, async (firestoreTx) => {
+        const docRef = doc(db, "customers", customerId);
+        const docSnap = await firestoreTx.get(docRef);
+        if (!docSnap.exists()) throw new Error("Customer not found.");
 
-    if (isFirebaseEnabled) {
-      const docRef = doc(db, "customers", customerId);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
         const data = docSnap.data();
-        currentBal = data.balance || 0;
-        currentLedger = data.ledger || [];
-      }
-      
-      const newBal = currentBal + amountChange;
-      const newLedger = [...currentLedger, ledgerEntry];
-      await syncUdhaarToFirebase(customerId, newBal, newLedger);
+        const currentBal = data.balance || 0;
+        const currentLedger = data.ledger || [];
+        const newBal = currentBal + amountChange;
+        const newLedger = [...currentLedger, ledgerEntry];
+
+        // 1. Update customer balance and ledger
+        firestoreTx.update(docRef, { balance: newBal, ledger: newLedger });
+
+        // 2. If paymentMode is Cash, adjust cashier COH balance and log transfer
+        if (paymentMode === "Cash" && cashierId) {
+          const balRef = doc(db, "coh_balances", cashierId);
+          const balSnap = await firestoreTx.get(balRef);
+          const currentCohBal = balSnap.exists() ? (balSnap.data().balance || 0) : 0;
+          // Note: amountChange is negative for payment (e.g. -paymentVal)
+          const newCohBal = currentCohBal + Math.abs(amountChange);
+
+          const cohTxId = "coh_" + Date.now();
+          const cohTxRef = doc(db, "coh_transactions", cohTxId);
+
+          firestoreTx.set(balRef, { balance: newCohBal });
+          firestoreTx.set(cohTxRef, {
+            id: cohTxId,
+            type: "payment",
+            fromUserId: "customer",
+            fromUserName: data.name || "Customer",
+            toUserId: cashierId,
+            toUserName: cashierName || "Cashier",
+            amount: Math.abs(amountChange),
+            sign: "credit",
+            note: `Khata Payment: Customer ${data.name || "Unknown"}`,
+            status: "approved",
+            timestamp: Date.now(),
+            approvedAt: Date.now(),
+          });
+        }
+      });
     }
   } catch (err) {
     logError("TRANSACTION", err.message, err.stack);
