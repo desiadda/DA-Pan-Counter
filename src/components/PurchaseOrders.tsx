@@ -6,7 +6,7 @@ import { useLangStore } from "../stores/langStore";
 import { useDBStore } from "../stores/dbStore";
 import { DEFAULT_PACK_SIZE, UDHAAR_MODE } from "../constants";
 
-export default function PurchaseOrders() {
+export default function PurchaseOrders({ prefill, onPrefillConsumed }) {
   const lang = useLangStore((s) => s.lang);
   const paymentModes = useDBStore((s) => s.paymentModes);
   const [orders, setOrders] = useState([]);
@@ -14,6 +14,15 @@ export default function PurchaseOrders() {
   const [suppliers, setSuppliers] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [isDirectPurchase, setIsDirectPurchase] = useState(false);
+  const [formKey, setFormKey] = useState(0);
+
+  useEffect(() => {
+    if (prefill && prefill.length > 0) {
+      setIsDirectPurchase(false);
+      setShowForm(true);
+      setFormKey(k => k + 1);
+    }
+  }, [prefill]);
 
   useEffect(() => {
     if (isFirebaseEnabled && db) {
@@ -63,12 +72,14 @@ export default function PurchaseOrders() {
 
       {showForm && (
         <PurchaseOrderForm
+          key={formKey}
+          initialItems={prefill && prefill.length > 0 ? prefill : null}
           products={products}
           suppliers={suppliers}
           orders={orders}
           isDirect={isDirectPurchase}
-          onSave={() => { setShowForm(false); load(); }}
-          onCancel={() => setShowForm(false)}
+          onSave={() => { setShowForm(false); onPrefillConsumed?.(); load(); }}
+          onCancel={() => { setShowForm(false); onPrefillConsumed?.(); }}
         />
       )}
 
@@ -128,10 +139,10 @@ export default function PurchaseOrders() {
   );
 }
 
-function PurchaseOrderForm({ products, suppliers, orders, isDirect, onSave, onCancel }) {
+function PurchaseOrderForm({ initialItems, products, suppliers, orders, isDirect, onSave, onCancel }) {
   const [supplierId, setSupplierId] = useState("");
   const [paymentMode, setPaymentMode] = useState("Cash");
-  const [items, setItems] = useState([{ productId: "", quantity: 1, costPrice: 0, isPack: false }]);
+  const [items, setItems] = useState(initialItems && initialItems.length > 0 ? initialItems : [{ productId: "", quantity: 1, costPrice: 0, isPack: false }]);
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
 

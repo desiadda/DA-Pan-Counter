@@ -9,7 +9,17 @@ import PriceHistoryModal from "./PriceHistoryModal";
 import PurchaseOrders from "./PurchaseOrders";
 import BulkPriceUpdate from "./BulkPriceUpdate";
 import SupplierDirectory from "./SupplierDirectory";
-import { CATEGORIES, DEFAULT_LOW_STOCK_LIMIT, DEFAULT_PACK_SIZE } from "../constants";
+import StockAdjustmentModal from "./StockAdjustmentModal";
+import StockMovementModal from "./StockMovementModal";
+import StockCountView from "./StockCountView";
+import { CATEGORIES, DEFAULT_LOW_STOCK_LIMIT, DEFAULT_PACK_SIZE, GOOD_MARGIN_PCT } from "../constants";
+
+const escapeCSV = (val: any) => {
+  if (val === null || val === undefined) return "";
+  const str = String(val);
+  if (str.includes(",") || str.includes('"') || str.includes("\n")) return `"${str.replace(/"/g, '""')}"`;
+  return str;
+};
 
 export default function InventoryView({ subPath, onNavigate }) {
   const confirm = useConfirmStore((s) => s.confirm);
@@ -37,6 +47,13 @@ export default function InventoryView({ subPath, onNavigate }) {
   const [looseStock, setLooseStock] = useState("");
   const [historyProduct, setHistoryProduct] = useState(null);
   const [viewMode, setViewMode] = useState(subPath || "stock");
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("All");
+  const [sortBy, setSortBy] = useState("name");
+  const [adjustmentProduct, setAdjustmentProduct] = useState(null);
+  const [movementProduct, setMovementProduct] = useState(null);
+  const [poPrefill, setPoPrefill] = useState(null);
 
   useEffect(() => {
     setViewMode(subPath || "stock");
@@ -183,27 +200,78 @@ export default function InventoryView({ subPath, onNavigate }) {
     }
   };
 
-  const quickReplenish = async (p, qty) => {
-    const isAdminR = user?.role === "admin";
-    if (user && !isAdminR && !user.permissions?.stockAdjust) {
-      alert("❌ You do not have permission to adjust stock levels.");
-      return;
+  const getMarginPct = (p) => {
+    const cost = p.costPrice || 0;
+    const sell = p.sellingPrice || 0;
+    if (!sell) return null;
+    return ((sell - cost) / sell) * 100;
+  };
+
+  const getMarginColor = (m) => {
+    if (m === null) return "var(--text-muted)";
+    if (m >= GOOD_MARGIN_PCT) return "#047857";
+    if (m >= 0) return "#d97706";
+    return "#ef4444";
+  };
+
+  const displayProducts = () => {
+    let list = products;
+    if (categoryFilter !== "All") list = list.filter(p => p.category === categoryFilter);
+    if (searchQuery.trim() !== "") {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(p => p.name.toLowerCase().includes(q) || (p.barcode || "").toLowerCase().includes(q));
     }
-    const newStock = p.stock + qty;
-    const updated = { ...p, stock: newStock };
-    if (p.isCigarette) {
-      const pSize = p.packSize || DEFAULT_PACK_SIZE;
-      updated.stockPack = Math.floor(newStock / pSize);
-      updated.stockLoose = newStock % pSize;
+    const sorted = [...list];
+    switch (sortBy) {
+      case "name": sorted.sort((a, b) => a.name.localeCompare(b.name)); break;
+      case "stockLow": sorted.sort((a, b) => (a.stock || 0) - (b.stock || 0)); break;
+      case "stockHigh": sorted.sort((a, b) => (b.stock || 0) - (a.stock || 0)); break;
+      case "priceHigh": sorted.sort((a, b) => (b.sellingPrice || 0) - (a.sellingPrice || 0)); break;
+      case "marginLow": sorted.sort((a, b) => (getMarginPct(a) ?? 999) - (getMarginPct(b) ?? 999)); break;
+      case "marginHigh": sorted.sort((a, b) => (getMarginPct(b) ?? -999) - (getMarginPct(a) ?? -999)); break;
+      default: break;
     }
-    try {
-      await dbService.saveProduct(updated);
-      loadProducts();
-    } catch (err) {
-      logError("INVENTORY", err.message, err.stack);
-      alert("❌ " + (err.message || "Failed to replenish stock"));
-      console.error(err);
-    }
+    return sorted;
+  };
+
+  const exportInventoryCSV = () => {
+    const headers = ["Name", "Category", "Barcode", "Cost", "Sell", "Stock", "Low Limit", "Margin %", "Cost Value", "Sales Value"];
+    const rows = displayProducts().map(p => [
+      p.name, p.category, p.barcode || "", p.costPrice || 0, p.sellingPrice || 0,
+      p.stock || 0, p.lowStockLimit || DEFAULT_LOW_STOCK_LIMIT,
+      getMarginPct(p) === null ? "" : getMarginPct(p).toFixed(1),
+      ((p.stock || 0) * (p.costPrice || 0)).toFixed(2),
+      ((p.stock || 0) * (p.sellingPrice || 0)).toFixed(2),
+    ]);
+    const csv = "\uFEFF" + [headers.map(escapeCSV).join(","), ...rows.map(r => r.map(escapeCSV).join(","))].join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `inventory-${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const lowStockProducts = () => products.filter(p => p.stock <= (p.lowStockLimit || DEFAULT_LOW_STOCK_LIMIT));
+
+  const createReorderPO = () => {
+    const items = lowStockProducts().map(p => {
+      const suggested = Math.max((p.lowStockLimit || DEFAULT_LOW_STOCK_LIMIT) * 2 - (p.stock || 0), (p.lowStockLimit || DEFAULT_LOW_STOCK_LIMIT));
+      if (p.isCigarette) {
+        return {
+          productId: p.id,
+          quantity: Math.ceil(suggested / (p.packSize || DEFAULT_PACK_SIZE)),
+          costPrice: p.costPricePack || p.costPrice || 0,
+          isPack: true,
+        };
+      }
+      return { productId: p.id, quantity: suggested, costPrice: p.costPrice || 0, isPack: false };
+    });
+    setPoPrefill(items);
+    setViewMode("purchases");
+    onNavigate?.("purchases");
   };
 
   return (
@@ -216,6 +284,7 @@ export default function InventoryView({ subPath, onNavigate }) {
             { key: "purchases", label: "📋 Purchases" },
             { key: "suppliers", label: "📍 Suppliers" },
             { key: "bulk", label: "⚡ Bulk Price" },
+            { key: "count", label: "🔢 Stock Count" },
           ].map(t => (
             <button key={t.key} onClick={() => { setViewMode(t.key); onNavigate?.(t.key === "stock" ? "" : t.key); }}
               className={`tab-toggle ${viewMode === t.key ? "tab-toggle-active" : ""}`}>{t.label}</button>
@@ -224,11 +293,13 @@ export default function InventoryView({ subPath, onNavigate }) {
       </div>
 
       {viewMode === "purchases" ? (
-        <PurchaseOrders />
+        <PurchaseOrders prefill={poPrefill} onPrefillConsumed={() => setPoPrefill(null)} />
       ) : viewMode === "suppliers" ? (
         <SupplierDirectory />
       ) : viewMode === "bulk" ? (
         <BulkPriceUpdate products={products} onDone={loadProducts} />
+      ) : viewMode === "count" ? (
+        <StockCountView products={products} onApplied={loadProducts} />
       ) : (
       <>
       {!loading && products.length > 0 && (
@@ -329,6 +400,43 @@ export default function InventoryView({ subPath, onNavigate }) {
           <h3>Product Stock Status</h3>
           <button onClick={loadProducts} className="btn btn-outline btn-sm">Refresh</button>
         </div>
+
+        {lowStockProducts().length > 0 && (
+          <div className="flex items-center justify-between" style={{ background: "#fef3c7", border: "1px solid #fde68a", borderRadius: "8px", padding: "0.5rem 0.75rem", marginBottom: "0.75rem", flexWrap: "wrap", gap: "0.5rem" }}>
+            <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#92400e" }}>
+              ⚠️ {lowStockProducts().length} product(s) at or below reorder point
+            </span>
+            <button onClick={createReorderPO} className="btn btn-primary" style={{ padding: "0.3rem 0.75rem", fontSize: "0.75rem" }}>
+              🛒 Create Purchase Order
+            </button>
+          </div>
+        )}
+
+        <div className="flex items-center" style={{ gap: "0.5rem", marginBottom: "0.75rem", flexWrap: "wrap" }}>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="🔍 Search name or barcode..."
+            className="input-field"
+            style={{ flex: 1, minWidth: "180px" }}
+          />
+          <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} className="input-field" style={{ width: "auto" }}>
+            <option value="All">All Categories</option>
+            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <select value={sortBy} onChange={e => setSortBy(e.target.value)} className="input-field" style={{ width: "auto" }}>
+            <option value="name">Sort: Name A–Z</option>
+            <option value="stockLow">Sort: Stock Low → High</option>
+            <option value="stockHigh">Sort: Stock High → Low</option>
+            <option value="priceHigh">Sort: Price High → Low</option>
+            <option value="marginLow">Sort: Margin Low → High</option>
+            <option value="marginHigh">Sort: Margin High → Low</option>
+          </select>
+          <button onClick={exportInventoryCSV} className="btn btn-outline" style={{ padding: "0.4rem 0.75rem", fontSize: "0.8rem", whiteSpace: "nowrap" }}>
+            ⬇️ CSV
+          </button>
+        </div>
         {loading ? (
           <SkeletonTable rows={5} />
         ) : (
@@ -340,13 +448,14 @@ export default function InventoryView({ subPath, onNavigate }) {
                   <th style={{ borderBottom: "2px solid var(--border)", padding: "0.6rem 0.5rem", color: "var(--text-muted)", fontWeight: "bold" }}>Category</th>
                   <th style={{ borderBottom: "2px solid var(--border)", padding: "0.6rem 0.5rem", color: "var(--text-muted)", fontWeight: "bold" }}>Cost</th>
                   <th style={{ borderBottom: "2px solid var(--border)", padding: "0.6rem 0.5rem", color: "var(--text-muted)", fontWeight: "bold" }}>Sell</th>
+                  <th style={{ borderBottom: "2px solid var(--border)", padding: "0.6rem 0.5rem", color: "var(--text-muted)", fontWeight: "bold" }}>Margin</th>
                   <th style={{ borderBottom: "2px solid var(--border)", padding: "0.6rem 0.5rem", color: "var(--text-muted)", fontWeight: "bold" }}>Stock</th>
-                  <th style={{ borderBottom: "2px solid var(--border)", padding: "0.6rem 0.5rem", color: "var(--text-muted)", fontWeight: "bold" }}>Restock</th>
+                  <th style={{ borderBottom: "2px solid var(--border)", padding: "0.6rem 0.5rem", color: "var(--text-muted)", fontWeight: "bold" }}>Adjust</th>
                   <th style={{ borderBottom: "2px solid var(--border)", padding: "0.6rem 0.5rem", color: "var(--text-muted)", fontWeight: "bold" }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {products.map(p => {
+                {displayProducts().map(p => {
                   const isLow = p.stock <= p.lowStockLimit;
                   const isExpanded = !!expandedBatches[p.id];
                   const hasBatches = p.batches && p.batches.length > 0;
@@ -373,6 +482,9 @@ export default function InventoryView({ subPath, onNavigate }) {
                         <td data-label="Sell" style={{ padding: "0.6rem 0.5rem", verticalAlign: "middle" }}>
                           {p.isCigarette ? <span>฿{p.sellingPrice} / ฿{p.sellingPricePack}</span> : <span>฿{p.sellingPrice}</span>}
                         </td>
+                        <td data-label="Margin" style={{ padding: "0.6rem 0.5rem", verticalAlign: "middle" }}>
+                          {(() => { const m = getMarginPct(p); return m === null ? <span className="text-muted">—</span> : <span style={{ fontWeight: 700, color: getMarginColor(m) }}>{m.toFixed(0)}%</span>; })()}
+                        </td>
                         <td data-label="Stock" style={{ padding: "0.6rem 0.5rem", verticalAlign: "middle" }}>
                           {p.isCigarette ? (
                             <span style={{ fontWeight: "bold", color: isLow ? "#ea580c" : "inherit" }}>
@@ -386,23 +498,23 @@ export default function InventoryView({ subPath, onNavigate }) {
                             </span>
                           )}
                         </td>
-                        <td data-label="Restock" style={{ padding: "0.6rem 0.5rem", verticalAlign: "middle" }}>
+                        <td data-label="Adjust" style={{ padding: "0.6rem 0.5rem", verticalAlign: "middle" }}>
                           <div className="flex gap-xs">
-                            <button onClick={() => quickReplenish(p, 10)} className="qty-btn" style={{ width: "auto", padding: "3px 6px", fontSize: "0.75rem", height: "auto" }}>+10</button>
-                            <button onClick={() => quickReplenish(p, 50)} className="qty-btn" style={{ width: "auto", padding: "3px 6px", fontSize: "0.75rem", height: "auto" }}>+50</button>
+                            <button onClick={() => setAdjustmentProduct(p)} className="qty-btn" style={{ width: "auto", padding: "3px 6px", fontSize: "0.75rem", height: "auto" }}>+ / −</button>
                           </div>
                         </td>
                         <td data-label="Actions" style={{ padding: "0.6rem 0.5rem", verticalAlign: "middle" }}>
                           <div className="flex gap-sm">
                             <button onClick={() => handleEdit(p)} className="btn-icon" style={{ color: "var(--primary)", fontWeight: 600, fontSize: "0.8rem" }}>Edit</button>
-                            <button onClick={() => setHistoryProduct(p)} className="btn-icon" style={{ color: "#2563eb", fontWeight: 600, fontSize: "0.8rem" }}>History</button>
+                            <button onClick={() => setMovementProduct(p)} className="btn-icon" style={{ color: "#7c3aed", fontWeight: 600, fontSize: "0.8rem" }}>Movements</button>
+                            <button onClick={() => setHistoryProduct(p)} className="btn-icon" style={{ color: "#2563eb", fontWeight: 600, fontSize: "0.8rem" }}>Price</button>
                             <button onClick={() => handleDelete(p.id)} className="btn-icon" style={{ color: "var(--error)", fontWeight: 600, fontSize: "0.8rem" }}>Delete</button>
                           </div>
                         </td>
                       </tr>
                       {isExpanded && hasBatches && (
                         <tr style={{ background: "var(--background-alt)", borderBottom: "1px solid var(--border)" }}>
-                          <td colSpan={7} style={{ padding: "0.4rem 2rem 0.6rem 2rem" }}>
+                          <td colSpan={8} style={{ padding: "0.4rem 2rem 0.6rem 2rem" }}>
                             <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", fontSize: "0.75rem", padding: "0.5rem 1rem", border: "1px solid var(--border)", borderRadius: "6px", background: "#f8fafc", maxWidth: "450px" }}>
                               <div style={{ fontWeight: 700, color: "var(--text-muted)", display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--border)", paddingBottom: "2px", marginBottom: "2px" }}>
                                 <span>Batch ID</span>
@@ -431,6 +543,8 @@ export default function InventoryView({ subPath, onNavigate }) {
       </>
       )}
       {historyProduct && <PriceHistoryModal product={historyProduct} onClose={() => setHistoryProduct(null)} />}
+      {adjustmentProduct && <StockAdjustmentModal product={adjustmentProduct} onClose={() => setAdjustmentProduct(null)} onApplied={loadProducts} />}
+      {movementProduct && <StockMovementModal product={movementProduct} onClose={() => setMovementProduct(null)} />}
     </div>
   );
 }

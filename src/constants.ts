@@ -115,3 +115,12 @@ export const UDHAAR_MODE = "Udhaar";
 export const DEFAULT_RECEIPT_FOOTER = "Thank you for your purchase!";
 
 export const DEFAULT_RECEIPT_FOOTER_SUB = "Visit again 😊";
+
+export const ADJUSTMENT_REASONS = [
+  "Restock",
+  "Stock Count Correction",
+  "Damage",
+  "Loss / Theft",
+  "Return to Supplier",
+  "Other",
+];

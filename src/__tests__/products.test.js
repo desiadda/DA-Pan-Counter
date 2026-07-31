@@ -71,7 +71,7 @@ vi.mock("../db/config", () => ({
   localizeError: (en) => en,
 }));
 
-const { getProducts, saveProduct, deleteProduct } = await import("../db/products");
+const { getProducts, saveProduct, deleteProduct, addStockAdjustment } = await import("../db/products");
 const { DEFAULT_PRODUCTS } = await import("../constants");
 
 describe("getProducts (localStorage)", () => {
@@ -144,5 +144,46 @@ describe("deleteProduct (localStorage)", () => {
     const stored = mockProducts;
     expect(stored).toHaveLength(DEFAULT_PRODUCTS.length - 1);
     expect(stored[0].id).toBe("p2");
+  });
+});
+
+describe("addStockAdjustment (localStorage)", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    mockProducts = [...DEFAULT_PRODUCTS];
+  });
+
+  it("increases stock and adds a batch layer for positive qty", async () => {
+    const before = mockProducts.find(p => p.id === "p1").stock;
+    await addStockAdjustment({ productId: "p1", qty: 5, reason: "Restock", note: "test" });
+    const after = mockProducts.find(p => p.id === "p1");
+    expect(after.stock).toBe(before + 5);
+    expect(after.batches.some(b => b.quantity === 5 && b.costPrice === DEFAULT_PRODUCTS[0].costPrice)).toBe(true);
+  });
+
+  it("decreases stock for negative qty", async () => {
+    const before = mockProducts.find(p => p.id === "p1").stock;
+    await addStockAdjustment({ productId: "p1", qty: -5, reason: "Damage", note: "" });
+    const after = mockProducts.find(p => p.id === "p1");
+    expect(after.stock).toBe(before - 5);
+  });
+
+  it("never drops stock below zero", async () => {
+    await addStockAdjustment({ productId: "p1", qty: -99999, reason: "Damage", note: "" });
+    const after = mockProducts.find(p => p.id === "p1");
+    expect(after.stock).toBe(0);
+  });
+
+  it("rejects zero or missing qty", async () => {
+    await expect(addStockAdjustment({ productId: "p1", qty: 0 })).rejects.toThrow();
+    await expect(addStockAdjustment({ productId: "p1" })).rejects.toThrow();
+  });
+
+  it("keeps box/loose stock consistent for cigarette products", async () => {
+    const cig = mockProducts.find(p => p.id === "p4");
+    await addStockAdjustment({ productId: "p4", qty: 40, reason: "Restock", note: "" });
+    const after = mockProducts.find(p => p.id === "p4");
+    expect(after.stock).toBe(cig.stock + 40);
+    expect(after.stockPack * after.packSize + after.stockLoose).toBe(after.stock);
   });
 });

@@ -1,5 +1,5 @@
 import { isFirebaseEnabled, saveConfig, clearConfig, getConfig, migrateLocalDataToFirestore } from "./config";
-import { getProducts, getLowStockCount, getLowStockProducts, saveProduct, deleteProduct } from "./products";
+import { getProducts, getLowStockCount, getLowStockProducts, saveProduct, deleteProduct, addStockAdjustment, getStockAdjustments, initStockAdjustmentsListener } from "./products";
 import { getTransactions, addTransaction, deleteTransaction, returnTransaction, updateTransactionPaymentMode } from "./transactions";
 import { getCustomers, saveCustomer, updateUdhaarBalance } from "./customers";
 import { login, logout, getCurrentUser, onAuthStateChangedListener, initUsersListener } from "./auth";
@@ -32,6 +32,9 @@ export const dbService = {
   cancelPurchaseOrder,
   saveProduct,
   deleteProduct,
+  addStockAdjustment,
+  getStockAdjustments,
+  initStockAdjustmentsListener,
   getTransactions,
   addTransaction,
   deleteTransaction,

@@ -1,8 +1,11 @@
-import { collection, getDocs, doc, deleteDoc, runTransaction, setDoc } from "firebase/firestore";
+import { collection, getDocs, doc, deleteDoc, runTransaction, setDoc, onSnapshot, query, orderBy } from "firebase/firestore";
 import { db, isFirebaseEnabled, localizeError } from "./config";
 import { logError } from "./errorLog";
 import { useDBStore } from "../stores/dbStore";
-import { logAudit } from "./audit";
+import { logAudit, getActorInfo } from "./audit";
+import { DEFAULT_PACK_SIZE } from "../constants";
+
+export const STOCK_ADJUSTMENTS_KEY = "pan_stock_adjustments";
 
 export const getLowStockCount = () => {
   return useDBStore.getState().products.filter(p => p.stock <= p.lowStockLimit).length;
@@ -149,3 +152,126 @@ export const deleteProduct = async (productId) => {
     throw new Error(localizeError(`Delete error: ${err.message}. Please try again.`, `डिलीट समस्या: ${err.message}। कृपया पुनः प्रयास करें।`));
   }
 };
+
+const reconcileBatches = (batches, stockDiff, costPrice) => {
+  let finalBatches = [...(batches || [])];
+  if (stockDiff > 0) {
+    finalBatches.push({
+      id: "b_adj_" + Date.now() + "_" + Math.random().toString(36).substring(2),
+      costPrice: costPrice || 0,
+      quantity: stockDiff,
+      createdAt: Date.now(),
+    });
+  } else if (stockDiff < 0) {
+    let toDeduct = Math.abs(stockDiff);
+    finalBatches.sort((a, b) => a.createdAt - b.createdAt);
+    for (const batch of finalBatches) {
+      if (batch.quantity >= toDeduct) {
+        batch.quantity -= toDeduct;
+        toDeduct = 0;
+        break;
+      } else {
+        toDeduct -= batch.quantity;
+        batch.quantity = 0;
+      }
+    }
+    finalBatches = finalBatches.filter(b => b.quantity > 0);
+  }
+  return finalBatches;
+};
+
+export const addStockAdjustment = async ({ productId, qty, reason, note }) => {
+  if (!productId || !qty || qty === 0) throw new Error("Invalid adjustment");
+  try {
+    const actor = getActorInfo();
+    if (isFirebaseEnabled) {
+      await runTransaction(db, async (firestoreTx) => {
+        const prodRef = doc(db, "products", productId);
+        const prodSnap = await firestoreTx.get(prodRef);
+        if (!prodSnap.exists()) throw new Error("Product not found");
+        const prod = prodSnap.data();
+
+        const newStock = Math.max(0, (prod.stock || 0) + qty);
+        const batches = reconcileBatches(prod.batches, qty, prod.costPrice || 0);
+
+        const updates = { stock: newStock, batches };
+        if (prod.isCigarette) {
+          const pSize = prod.packSize || DEFAULT_PACK_SIZE;
+          updates.stockPack = Math.floor(newStock / pSize);
+          updates.stockLoose = newStock % pSize;
+        }
+        firestoreTx.update(prodRef, updates);
+
+        const adjRef = doc(collection(db, "stock_adjustments"));
+        firestoreTx.set(adjRef, {
+          id: adjRef.id,
+          productId,
+          qty,
+          reason: reason || "Other",
+          note: note || "",
+          timestamp: Date.now(),
+          actorId: actor.actorId,
+          actorName: actor.actorName,
+        });
+      });
+      logAudit("stock_adjusted", "product", productId, `${qty > 0 ? "+" : ""}${qty} units · ${reason || "Other"}${note ? ` · ${note}` : ""}`, { qty, reason: reason || "Other" });
+    } else {
+      const products = useDBStore.getState().products;
+      const idx = products.findIndex(p => p.id === productId);
+      if (idx === -1) throw new Error("Product not found");
+      const prod = { ...products[idx] };
+      const newStock = Math.max(0, (prod.stock || 0) + qty);
+      prod.stock = newStock;
+      prod.batches = reconcileBatches(prod.batches, qty, prod.costPrice || 0);
+      if (prod.isCigarette) {
+        const pSize = prod.packSize || DEFAULT_PACK_SIZE;
+        prod.stockPack = Math.floor(newStock / pSize);
+        prod.stockLoose = newStock % pSize;
+      }
+      const next = [...products];
+      next[idx] = prod;
+      useDBStore.getState().setProducts(next);
+
+      const adjList = getStockAdjustments();
+      adjList.push({
+        id: "adj_" + Date.now() + "_" + Math.random().toString(36).substring(2),
+        productId,
+        qty,
+        reason: reason || "Other",
+        note: note || "",
+        timestamp: Date.now(),
+        actorId: actor.actorId,
+        actorName: actor.actorName,
+      });
+      localStorage.setItem(STOCK_ADJUSTMENTS_KEY, JSON.stringify(adjList));
+    }
+    return true;
+  } catch (err) {
+    logError("INVENTORY", err.message, err.stack);
+    throw new Error(localizeError(`Adjustment error: ${err.message}. Please try again.`, `एडजस्टमेंट समस्या: ${err.message}। कृपया पुनः प्रयास करें।`));
+  }
+};
+
+export const getStockAdjustments = () => {
+  try {
+    if (isFirebaseEnabled) {
+      return null;
+    }
+    const raw = localStorage.getItem(STOCK_ADJUSTMENTS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (err) {
+    logError("INVENTORY", err.message, err.stack);
+    return [];
+  }
+};
+
+export function initStockAdjustmentsListener(callback) {
+  if (!isFirebaseEnabled || !db) return () => {};
+  const q = query(collection(db, "stock_adjustments"), orderBy("timestamp", "desc"));
+  return onSnapshot(q, (snap) => {
+    const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    callback(list);
+  }, (err) => {
+    logError("INVENTORY", err.message, err.stack);
+  });
+}
