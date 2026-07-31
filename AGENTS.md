@@ -97,6 +97,7 @@ Paan shop POS system with billing, inventory, khata (credit accounts), reports, 
 - Modal state: COH → `useState` in App, Shift → `useState` in App, Confirm → `useConfirmStore`
 - Anti-Caching: Ensure sensitive screens/assets (e.g. `index.html`, `service-worker.js`) enforce `Cache-Control: no-store, no-cache, must-revalidate` headers. Avoid long-term local/browser caching of live data (like COH, Reports, Sessions) to prevent device sync discrepancies.
 - Real-time Synchronization: The application operates in a multi-device environment. Never rely on long-term local/browser storage for transaction or database states (e.g., products, bills, khata, COH). All writes must sync with Firestore immediately, and all reads/UIs must listen via real-time listeners (`onSnapshot`) to update components instantaneously on all devices.
+- Firestore Transactions: Enforce that all reads (e.g., `transaction.get`) must execute before any writes (e.g., `transaction.set`, `transaction.update`) inside any `runTransaction` blocks to prevent sequence errors.
 
 ## Tests
 ```bash
