@@ -51,6 +51,7 @@ export default function UserManager() {
   const [users, setUsers] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [duplicatingFrom, setDuplicatingFrom] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", pin: "", permissions: { ...DEFAULT_PERMISSIONS } });
   const [error, setError] = useState("");
 
@@ -67,6 +68,15 @@ export default function UserManager() {
   const resetForm = () => {
     setForm({ name: "", pin: "", permissions: { ...DEFAULT_PERMISSIONS } });
     setEditingId(null);
+    setDuplicatingFrom(null);
+    setError("");
+  };
+
+  const openDuplicate = (u) => {
+    setForm({ name: u.name + " (Copy)", pin: "", permissions: { ...u.permissions } });
+    setEditingId(null);
+    setDuplicatingFrom(u.name);
+    setShowForm(true);
     setError("");
   };
 
@@ -169,6 +179,13 @@ export default function UserManager() {
                 </div>
                 <div className="user-card-actions">
                   <button onClick={() => openEdit(u)} className="user-btn-sm user-btn-edit">Edit</button>
+                  <button
+                    onClick={() => openDuplicate(u)}
+                    className="user-btn-sm user-btn-duplicate"
+                    title="Duplicate user with same permissions"
+                  >
+                    📋 Duplicate
+                  </button>
                   {u.id !== "u1" && (
                     <button onClick={() => handleDelete(u.id)} className="user-btn-sm user-btn-delete">Delete</button>
                   )}
@@ -179,7 +196,14 @@ export default function UserManager() {
         </>
       ) : (
         <>
-          <h3 className="section-subtitle" style={{ fontSize: "1.1rem" }}>{editingId ? "Edit User" : "Add User"}</h3>
+          <h3 className="section-subtitle" style={{ fontSize: "1.1rem" }}>
+            {editingId ? "Edit User" : duplicatingFrom ? `📋 Duplicate from "${duplicatingFrom}"` : "Add User"}
+          </h3>
+          {duplicatingFrom && (
+            <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "-0.5rem", marginBottom: "0.75rem" }}>
+              Permissions copied from <strong>{duplicatingFrom}</strong>. Enter a new name and PIN.
+            </p>
+          )}
 
           {error && <div className="error-inline">{error}</div>}
 

@@ -2177,6 +2177,10 @@ textarea.input-field {
 
 .user-btn-edit { color: var(--text); border-color: var(--border); }
 .user-btn-edit:hover { background: var(--hover-bg); }
+.user-btn-duplicate { color: #7c3aed; border-color: #ddd6fe; }
+.user-btn-duplicate:hover { background: #f5f3ff; }
+[data-theme="dark"] .user-btn-duplicate { color: #a78bfa; border-color: #4c1d95; }
+[data-theme="dark"] .user-btn-duplicate:hover { background: #2e1065; }
 .user-btn-delete { color: var(--error); border-color: #fecaca; }
 .user-btn-delete:hover { background: var(--error-light); }
 
