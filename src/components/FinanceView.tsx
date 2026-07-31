@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { dbService } from "../firebase";
 import { getUsers } from "../db/auth";
 import { logError } from "../db/errorLog";
@@ -9,6 +9,8 @@ export default function FinanceView({ user }) {
   const [banks, setBanks] = useState([]);
   const [users, setUsers] = useState([]);
   const [transactions, setTransactions] = useState([]);
+
+  const [activeTab, setActiveTab] = useState("overview"); // overview | banks | transfer | ledger
 
   const [bankName, setBankName] = useState("");
   const [bankBalance, setBankBalance] = useState("");
@@ -22,6 +24,10 @@ export default function FinanceView({ user }) {
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
   const [msg, setMsg] = useState("");
+
+  // Ledger filters
+  const [ledgerFilter, setLedgerFilter] = useState("all"); // all | bank | coh
+  const [ledgerSearch, setLedgerSearch] = useState("");
 
   const load = () => {
     try {
@@ -49,6 +55,27 @@ export default function FinanceView({ user }) {
   const totalCoh = users.reduce((sum, u) => sum + (dbService.getBalance(u.id) || 0), 0);
   const grandTotal = totalBanks + totalCoh;
 
+  const todayStart = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  }, []);
+
+  const todayTransfers = transactions.filter(tx => tx.timestamp >= todayStart);
+
+  const filteredTransactions = useMemo(() => {
+    return transactions.filter(tx => {
+      if (ledgerFilter === "bank" && tx.fromType !== "bank" && tx.toType !== "bank") return false;
+      if (ledgerFilter === "coh" && tx.fromType === "bank" && tx.toType === "bank") return false;
+      if (ledgerSearch.trim()) {
+        const q = ledgerSearch.trim().toLowerCase();
+        const hay = `${tx.fromName || ""} ${tx.toName || ""} ${tx.note || ""} ${tx.actor || ""}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [transactions, ledgerFilter, ledgerSearch]);
+
   const handleSaveBank = async () => {
     setError("");
     setMsg("");
@@ -74,6 +101,7 @@ export default function FinanceView({ user }) {
     setBankBalance(String(bank.balance || 0));
     setError("");
     setMsg("");
+    setActiveTab("banks");
   };
 
   const handleDeleteBank = async (bank) => {
@@ -122,139 +150,256 @@ export default function FinanceView({ user }) {
 
   const formatDate = (ts) => new Date(ts).toLocaleString();
 
+  const tabs = [
+    { key: "overview", label: "📊 Overview" },
+    { key: "banks", label: "🏦 Banks" },
+    { key: "transfer", label: "🔄 Transfer" },
+    { key: "ledger", label: "📒 Ledger" },
+  ];
+
   return (
     <div className="coh-container">
-      <h3 className="coh-title">🏦 Finance — Balances Overview</h3>
+      <h3 className="coh-title">🏦 Finance</h3>
 
-      <div className="coh-balances-grid">
-        {banks.map(b => (
-          <div key={b.id} className="coh-balance-card">
-            <div className="coh-balance-name">🏦 {b.name}</div>
-            <div className="coh-balance-value">฿{(b.balance || 0).toFixed(2)}</div>
-          </div>
+      <div className="view-tabs">
+        {tabs.map(t => (
+          <button
+            key={t.key}
+            className={`view-tab ${activeTab === t.key ? "view-tab-active" : ""}`}
+            onClick={() => { setActiveTab(t.key); setError(""); setMsg(""); }}
+          >
+            {t.label}
+          </button>
         ))}
-        {users.map(u => (
-          <div key={u.id} className="coh-balance-card">
-            <div className="coh-balance-name">👤 {u.name} <span style={{ fontSize: "0.65rem", color: "var(--text-muted)" }}>(COH)</span></div>
-            <div className="coh-balance-value">฿{(dbService.getBalance(u.id) || 0).toFixed(2)}</div>
+      </div>
+
+      {/* ── Overview ── */}
+      {activeTab === "overview" && (
+        <>
+          <div className="kpi-grid">
+            <div className="kpi-card" style={{ background: "linear-gradient(135deg, #047857, #065f46)", border: "none" }}>
+              <span className="kpi-label" style={{ color: "#a7f3d0" }}>Total Assets</span>
+              <span className="kpi-value" style={{ color: "#ffffff" }}>฿{grandTotal.toFixed(2)}</span>
+              <span className="kpi-sub" style={{ color: "#a7f3d0" }}>Banks + All User COH</span>
+            </div>
+            <div className="kpi-card">
+              <span className="kpi-label">Bank Balance</span>
+              <span className="kpi-value" style={{ color: "#2563eb" }}>฿{totalBanks.toFixed(2)}</span>
+              <span className="kpi-sub">{banks.length} bank account{banks.length !== 1 ? "s" : ""}</span>
+            </div>
+            <div className="kpi-card">
+              <span className="kpi-label">User COH</span>
+              <span className="kpi-value" style={{ color: "#047857" }}>฿{totalCoh.toFixed(2)}</span>
+              <span className="kpi-sub">{users.length} cashier{users.length !== 1 ? "s" : ""}</span>
+            </div>
+            <div className="kpi-card">
+              <span className="kpi-label">Today's Transfers</span>
+              <span className="kpi-value" style={{ color: "#d97706" }}>{todayTransfers.length}</span>
+              <span className="kpi-sub">฿{todayTransfers.reduce((s, tx) => s + (tx.amount || 0), 0).toFixed(2)} moved</span>
+            </div>
           </div>
-        ))}
-        {banks.length === 0 && users.length === 0 && (
-          <div className="coh-empty">No accounts yet. Add a bank below.</div>
-        )}
-      </div>
 
-      <div className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div>
-          <div className="text-muted" style={{ fontSize: "0.75rem" }}>Banks: ฿{totalBanks.toFixed(2)} · User COH: ฿{totalCoh.toFixed(2)}</div>
-          <div style={{ fontWeight: 800, fontSize: "1.25rem", color: "var(--primary)" }}>Total: ฿{grandTotal.toFixed(2)}</div>
-        </div>
-      </div>
-
-      <div className="card">
-        <h4 className="section-subtitle" style={{ borderBottom: "1px solid var(--border)", paddingBottom: "0.5rem", marginBottom: "0.5rem" }}>
-          {editingBankId ? "Edit Bank" : "Add Bank"}
-        </h4>
-        {error && !msg && <div className="error-inline">{error}</div>}
-        {msg && <div className="success-inline">{msg}</div>}
-        <div className="input-group">
-          <label className="input-label">Bank Name</label>
-          <input type="text" value={bankName} onChange={e => { setBankName(e.target.value); setError(""); setMsg(""); }} className="input-field" placeholder="e.g. Kasikorn, SCB, Bangkok Bank" />
-        </div>
-        <div className="input-group">
-          <label className="input-label">Balance</label>
-          <input type="number" value={bankBalance} onChange={e => { setBankBalance(e.target.value); setError(""); setMsg(""); }} className="input-field" placeholder="0" />
-        </div>
-        <div style={{ display: "flex", gap: "0.5rem" }}>
-          <button onClick={handleSaveBank} className="btn btn-primary">{editingBankId ? "Save Changes" : "Add Bank"}</button>
-          {editingBankId && (
-            <button onClick={() => { setEditingBankId(null); setBankName(""); setBankBalance(""); }} className="btn btn-outline">Cancel</button>
-          )}
-        </div>
-        {banks.length > 0 && (
-          <div style={{ marginTop: "0.75rem", display: "flex", flexDirection: "column", gap: "0.35rem" }}>
-            {banks.map(b => (
-              <div key={b.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", border: "1px solid var(--border)", borderRadius: "8px", padding: "0.4rem 0.6rem" }}>
-                <span style={{ fontSize: "0.85rem", fontWeight: 600 }}>🏦 {b.name} — ฿{(b.balance || 0).toFixed(2)}</span>
-                <span style={{ display: "flex", gap: "0.35rem" }}>
-                  <button onClick={() => handleEditBank(b)} className="btn btn-outline" style={{ padding: "2px 8px", fontSize: "0.7rem" }}>Edit</button>
-                  <button onClick={() => handleDeleteBank(b)} className="btn btn-outline" style={{ padding: "2px 8px", fontSize: "0.7rem", color: "#dc2626", borderColor: "#dc2626" }}>Delete</button>
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="card">
-        <h4 className="section-subtitle" style={{ borderBottom: "1px solid var(--border)", paddingBottom: "0.5rem", marginBottom: "0.5rem" }}>Transfer Balance</h4>
-        <p className="text-muted" style={{ fontSize: "0.75rem", margin: "0 0 0.5rem" }}>Move money between internal banks and user COH instantly.</p>
-        {error && <div className="error-inline">{error}</div>}
-        {msg && <div className="success-inline">{msg}</div>}
-        <div className="input-group">
-          <label className="input-label">From</label>
-          <select value={fromType} onChange={e => { setFromType(e.target.value); setFromId(""); }} className="input-field" style={{ fontFamily: "inherit" }}>
-            <option value="bank">🏦 Bank</option>
-            <option value="coh">👤 User COH</option>
-          </select>
-          <select value={fromId} onChange={e => { setFromId(e.target.value); setError(""); }} className="input-field" style={{ fontFamily: "inherit", marginTop: "0.35rem" }}>
-            <option value="">Select source...</option>
-            {fromType === "bank" ? (
-              banks.map(b => <option key={b.id} value={b.id}>{b.name} (฿{(b.balance || 0).toFixed(2)})</option>)
-            ) : (
-              users.map(u => <option key={u.id} value={u.id}>{u.name} (฿{(dbService.getBalance(u.id) || 0).toFixed(2)})</option>)
-            )}
-          </select>
-        </div>
-        <div className="input-group">
-          <label className="input-label">To</label>
-          <select value={toType} onChange={e => { setToType(e.target.value); setToId(""); }} className="input-field" style={{ fontFamily: "inherit" }}>
-            <option value="coh">👤 User COH</option>
-            <option value="bank">🏦 Bank</option>
-          </select>
-          <select value={toId} onChange={e => { setToId(e.target.value); setError(""); }} className="input-field" style={{ fontFamily: "inherit", marginTop: "0.35rem" }}>
-            <option value="">Select target...</option>
-            {toType === "bank" ? (
-              banks.map(b => <option key={b.id} value={b.id}>{b.name} (฿{(b.balance || 0).toFixed(2)})</option>)
-            ) : (
-              users.map(u => <option key={u.id} value={u.id}>{u.name} (฿{(dbService.getBalance(u.id) || 0).toFixed(2)})</option>)
-            )}
-          </select>
-        </div>
-        <div className="input-group">
-          <label className="input-label">Amount (฿)</label>
-          <input type="number" value={amount} onChange={e => { setAmount(e.target.value); setError(""); setMsg(""); }} className="input-field" placeholder="0" />
-        </div>
-        <div className="input-group">
-          <label className="input-label">Note (optional)</label>
-          <input type="text" value={note} onChange={e => { setNote(e.target.value); setError(""); setMsg(""); }} className="input-field" placeholder="Reason for transfer" />
-        </div>
-        <button onClick={handleTransfer} className="btn btn-primary">Transfer</button>
-      </div>
-
-      <div className="card">
-        <h4 className="section-subtitle" style={{ borderBottom: "1px solid var(--border)", paddingBottom: "0.5rem", marginBottom: "0.5rem" }}>Transaction Ledger</h4>
-        <div className="coh-tx-list">
-          {transactions.length === 0 ? (
-            <div className="coh-empty">No transactions yet.</div>
-          ) : (
-            transactions.slice(0, 50).map(tx => (
-              <div key={tx.id} className="coh-tx-row">
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, fontSize: "0.85rem", color: "var(--text)" }}>
-                    {tx.fromType === "bank" ? "🏦" : "👤"} {tx.fromName} → {tx.toType === "bank" ? "🏦" : "👤"} {tx.toName}
-                  </div>
-                  <div className="text-muted" style={{ fontSize: "0.7rem" }}>
-                    {formatDate(tx.timestamp)}{tx.actor ? ` · by ${tx.actor}` : ""}
-                  </div>
-                  {tx.note && <div className="text-muted" style={{ fontSize: "0.7rem", fontStyle: "italic" }}>{tx.note}</div>}
+          <div className="card">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+              <h4 className="section-subtitle" style={{ margin: 0 }}>Accounts</h4>
+              <button className="btn btn-outline btn-sm" onClick={() => setActiveTab("banks")}>Manage Banks</button>
+            </div>
+            <div className="coh-balances-grid">
+              {banks.map(b => (
+                <div key={b.id} className="coh-balance-card">
+                  <div className="coh-balance-name">🏦 {b.name}</div>
+                  <div className="coh-balance-value">฿{(b.balance || 0).toFixed(2)}</div>
                 </div>
-                <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "var(--primary)" }}>฿{tx.amount.toFixed(2)}</div>
+              ))}
+              {users.map(u => (
+                <div key={u.id} className="coh-balance-card">
+                  <div className="coh-balance-name">👤 {u.name} <span style={{ fontSize: "0.65rem", color: "var(--text-muted)" }}>(COH)</span></div>
+                  <div className="coh-balance-value">฿{(dbService.getBalance(u.id) || 0).toFixed(2)}</div>
+                </div>
+              ))}
+              {banks.length === 0 && users.length === 0 && (
+                <div className="coh-empty">No accounts yet. Add a bank to get started.</div>
+              )}
+            </div>
+          </div>
+
+          <div className="card">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+              <h4 className="section-subtitle" style={{ margin: 0 }}>Recent Activity</h4>
+              <button className="btn btn-outline btn-sm" onClick={() => setActiveTab("ledger")}>View All</button>
+            </div>
+            <div className="coh-tx-list">
+              {transactions.length === 0 ? (
+                <div className="coh-empty">No transactions yet.</div>
+              ) : (
+                transactions.slice(0, 5).map(tx => (
+                  <div key={tx.id} className="coh-tx-row">
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, fontSize: "0.85rem", color: "var(--text)" }}>
+                        {tx.fromType === "bank" ? "🏦" : "👤"} {tx.fromName} → {tx.toType === "bank" ? "🏦" : "👤"} {tx.toName}
+                      </div>
+                      <div className="text-muted" style={{ fontSize: "0.7rem" }}>
+                        {formatDate(tx.timestamp)}{tx.actor ? ` · by ${tx.actor}` : ""}
+                      </div>
+                    </div>
+                    <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "var(--primary)" }}>฿{tx.amount.toFixed(2)}</div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── Banks ── */}
+      {activeTab === "banks" && (
+        <>
+          {error && !msg && <div className="error-inline">{error}</div>}
+          {msg && <div className="success-inline">{msg}</div>}
+
+          <div className="card">
+            <h4 className="section-subtitle" style={{ borderBottom: "1px solid var(--border)", paddingBottom: "0.5rem", marginBottom: "0.5rem" }}>
+              {editingBankId ? "Edit Bank" : "Add Bank"}
+            </h4>
+            <div className="input-group">
+              <label className="input-label">Bank Name</label>
+              <input type="text" value={bankName} onChange={e => { setBankName(e.target.value); setError(""); setMsg(""); }} className="input-field" placeholder="e.g. Kasikorn, SCB, Bangkok Bank" />
+            </div>
+            <div className="input-group">
+              <label className="input-label">Balance</label>
+              <input type="number" value={bankBalance} onChange={e => { setBankBalance(e.target.value); setError(""); setMsg(""); }} className="input-field" placeholder="0" />
+            </div>
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <button onClick={handleSaveBank} className="btn btn-primary">{editingBankId ? "Save Changes" : "Add Bank"}</button>
+              {editingBankId && (
+                <button onClick={() => { setEditingBankId(null); setBankName(""); setBankBalance(""); }} className="btn btn-outline">Cancel</button>
+              )}
+            </div>
+          </div>
+
+          <div className="card">
+            <h4 className="section-subtitle" style={{ borderBottom: "1px solid var(--border)", paddingBottom: "0.5rem", marginBottom: "0.5rem" }}>
+              Bank Accounts ({banks.length})
+            </h4>
+            {banks.length === 0 ? (
+              <div className="coh-empty">No banks yet.</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+                {banks.map(b => (
+                  <div key={b.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", border: "1px solid var(--border)", borderRadius: "8px", padding: "0.5rem 0.6rem" }}>
+                    <div>
+                      <span style={{ fontSize: "0.85rem", fontWeight: 700 }}>🏦 {b.name}</span>
+                      <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "var(--primary)", marginLeft: "0.5rem" }}>฿{(b.balance || 0).toFixed(2)}</span>
+                    </div>
+                    <span style={{ display: "flex", gap: "0.35rem" }}>
+                      <button onClick={() => handleEditBank(b)} className="btn btn-outline" style={{ padding: "2px 8px", fontSize: "0.7rem" }}>Edit</button>
+                      <button onClick={() => handleDeleteBank(b)} className="btn btn-outline" style={{ padding: "2px 8px", fontSize: "0.7rem", color: "#dc2626", borderColor: "#dc2626" }}>Delete</button>
+                    </span>
+                  </div>
+                ))}
               </div>
-            ))
-          )}
+            )}
+          </div>
+        </>
+      )}
+
+      {/* ── Transfer ── */}
+      {activeTab === "transfer" && (
+        <div className="card">
+          <h4 className="section-subtitle" style={{ borderBottom: "1px solid var(--border)", paddingBottom: "0.5rem", marginBottom: "0.5rem" }}>Transfer Balance</h4>
+          <p className="text-muted" style={{ fontSize: "0.75rem", margin: "0 0 0.5rem" }}>Move money between internal banks and user COH instantly.</p>
+          {error && <div className="error-inline">{error}</div>}
+          {msg && <div className="success-inline">{msg}</div>}
+          <div className="input-group">
+            <label className="input-label">From</label>
+            <select value={fromType} onChange={e => { setFromType(e.target.value); setFromId(""); setError(""); setMsg(""); }} className="input-field" style={{ fontFamily: "inherit" }}>
+              <option value="bank">🏦 Bank</option>
+              <option value="coh">👤 User COH</option>
+            </select>
+            <select value={fromId} onChange={e => { setFromId(e.target.value); setError(""); setMsg(""); }} className="input-field" style={{ fontFamily: "inherit", marginTop: "0.35rem" }}>
+              <option value="">Select source...</option>
+              {fromType === "bank" ? (
+                banks.map(b => <option key={b.id} value={b.id}>{b.name} (฿{(b.balance || 0).toFixed(2)})</option>)
+              ) : (
+                users.map(u => <option key={u.id} value={u.id}>{u.name} (฿{(dbService.getBalance(u.id) || 0).toFixed(2)})</option>)
+              )}
+            </select>
+          </div>
+          <div className="input-group">
+            <label className="input-label">To</label>
+            <select value={toType} onChange={e => { setToType(e.target.value); setToId(""); setError(""); setMsg(""); }} className="input-field" style={{ fontFamily: "inherit" }}>
+              <option value="coh">👤 User COH</option>
+              <option value="bank">🏦 Bank</option>
+            </select>
+            <select value={toId} onChange={e => { setToId(e.target.value); setError(""); setMsg(""); }} className="input-field" style={{ fontFamily: "inherit", marginTop: "0.35rem" }}>
+              <option value="">Select target...</option>
+              {toType === "bank" ? (
+                banks.map(b => <option key={b.id} value={b.id}>{b.name} (฿{(b.balance || 0).toFixed(2)})</option>)
+              ) : (
+                users.map(u => <option key={u.id} value={u.id}>{u.name} (฿{(dbService.getBalance(u.id) || 0).toFixed(2)})</option>)
+              )}
+            </select>
+          </div>
+          <div className="input-group">
+            <label className="input-label">Amount (฿)</label>
+            <input type="number" value={amount} onChange={e => { setAmount(e.target.value); setError(""); setMsg(""); }} className="input-field" placeholder="0" />
+            <div className="filter-bar" style={{ marginTop: "0.35rem", marginBottom: 0 }}>
+              {[100, 500, 1000, 5000].map(v => (
+                <button key={v} className="quick-chip" onClick={() => { setAmount(String(v)); setError(""); setMsg(""); }}>฿{v}</button>
+              ))}
+            </div>
+          </div>
+          <div className="input-group">
+            <label className="input-label">Note (optional)</label>
+            <input type="text" value={note} onChange={e => { setNote(e.target.value); setError(""); setMsg(""); }} className="input-field" placeholder="Reason for transfer" />
+          </div>
+          <button onClick={handleTransfer} className="btn btn-primary" style={{ width: "100%", padding: "0.6rem" }}>Transfer</button>
         </div>
-      </div>
+      )}
+
+      {/* ── Ledger ── */}
+      {activeTab === "ledger" && (
+        <div className="card">
+          <h4 className="section-subtitle" style={{ borderBottom: "1px solid var(--border)", paddingBottom: "0.5rem", marginBottom: "0.5rem" }}>
+            Transaction Ledger ({filteredTransactions.length})
+          </h4>
+          <div className="filter-bar">
+            <select value={ledgerFilter} onChange={e => setLedgerFilter(e.target.value)} className="input-field" style={{ fontFamily: "inherit", maxWidth: "150px", padding: "0.4rem", fontSize: "0.8rem" }}>
+              <option value="all">All accounts</option>
+              <option value="bank">Banks only</option>
+              <option value="coh">User COH only</option>
+            </select>
+            <input
+              type="text"
+              value={ledgerSearch}
+              onChange={e => setLedgerSearch(e.target.value)}
+              className="input-field"
+              style={{ flex: 1, minWidth: "140px", padding: "0.4rem", fontSize: "0.8rem" }}
+              placeholder="🔍 Search account or note..."
+            />
+          </div>
+          <div className="ledger-list">
+            {filteredTransactions.length === 0 ? (
+              <div className="coh-empty">No transactions match your filters.</div>
+            ) : (
+              filteredTransactions.slice(0, 100).map(tx => (
+                <div key={tx.id} className="coh-tx-row">
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600, fontSize: "0.85rem", color: "var(--text)" }}>
+                      {tx.fromType === "bank" ? "🏦" : "👤"} {tx.fromName} → {tx.toType === "bank" ? "🏦" : "👤"} {tx.toName}
+                    </div>
+                    <div className="text-muted" style={{ fontSize: "0.7rem" }}>
+                      {formatDate(tx.timestamp)}{tx.actor ? ` · by ${tx.actor}` : ""}
+                    </div>
+                    {tx.note && <div className="text-muted" style={{ fontSize: "0.7rem", fontStyle: "italic" }}>{tx.note}</div>}
+                  </div>
+                  <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "var(--primary)" }}>฿{tx.amount.toFixed(2)}</div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
