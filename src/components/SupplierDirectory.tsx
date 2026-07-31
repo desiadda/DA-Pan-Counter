@@ -6,6 +6,7 @@ import { useLangStore } from "../stores/langStore";
 import { useConfirmStore } from "../stores/confirmStore";
 import { useDBStore } from "../stores/dbStore";
 import { UDHAAR_MODE } from "../constants";
+import SupplierStatementModal from "./SupplierStatementModal";
 
 export default function SupplierDirectory() {
   const lang = useLangStore((s) => s.lang);
@@ -19,9 +20,11 @@ export default function SupplierDirectory() {
   const [contact, setContact] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
+  const [openingBalance, setOpeningBalance] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("name");
+  const [statementSup, setStatementSup] = useState(null);
 
   // Supplier Khata States
   const [selectedLedgerSup, setSelectedLedgerSup] = useState(null);
@@ -62,6 +65,7 @@ export default function SupplierDirectory() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!name.trim() || submitting) return;
+    const ob = parseFloat(openingBalance) || 0;
     try {
       setSubmitting(true);
       await dbService.saveSupplier(editSup ? {
@@ -70,8 +74,13 @@ export default function SupplierDirectory() {
       } : {
         name: name.trim(), contact: contact.trim(),
         phone: phone.trim(), address: address.trim(),
-        balance: 0,
-        ledger: []
+        balance: ob,
+        ledger: ob > 0 ? [{
+          date: Date.now(),
+          type: "Opening Balance",
+          amount: ob,
+          description: "Opening balance (initial udhaar)",
+        }] : [],
       });
       reset();
       load();
@@ -85,7 +94,8 @@ export default function SupplierDirectory() {
 
   const handleEdit = (s) => {
     setEditSup(s); setName(s.name); setContact(s.contact || "");
-    setPhone(s.phone || ""); setAddress(s.address || ""); setShowForm(true);
+    setPhone(s.phone || ""); setAddress(s.address || ""); setOpeningBalance("");
+    setShowForm(true);
   };
 
   const handleDelete = async (id) => {
@@ -133,7 +143,7 @@ export default function SupplierDirectory() {
 
   const reset = () => {
     setShowForm(false); setEditSup(null); setName("");
-    setContact(""); setPhone(""); setAddress("");
+    setContact(""); setPhone(""); setAddress(""); setOpeningBalance("");
   };
 
   const payModeOptions = useMemo(() => {
@@ -217,6 +227,19 @@ export default function SupplierDirectory() {
             <label className="input-label">Address</label>
             <input type="text" value={address} onChange={e => setAddress(e.target.value)} className="input-field" placeholder="Address" />
           </div>
+          {!editSup && (
+            <div className="input-group" style={{ marginBottom: 0 }}>
+              <label className="input-label">Opening Balance (฿) <span style={{ fontWeight: 400, color: "#94a3b8" }}>— optional, supplier ka pehle se udhaar</span></label>
+              <input
+                type="number"
+                value={openingBalance}
+                onChange={e => setOpeningBalance(e.target.value)}
+                className="input-field"
+                placeholder="0.00"
+                min="0"
+              />
+            </div>
+          )}
           <div className="flex-btn-group">
             <button type="submit" disabled={submitting} className="btn btn-primary btn-sm">
               {submitting ? "Saving..." : (editSup ? "Update" : "Save")}
@@ -284,7 +307,10 @@ export default function SupplierDirectory() {
                   </div>
                 </div>
 
-                <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.25rem" }}>
+                <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.25rem", flexWrap: "wrap" }}>
+                  <button onClick={() => setStatementSup(s)} className="btn btn-outline" style={{ padding: "3px 8px", fontSize: "0.7rem", borderRadius: "6px" }}>
+                    📄 Statement
+                  </button>
                   {(s.balance || 0) > 0 && (
                     <button onClick={() => setPaymentSup(s)} className="btn btn-primary" style={{ padding: "3px 8px", fontSize: "0.7rem", borderRadius: "6px" }}>
                       💸 Pay Supplier
@@ -355,6 +381,9 @@ export default function SupplierDirectory() {
             );
           })}
         </div>
+      )}
+      {statementSup && (
+        <SupplierStatementModal supplier={statementSup} onClose={() => setStatementSup(null)} />
       )}
     </div>
   );
