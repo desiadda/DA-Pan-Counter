@@ -50,20 +50,57 @@ function getUsers() {
 async function saveUsers(users) {
   try {
     if (isFirebaseEnabled) {
-      const batch = writeBatch(db);
-      for (const u of users) {
-        batch.set(doc(db, "users", u.id), u);
-      }
+      // Merge against Firestore's current users instead of diffing against a
+      // possibly-stale local list. Never delete docs here — a stale in-memory
+      // cache (empty until the users snapshot arrives) must not be able to
+      // wipe Firestore users or overwrite their PINs. Use deleteUsers() for
+      // explicit deletions.
       const snap = await getDocs(collection(db, "users"));
-      for (const docSnap of snap.docs) {
-        if (!users.some(u => u.id === docSnap.id)) {
-          batch.delete(doc(db, "users", docSnap.id));
+      const current = new Map();
+      snap.docs.forEach(docSnap => {
+        current.set(docSnap.id, docSnap.data());
+      });
+
+      // Enforce unique PINs — no two users may share the same PIN
+      for (const u of users) {
+        if (!u.pin) continue;
+        for (const [id, existing] of current) {
+          if (id !== u.id && existing.pin && existing.pin === u.pin) {
+            throw new Error(localizeError(
+              `PIN is already assigned to "${existing.name || id}". Please choose a different PIN.`,
+              `यह PIN "${existing.name || id}" को असाइन है। कृपया कोई दूसरा PIN चुनें।`
+            ));
+          }
         }
       }
+
+      const merged = new Map();
+      current.forEach((u, id) => {
+        merged.set(id, u);
+      });
+      users.forEach(u => {
+        merged.set(u.id, u);
+      });
+      const batch = writeBatch(db);
+      merged.forEach(u => {
+        batch.set(doc(db, "users", u.id), u);
+      });
       await batch.commit();
+      setLocalData(LS_KEYS.USERS, Array.from(merged.values()));
       // Firebase mode: onSnapshot listener handles session refresh automatically
     } else {
       // Local mode: refresh session immediately after save
+      const localUsers = getUsers();
+      for (const u of users) {
+        if (!u.pin) continue;
+        const dup = localUsers.find(l => l.id !== u.id && l.pin === u.pin);
+        if (dup) {
+          throw new Error(localizeError(
+            `PIN is already assigned to "${dup.name || dup.id}". Please choose a different PIN.`,
+            `यह PIN "${dup.name || dup.id}" को असाइन है। कृपया कोई दूसरा PIN चुनें।`
+          ));
+        }
+      }
       setLocalData(LS_KEYS.USERS, users);
       try {
         const raw = localStorage.getItem(LS_KEYS.USER);
@@ -82,6 +119,27 @@ async function saveUsers(users) {
     logError("AUTH", err.message, err.stack);
     console.error("saveUsers: Error saving users", err);
     throw new Error(localizeError(`Save error: ${err.message}. Please try again.`, `सेव समस्या: ${err.message}। कृपया पुनः प्रयास करें।`));
+  }
+}
+
+export async function deleteUsers(ids) {
+  try {
+    if (!ids || ids.length === 0) return;
+    if (isFirebaseEnabled) {
+      const batch = writeBatch(db);
+      ids.forEach(id => {
+        batch.delete(doc(db, "users", id));
+      });
+      await batch.commit();
+    }
+    const localUsers = getUsers();
+    const remaining = localUsers.filter(u => !ids.includes(u.id));
+    setLocalData(LS_KEYS.USERS, remaining);
+    window.dispatchEvent(new CustomEvent("users-changed"));
+  } catch (err) {
+    logError("AUTH", err.message, err.stack);
+    console.error("deleteUsers: Error deleting users", err);
+    throw new Error(localizeError(`Delete error: ${err.message}. Please try again.`, `हटाने में समस्या: ${err.message}। कृपया पुनः प्रयास करें।`));
   }
 }
 
@@ -206,7 +264,10 @@ export const login = async (email, password) => {
       }
     }
 
-    throw new Error(localizeError("Invalid PIN. Please enter correct PIN and try again.", "अमान्य PIN। कृपया सही PIN डालें और पुनः प्रयास करें।"));
+    throw new Error(localizeError(
+      "Invalid PIN. Please enter the correct PIN and try again. If it still fails, ask the Admin to reset your PIN in User Management.",
+      "अमान्य PIN। कृपया सही PIN डालें और पुनः प्रयास करें। यदि फिर भी न हो तो Admin से User Management में PIN रीसेट करवाएं।"
+    ));
   } catch (err) {
     logError("AUTH", err.message, err.stack);
     console.error("login error", err);

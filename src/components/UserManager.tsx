@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getUsers, saveUsers } from "../db/auth";
+import { getUsers, saveUsers, deleteUsers } from "../db/auth";
 import { hashPin } from "../db/hash";
 import { DEFAULT_PERMISSIONS } from "../constants";
 import { logError } from "../db/errorLog";
@@ -102,20 +102,30 @@ export default function UserManager() {
     try {
       const list = getUsers();
 
+      let newPinHash = null;
+      if (form.pin.length === 4) {
+        newPinHash = await hashPin(form.pin);
+        const dupUser = list.find(u => u.id !== editingId && u.pin === newPinHash);
+        if (dupUser) {
+          setError(`PIN is already assigned to "${dupUser.name}". Please choose a different PIN.`);
+          return;
+        }
+      }
+
       if (editingId) {
         const idx = list.findIndex(u => u.id === editingId);
         if (idx === -1) { setError("User not found. Please refresh and try again."); return; }
         list[idx].name = form.name.trim();
         list[idx].permissions = { ...form.permissions };
-        if (form.pin.length === 4) {
-          list[idx].pin = await hashPin(form.pin);
+        if (newPinHash) {
+          list[idx].pin = newPinHash;
         }
       } else {
         if (form.pin.length !== 4) { setError("PIN must be exactly 4 digits."); return; }
         list.push({
           id: "u" + Date.now(),
           name: form.name.trim(),
-          pin: await hashPin(form.pin),
+          pin: newPinHash,
           role: "staff",
           permissions: { ...form.permissions },
         });
@@ -135,8 +145,7 @@ export default function UserManager() {
   const handleDelete = async (id) => {
     if (id === "u1") { setError("Cannot delete the default Admin user."); return; }
     try {
-      const list = getUsers().filter(u => u.id !== id);
-      await saveUsers(list);
+      await deleteUsers([id]);
       load();
     } catch (err) {
       logError("AUTH", err.message, err.stack);

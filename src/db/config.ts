@@ -97,15 +97,19 @@ export async function migrateLocalDataToFirestore() {
         console.log(`Migrated ${localCusts.length} customers to Firestore.`);
       }
 
-      // 3. Migrate Users
-      const localUsers = JSON.parse(localStorage.getItem(LS_KEYS.USERS) || "[]");
-      if (localUsers.length > 0) {
-        const batch = writeBatch(db);
-        localUsers.forEach(u => {
-          batch.set(doc(db, "users", u.id), u);
-        });
-        await batch.commit();
-        console.log(`Migrated ${localUsers.length} users to Firestore.`);
+      // 3. Migrate Users — only seed when the users collection is ALSO empty.
+      //    Never overwrite existing Firestore users from stale local data.
+      const usersSnap = await getDocs(collection(db, "users"));
+      if (usersSnap.empty) {
+        const localUsers = JSON.parse(localStorage.getItem(LS_KEYS.USERS) || "[]");
+        if (localUsers.length > 0) {
+          const batch = writeBatch(db);
+          localUsers.forEach(u => {
+            batch.set(doc(db, "users", u.id), u);
+          });
+          await batch.commit();
+          console.log(`Migrated ${localUsers.length} users to Firestore.`);
+        }
       }
     }
   } catch (err) {
