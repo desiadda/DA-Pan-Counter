@@ -205,6 +205,10 @@ export const login = async (email, password) => {
 
     for (const u of users) {
       if (await verifyPin(password, u.pin)) {
+        // Backfill missing permission keys from role defaults so older user
+        // records (pre settingsManageUsers/settingsReset) keep working.
+        const roleDefaults = u.role === "admin" ? ADMIN_PERMISSIONS : DEFAULT_PERMISSIONS;
+        u.permissions = { ...roleDefaults, ...(u.permissions || {}) };
         const sessionId = Math.random().toString(36).substring(2) + Date.now().toString(36);
         
         if (isFirebaseEnabled) {
@@ -251,6 +255,8 @@ export const login = async (email, password) => {
         setLocalData(LS_KEYS.USERS, users);
 
         const u = users[idx];
+        const roleDefaults = u.role === "admin" ? ADMIN_PERMISSIONS : DEFAULT_PERMISSIONS;
+        u.permissions = { ...roleDefaults, ...(u.permissions || {}) };
         const user = {
           id: u.id,
           name: u.name,

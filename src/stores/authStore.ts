@@ -2,6 +2,7 @@ import { create } from "zustand"
 import { dbService } from "../firebase"
 import { logError } from "../db/errorLog"
 import { useConfirmStore } from "./confirmStore"
+import { ADMIN_PERMISSIONS, DEFAULT_PERMISSIONS } from "../constants"
 
 interface User {
   id: string
@@ -72,7 +73,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         const allUsers: User[] = JSON.parse(raw)
         const fresh = allUsers.find(u => u.id === user.id)
         if (fresh && fresh.permissions) {
-          const updated = { ...user, name: fresh.name, permissions: fresh.permissions, role: fresh.role }
+          const roleDefaults = fresh.role === "admin" ? ADMIN_PERMISSIONS : DEFAULT_PERMISSIONS
+          const permissions = { ...roleDefaults, ...fresh.permissions }
+          const updated = { ...user, name: fresh.name, permissions, role: fresh.role }
           set({ user: updated })
           localStorage.setItem("pan_user", JSON.stringify(updated))
         }

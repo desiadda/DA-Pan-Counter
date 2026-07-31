@@ -35,7 +35,13 @@ export default function POSView({ user }) {
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [newCustomerName, setNewCustomerName] = useState("");
   const [newCustomerPhone, setNewCustomerPhone] = useState("");
-  const [promptpayNumber] = useState(localStorage.getItem("pan_promptpay_number") || "0912345678");
+  const [settingsVersion, setSettingsVersion] = useState(0);
+  useEffect(() => {
+    const bump = () => setSettingsVersion(v => v + 1);
+    window.addEventListener("settings-changed", bump);
+    return () => window.removeEventListener("settings-changed", bump);
+  }, []);
+  const promptpayNumber = localStorage.getItem("pan_promptpay_number") || "0912345678";
   const [discountType, setDiscountType] = useState("");
   const [discountValue, setDiscountValue] = useState(0);
   const [discountReason, setDiscountReason] = useState("");

@@ -209,7 +209,19 @@ export default function AdminSettings({ onBack }) {
   const [editReasonIdx, setEditReasonIdx] = useState(-1);
   const [editReasonVal, setEditReasonVal] = useState("");
 
-  const saveReasons = (list) => { try { LS.setItem("pan_discount_reasons", JSON.stringify(list)); setDiscountReasons(list); } catch (err: any) { logError("SETTINGS", err.message, err.stack); alert("❌ " + (err.message || "Failed to save discount reasons")); console.error(err); } };
+  const saveReasons = (list) => {
+    try {
+      setDiscountReasons(list);
+      dbService.saveAppSettings({ discountReasons: list }).catch((err) => {
+        logError("SETTINGS", err.message, err.stack);
+        alert("❌ " + (err.message || "Failed to sync discount reasons to cloud") + ". Saved locally only.");
+      });
+    } catch (err: any) {
+      logError("SETTINGS", err.message, err.stack);
+      alert("❌ " + (err.message || "Failed to save discount reasons"));
+      console.error(err);
+    }
+  };
 
   // Error logs
   const [errorLogs, setErrorLogs] = useState<any[]>([]);
@@ -218,31 +230,29 @@ export default function AdminSettings({ onBack }) {
   useEffect(() => { refreshLogs(); window.addEventListener("error-logged", refreshLogs); return () => window.removeEventListener("error-logged", refreshLogs); }, [errorFilter]);
   const errorCats = getCategories();
 
-  const handleSaveStore = () => {
+  const handleSaveStore = async () => {
     try {
       const str = JSON.stringify(store);
       if (str.length > 4_500_000) { alert("Logo image too large! Please use a smaller image (under ~4.5MB)."); return; }
-      LS.setItem("pan_store_settings", str);
+      await dbService.saveAppSettings({ store });
       const link = document.querySelector("link[rel~='icon']");
       if (link) link.href = store.logo;
       alert("Store details saved!");
     } catch (e: any) {
       logError("SETTINGS", e.message, e.stack);
-      alert("Failed to save: " + (e.name === "QuotaExceededError" ? "Storage full. Try a smaller logo image." : e.message));
+      alert("Store details saved locally, but cloud sync failed: " + (e.name === "QuotaExceededError" ? "Storage full. Try a smaller logo image." : e.message));
     }
   };
 
-  const handleSaveTaxSettings = () => {
+  const handleSaveTaxSettings = async () => {
     const rate = parseFloat(taxRate);
     if (isNaN(rate) || rate < 0 || rate > 100) { alert("Tax rate must be between 0 and 100."); return; }
     try {
-      LS.setItem("pan_tax_enabled", taxEnabled ? "true" : "false");
-      LS.setItem("pan_tax_rate", rate.toString());
+      await dbService.saveAppSettings({ taxEnabled, taxRate: rate.toString() });
       alert(`VAT ${taxEnabled ? "enabled" : "disabled"} at ${rate}%`);
     } catch (err: any) {
       logError("SETTINGS", err.message, err.stack);
-      alert("❌ " + (err.message || "Failed to save tax settings"));
-      console.error(err);
+      alert("❌ " + (err.message || "Failed to save tax settings") + ". Saved locally only.");
     }
   };
 
@@ -537,7 +547,7 @@ export default function AdminSettings({ onBack }) {
               <label className="input-label">PromptPay Phone / Tax ID</label>
               <div style={{display: "flex", gap: "0.5rem"}}>
                 <input type="text" value={promptpayNumber} onChange={e => setPromptpayNumber(e.target.value)} className="input-field" style={{flex: 1}} />
-                <button onClick={() => { try { LS.setItem("pan_promptpay_number", promptpayNumber.trim()); alert("PromptPay saved!"); } catch (err: any) { logError("SETTINGS", err.message, err.stack); alert("❌ " + (err.message || "Failed to save PromptPay")); console.error(err); } }} className="btn btn-primary" style={{padding: "0.5rem 1rem"}}>Save</button>
+                <button onClick={() => { try { dbService.saveAppSettings({ promptpayNumber: promptpayNumber.trim() }).catch((err: any) => { logError("SETTINGS", err.message, err.stack); alert("❌ " + (err.message || "Failed to sync PromptPay to cloud") + ". Saved locally only."); }); alert("PromptPay saved!"); } catch (err: any) { logError("SETTINGS", err.message, err.stack); alert("❌ " + (err.message || "Failed to save PromptPay")); console.error(err); } }} className="btn btn-primary" style={{padding: "0.5rem 1rem"}}>Save</button>
               </div>
             </div>
           </div>

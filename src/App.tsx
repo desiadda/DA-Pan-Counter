@@ -163,12 +163,13 @@ function AppContent() {
     dbService.initCOHListener();
     dbService.initUsersListener();
     dbService.initFinanceListener();
+    dbService.initSettingsListener();
     dbService.migrateLocalDataToFirestore().finally(() => {
       // Clear stale offline caches — safe now because onSnapshot listeners are already active
       if (isFirebaseEnabled) {
         [
           "pan_products", "pan_customers", "pan_transactions",
-          "pan_coh_balances", "pan_coh_transactions", "pan_expenses",
+          "pan_expenses",
           "pan_suppliers", "pan_purchase_orders", "pan_shifts",
           "pan_khata", "pan_payment_modes",
         ].forEach(k => localStorage.removeItem(k));
@@ -187,6 +188,7 @@ function AppContent() {
       }
     };
     window.addEventListener("coh-changed", refreshCOH);
+    refreshCOH();
     const refreshUsers = () => {
       const currentUsers = getUsers();
       setAllUsers(currentUsers);
@@ -204,16 +206,20 @@ function AppContent() {
       }
     };
     window.addEventListener("users-changed", refreshUsers);
-    const store = JSON.parse(localStorage.getItem("pan_store_settings") || "{}");
-    if (store.logo) {
-      let link = document.querySelector("link[rel~='icon']");
-      if (!link) {
-        link = document.createElement("link");
-        link.rel = "icon";
-        document.head.appendChild(link);
+    const updateFavicon = () => {
+      const store = JSON.parse(localStorage.getItem("pan_store_settings") || "{}");
+      if (store.logo) {
+        let link = document.querySelector("link[rel~='icon']");
+        if (!link) {
+          link = document.createElement("link");
+          link.rel = "icon";
+          document.head.appendChild(link);
+        }
+        link.href = store.logo;
       }
-      link.href = store.logo;
-    }
+    };
+    updateFavicon();
+    window.addEventListener("settings-changed", updateFavicon);
     return () => {
       unsubProducts();
       unsubCustomers();
@@ -222,6 +228,7 @@ function AppContent() {
       window.removeEventListener("error-logged", onError);
       window.removeEventListener("coh-changed", refreshCOH);
       window.removeEventListener("users-changed", refreshUsers);
+      window.removeEventListener("settings-changed", updateFavicon);
     };
   }, [user?.id]);
 
@@ -237,7 +244,7 @@ function AppContent() {
     if (key === "expenses") return !!user?.permissions?.expenses;
     if (key === "finance") return user?.role === "admin" || !!user?.permissions?.finance;
     if (key === "settings") return !!user?.permissions?.settings;
-    if (key === "users") return !!user?.permissions?.settings && !!user?.permissions?.settingsManageUsers;
+    if (key === "users") return user?.role === "admin" || !!user?.permissions?.settingsManageUsers;
     if (key === "coh") return !!user?.permissions?.settings;
     if (key === "errors") return !!user?.permissions?.settings;
     return !!user?.permissions?.[key];
