@@ -427,7 +427,7 @@ export default function AdminSettings({ onBack }) {
                       {!mode.isSystem && (
                         <button
                           onClick={async () => {
-                            if (window.confirm(`Are you sure you want to delete ${mode.name}?`)) {
+                            if (await confirm(`Are you sure you want to delete ${mode.name}?`, { title: "Delete Payment Mode", confirmLabel: "Delete", variant: "danger" })) {
                               await dbService.deletePaymentMode(mode.id);
                             }
                           }}
@@ -641,7 +641,7 @@ export default function AdminSettings({ onBack }) {
             )}
             <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
               <button onClick={() => { markAllAsRead(); refreshLogs(); }} className="btn btn-outline" style={{ flex: 1, padding: "0.4rem", fontSize: "0.75rem" }}>Mark All Read</button>
-              <button onClick={() => { if (confirm("Clear all logs?")) { clearErrors(); refreshLogs(); } }} className="btn btn-danger" style={{ flex: 1, padding: "0.4rem", fontSize: "0.75rem" }}>Clear</button>
+              <button onClick={async () => { if (await confirm("Clear all logs?", { title: "Clear Error Logs", confirmLabel: "Clear", variant: "danger" })) { clearErrors(); refreshLogs(); } }} className="btn btn-danger" style={{ flex: 1, padding: "0.4rem", fontSize: "0.75rem" }}>Clear</button>
             </div>
           </div>
 

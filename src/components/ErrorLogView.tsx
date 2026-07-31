@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { getErrors, getCategories, markAsRead, markAllAsRead, deleteError, clearErrors } from "../db/errorLog";
+import { useConfirmStore } from "../stores/confirmStore";
 
 export default function ErrorLogView({ onBack }) {
+  const confirm = useConfirmStore((s) => s.confirm);
   const [logs, setLogs] = useState([]);
   const [categories, setCategories] = useState([]);
   const [filter, setFilter] = useState("All");
@@ -43,7 +45,7 @@ export default function ErrorLogView({ onBack }) {
         <h3 style={styles.subTitle}>Error Logs</h3>
         <div style={{ flex: 1 }} />
         <button onClick={() => { markAllAsRead(); refresh(); }} className="btn btn-outline" style={{ padding: "0.3rem 0.6rem", fontSize: "0.75rem" }}>Mark All Read</button>
-        <button onClick={() => { if (confirm("Clear all error logs?")) { clearErrors(); refresh(); } }} className="btn btn-danger" style={{ padding: "0.3rem 0.6rem", fontSize: "0.75rem" }}>Clear</button>
+        <button onClick={async () => { if (await confirm("Clear all error logs?", { title: "Clear Error Logs", confirmLabel: "Clear", variant: "danger" })) { clearErrors(); refresh(); } }} className="btn btn-danger" style={{ padding: "0.3rem 0.6rem", fontSize: "0.75rem" }}>Clear</button>
       </div>
 
       {/* Category Filter Pills */}

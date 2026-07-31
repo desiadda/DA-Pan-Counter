@@ -3,9 +3,11 @@ import { dbService } from "../firebase";
 import { db, isFirebaseEnabled } from "../db/config";
 import { collection, onSnapshot } from "firebase/firestore";
 import { useLangStore } from "../stores/langStore";
+import { useConfirmStore } from "../stores/confirmStore";
 
 export default function SupplierDirectory() {
   const lang = useLangStore((s) => s.lang);
+  const confirm = useConfirmStore((s) => s.confirm);
   const [suppliers, setSuppliers] = useState([]);
   const [purchases, setPurchases] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -83,7 +85,7 @@ export default function SupplierDirectory() {
 
   const handleDelete = async (id) => {
     if (submitting) return;
-    if (window.confirm("Are you sure you want to delete this supplier?")) {
+    if (await confirm("Are you sure you want to delete this supplier?", { title: "Delete Supplier", confirmLabel: "Delete", variant: "danger" })) {
       try {
         setSubmitting(true);
         await dbService.deleteSupplier(id);
