@@ -40,20 +40,44 @@ export const LS_KEYS = {
 
 export const DEFAULT_PERMISSIONS = {
   pos: true,
+  posDiscount: false,
+  posCustomPrice: false,
+  posVoidCart: false,
   stock: false,
+  stockEdit: false,
+  stockDelete: false,
+  stockAdjust: false,
   khata: false,
-  reports: false,
+  khataPay: false,
+  khataDelete: false,
   expenses: false,
+  reports: false,
+  cohApprove: true,
+  cohAdjust: false,
   settings: false,
+  settingsManageUsers: false,
+  settingsReset: false,
 };
 
 export const ADMIN_PERMISSIONS = {
   pos: true,
+  posDiscount: true,
+  posCustomPrice: true,
+  posVoidCart: true,
   stock: true,
+  stockEdit: true,
+  stockDelete: true,
+  stockAdjust: true,
   khata: true,
-  reports: true,
+  khataPay: true,
+  khataDelete: true,
   expenses: true,
+  reports: true,
+  cohApprove: true,
+  cohAdjust: true,
   settings: true,
+  settingsManageUsers: true,
+  settingsReset: true,
 };
 
 export const DEFAULT_VAT_RATE = 7;

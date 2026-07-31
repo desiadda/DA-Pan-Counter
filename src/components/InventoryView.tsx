@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { dbService } from "../firebase";
 import { useConfirmStore } from "../stores/confirmStore";
 import { useDBStore } from "../stores/dbStore";
+import { useAuthStore } from "../stores/authStore";
 import { SkeletonTable } from "./Skeleton";
 import { logError } from "../db/errorLog";
 import PriceHistoryModal from "./PriceHistoryModal";
@@ -12,6 +13,7 @@ import SupplierDirectory from "./SupplierDirectory";
 export default function InventoryView({ subPath, onNavigate }) {
   const confirm = useConfirmStore((s) => s.confirm);
   const products = useDBStore((s) => s.products);
+  const user = useAuthStore((s) => s.user);
   const [loading, setLoading] = useState(false);
   const [expandedBatches, setExpandedBatches] = useState<Record<string, boolean>>({});
   
@@ -57,6 +59,10 @@ export default function InventoryView({ subPath, onNavigate }) {
   };
 
   const handleEdit = (p) => {
+    if (user && user.permissions && !user.permissions.stockEdit) {
+      alert("❌ You do not have permission to add/edit products.");
+      return;
+    }
     setIsEditing(true);
     setEditId(p.id);
     setName(p.name);
@@ -102,6 +108,10 @@ export default function InventoryView({ subPath, onNavigate }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (user && user.permissions && !user.permissions.stockEdit) {
+      alert("❌ You do not have permission to add/edit products.");
+      return;
+    }
     if (!name.trim() || !costPrice || !sellingPrice) {
       alert("Please fill all pricing fields.");
       return;
@@ -150,6 +160,10 @@ export default function InventoryView({ subPath, onNavigate }) {
   };
 
   const handleDelete = async (id) => {
+    if (user && user.permissions && !user.permissions.stockDelete) {
+      alert("❌ You do not have permission to delete products.");
+      return;
+    }
     const ok = await confirm("Are you sure you want to delete this product?", {
       title: "Delete Product", confirmLabel: "Delete", variant: "danger",
     });
@@ -166,6 +180,10 @@ export default function InventoryView({ subPath, onNavigate }) {
   };
 
   const quickReplenish = async (p, qty) => {
+    if (user && user.permissions && !user.permissions.stockAdjust) {
+      alert("❌ You do not have permission to adjust stock levels.");
+      return;
+    }
     const newStock = p.stock + qty;
     const updated = { ...p, stock: newStock };
     if (p.isCigarette) {

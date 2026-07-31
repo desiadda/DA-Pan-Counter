@@ -65,6 +65,10 @@ export default function KhataView({ subPath, onNavigate }) {
 
   const handleSettlePayment = async (e) => {
     e.preventDefault();
+    if (user && user.permissions && !user.permissions.khataPay) {
+      alert("❌ You do not have permission to settle payments on credit accounts.");
+      return;
+    }
     if (!selectedCust || !payAmount || parseFloat(payAmount) <= 0) return;
     const paymentVal = parseFloat(payAmount);
     if (paymentVal > selectedCust.balance) {

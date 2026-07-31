@@ -31,6 +31,7 @@ export default function AdminSettings({ onBack }) {
   const theme = useUIStore((s) => s.theme);
   const toggleTheme = useUIStore((s) => s.toggleTheme);
   const paymentModes = useDBStore((s) => s.paymentModes);
+  const user = useAuthStore((s) => s.user);
 
   // DB Data for Backup
   const products = useDBStore((s) => s.products);
@@ -43,6 +44,10 @@ export default function AdminSettings({ onBack }) {
 
   const handleFactoryReset = async () => {
     try {
+      if (user && user.permissions && !user.permissions.settingsReset) {
+        alert("❌ You do not have permission to perform a Factory Reset.");
+        return;
+      }
       const inputHash = await sha256(resetConfirmPin.trim());
       const masterHash = "956bea7e18228cf06bd92f62abf36bebfca5a608f43af333fec57a719774653d"; // SHA-256 hash of 'Swarnim@090909'
       if (inputHash !== masterHash) {

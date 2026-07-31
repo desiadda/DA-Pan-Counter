@@ -14,6 +14,7 @@ import CheckoutModal from "./CheckoutModal";
 import ScanBarcode from "./ScanBarcode";
 import DashboardWidgets from "./DashboardWidgets";
 import ShortcutsModal from "./ShortcutsModal";
+import { useAuthStore } from "../stores/authStore";
 
 export default function POSView({ user }) {
   const navigate = useNavigate();
@@ -106,7 +107,14 @@ export default function POSView({ user }) {
       if (!targetItem) return prev;
 
       const newQty = targetItem.quantity + change;
-      if (newQty <= 0) return prev.filter(item => item.productId !== productId);
+      if (newQty <= 0) {
+        const user = useAuthStore.getState().user;
+        if (user && user.permissions && !user.permissions.posVoidCart) {
+          alert("❌ You do not have permission to delete items from the cart.");
+          return prev;
+        }
+        return prev.filter(item => item.productId !== productId);
+      }
 
       const targetRealId = targetItem.realProductId || targetItem.productId;
       const otherSticksInCart = prev
@@ -250,6 +258,11 @@ export default function POSView({ user }) {
   const [showShortcuts, setShowShortcuts] = useState(false);
 
   const handleClearCart = async () => {
+    const user = useAuthStore.getState().user;
+    if (user && user.permissions && !user.permissions.posVoidCart) {
+      alert("❌ You do not have permission to clear/void cart.");
+      return;
+    }
     const ok = await confirm("Clear entire cart?", { title: "Clear Cart", confirmLabel: "Clear", variant: "danger" });
     if (ok) setCart([]);
   };

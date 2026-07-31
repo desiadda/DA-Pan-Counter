@@ -1,6 +1,7 @@
 import { useState } from "react";
 import ModalPortal from "./ModalPortal";
 import { useDBStore } from "../stores/dbStore";
+import { useAuthStore } from "../stores/authStore";
 
 export default function CheckoutModal({
   cart,
@@ -37,6 +38,7 @@ export default function CheckoutModal({
   finalTotal,
 }) {
   const paymentModes = useDBStore((s) => s.paymentModes);
+  const user = useAuthStore((s) => s.user);
   const [isCustomReason, setIsCustomReason] = useState(false);
   const itemCount = cart.reduce((s, i) => s + i.quantity, 0);
 
@@ -75,61 +77,63 @@ export default function CheckoutModal({
         </div>
 
         {/* Discount Section */}
-        <div style={styles.discountSection}>
-          <div style={styles.discountHeader}>
-            <span>🏷️ Discount</span>
-            {showDiscount && <button onClick={() => { setDiscountType(""); setDiscountValue(0); setDiscountReason(""); }} style={styles.removeDiscountBtn}>Remove</button>}
-          </div>
-          <div style={styles.discountRow}>
-            <select value={discountType} onChange={e => setDiscountType(e.target.value)} style={styles.discountSelect}>
-              <option value="">No discount</option>
-              <option value="percent">Percentage (%)</option>
-              <option value="fixed">Fixed Amount (฿)</option>
-            </select>
-            {discountType && (
-              <input
-                type="number"
-                value={discountValue || ""}
-                onChange={e => setDiscountValue(parseFloat(e.target.value) || 0)}
-                placeholder={discountType === "percent" ? "Enter %" : "Enter amount"}
-                style={styles.discountInput}
-                min="0"
-                max={discountType === "percent" ? 100 : cartSubtotal}
-              />
-            )}
-          </div>
-          {discountType && discountValue > 0 && (
-            <div className="input-group">
-              <label className="input-label">Reason</label>
-              <div style={{ display: "flex", gap: "0.5rem" }}>
-                <select value={isCustomReason ? "__custom__" : discountReason} onChange={e => {
-                  if (e.target.value === "__custom__") {
-                    setIsCustomReason(true);
-                    setDiscountReason("__custom__");
-                  } else {
-                    setIsCustomReason(false);
-                    setDiscountReason(e.target.value);
-                  }
-                }} className="input-field" style={{ flex: 1, fontFamily: "inherit" }}>
-                  <option value="">Select reason...</option>
-                  {discountReasons.map(r => <option key={r} value={r}>{r}</option>)}
-                  <option value="__custom__">Other (type below)</option>
-                </select>
-              </div>
-              {isCustomReason && (
+        {user?.permissions?.posDiscount && (
+          <div style={styles.discountSection}>
+            <div style={styles.discountHeader}>
+              <span>🏷️ Discount</span>
+              {showDiscount && <button onClick={() => { setDiscountType(""); setDiscountValue(0); setDiscountReason(""); }} style={styles.removeDiscountBtn}>Remove</button>}
+            </div>
+            <div style={styles.discountRow}>
+              <select value={discountType} onChange={e => setDiscountType(e.target.value)} style={styles.discountSelect}>
+                <option value="">No discount</option>
+                <option value="percent">Percentage (%)</option>
+                <option value="fixed">Fixed Amount (฿)</option>
+              </select>
+              {discountType && (
                 <input
-                  type="text"
-                  value={discountReason === "__custom__" ? "" : discountReason}
-                  onChange={e => setDiscountReason(e.target.value)}
-                  placeholder="Type reason..."
-                  className="input-field"
-                  style={{ marginTop: "0.5rem" }}
-                  autoFocus
+                  type="number"
+                  value={discountValue || ""}
+                  onChange={e => setDiscountValue(parseFloat(e.target.value) || 0)}
+                  placeholder={discountType === "percent" ? "Enter %" : "Enter amount"}
+                  style={styles.discountInput}
+                  min="0"
+                  max={discountType === "percent" ? 100 : cartSubtotal}
                 />
               )}
             </div>
-          )}
-        </div>
+            {discountType && discountValue > 0 && (
+              <div className="input-group">
+                <label className="input-label">Reason</label>
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <select value={isCustomReason ? "__custom__" : discountReason} onChange={e => {
+                    if (e.target.value === "__custom__") {
+                      setIsCustomReason(true);
+                      setDiscountReason("__custom__");
+                    } else {
+                      setIsCustomReason(false);
+                      setDiscountReason(e.target.value);
+                    }
+                  }} className="input-field" style={{ flex: 1, fontFamily: "inherit" }}>
+                    <option value="">Select reason...</option>
+                    {discountReasons.map(r => <option key={r} value={r}>{r}</option>)}
+                    <option value="__custom__">Other (type below)</option>
+                  </select>
+                </div>
+                {isCustomReason && (
+                  <input
+                    type="text"
+                    value={discountReason === "__custom__" ? "" : discountReason}
+                    onChange={e => setDiscountReason(e.target.value)}
+                    placeholder="Type reason..."
+                    className="input-field"
+                    style={{ marginTop: "0.5rem" }}
+                    autoFocus
+                  />
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         <div style={styles.paymentSelector}>
           {paymentModes.filter(m => m.enabled).map(mode => (

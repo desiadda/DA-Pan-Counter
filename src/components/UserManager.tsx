@@ -4,13 +4,45 @@ import { hashPin } from "../db/hash";
 import { DEFAULT_PERMISSIONS } from "../constants";
 import { logError } from "../db/errorLog";
 
-const ALL_PERMS = [
-  { key: "pos", label: "POS" },
-  { key: "stock", label: "Stock" },
-  { key: "khata", label: "Credit Accounts" },
-  { key: "reports", label: "Reports" },
-  { key: "expenses", label: "Expenses" },
-  { key: "settings", label: "Settings" },
+const PERM_CATEGORIES = [
+  {
+    title: "POS Controls",
+    perms: [
+      { key: "pos", label: "Access POS Screen" },
+      { key: "posDiscount", label: "Apply Discounts" },
+      { key: "posCustomPrice", label: "Custom Item Prices" },
+      { key: "posVoidCart", label: "Clear/Void Cart Items" },
+    ]
+  },
+  {
+    title: "Stock & Inventory",
+    perms: [
+      { key: "stock", label: "Access Inventory Screen" },
+      { key: "stockEdit", label: "Add/Edit Products" },
+      { key: "stockDelete", label: "Delete Products" },
+      { key: "stockAdjust", label: "Adjust Stock Levels" },
+    ]
+  },
+  {
+    title: "Khata Credit Accounts",
+    perms: [
+      { key: "khata", label: "Access Khata Screen" },
+      { key: "khataPay", label: "Clear Customer Debts" },
+      { key: "khataDelete", label: "Delete Khata Accounts/Records" },
+    ]
+  },
+  {
+    title: "Financials & Administration",
+    perms: [
+      { key: "expenses", label: "Manage Expenses" },
+      { key: "reports", label: "View Reports & Analytics" },
+      { key: "cohApprove", label: "Approve COH Transfers" },
+      { key: "cohAdjust", label: "Directly Adjust COH Balances" },
+      { key: "settings", label: "Access Settings Panel" },
+      { key: "settingsManageUsers", label: "Create & Manage Users" },
+      { key: "settingsReset", label: "Perform Factory Reset" },
+    ]
+  }
 ];
 
 export default function UserManager() {
@@ -163,15 +195,22 @@ export default function UserManager() {
           </div>
 
           <div className="input-group">
-            <label className="input-label" style={{marginBottom: "0.5rem"}}>Permissions</label>
-            <div style={{display: "flex", flexDirection: "column", gap: "0.5rem", padding: "0.5rem", border: "1px solid var(--border)", borderRadius: "8px", backgroundColor: "var(--bg-hover, #f8fafc)"}}>
-              {ALL_PERMS.map(p => (
-                <div key={p.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.5rem", borderBottom: "1px solid var(--border)", lastChild: { borderBottom: "none" } } as any}>
-                  <span style={{ fontSize: "0.85rem", fontWeight: "600", color: "var(--text)" }}>{p.label}</span>
-                  <label className="switch">
-                    <input type="checkbox" checked={form.permissions[p.key] || false} onChange={() => togglePerm(p.key)} />
-                    <span className="slider"></span>
-                  </label>
+            <label className="input-label" style={{marginBottom: "0.75rem"}}>Permissions Control</label>
+            <div style={{display: "flex", flexDirection: "column", gap: "1rem"}}>
+              {PERM_CATEGORIES.map(cat => (
+                <div key={cat.title} style={{border: "1px solid var(--border)", borderRadius: "8px", overflow: "hidden"}}>
+                  <div style={{backgroundColor: "var(--bg-hover, #f8fafc)", padding: "0.5rem 0.75rem", borderBottom: "1px solid var(--border)", fontSize: "0.8rem", fontWeight: "bold", color: "var(--text-muted)"}}>{cat.title}</div>
+                  <div style={{display: "flex", flexDirection: "column", padding: "0.25rem 0.75rem"}}>
+                    {cat.perms.map(p => (
+                      <div key={p.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.6rem 0", borderBottom: "1px solid var(--border)", lastChild: { borderBottom: "none" } } as any}>
+                        <span style={{ fontSize: "0.85rem", fontWeight: "600", color: "var(--text)" }}>{p.label}</span>
+                        <label className="switch">
+                          <input type="checkbox" checked={form.permissions[p.key] || false} onChange={() => togglePerm(p.key)} />
+                          <span className="slider"></span>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>
