@@ -298,9 +298,12 @@ export default function AdminSettings({ onBack }) {
           {/* Dark Mode */}
           <div style={styles.card}>
             <h3 style={styles.cardHeader}>Appearance</h3>
-            <label style={{fontSize: "0.9rem", fontWeight: "600", color: "var(--text)", display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer"}}>
-              <input type="checkbox" checked={theme === "dark"} onChange={toggleTheme} />
-              Dark Mode
+            <label style={{fontSize: "0.9rem", fontWeight: "600", color: "var(--text)", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer"}}>
+              <span>Dark Mode</span>
+              <label className="switch">
+                <input type="checkbox" checked={theme === "dark"} onChange={toggleTheme} />
+                <span className="slider"></span>
+              </label>
             </label>
           </div>
 
@@ -385,10 +388,14 @@ export default function AdminSettings({ onBack }) {
                                 setEditingModeId(mode.id);
                                 setEditingModeNameVal(mode.name);
                               }}
-                              style={{background: "none", border: "none", color: "#475569", cursor: "pointer", fontSize: "0.75rem"}}
+                              className="btn btn-outline"
+                              style={{padding: "2px 6px", fontSize: "0.75rem", display: "inline-flex", alignItems: "center", gap: "0.25rem"}}
                               title="Rename Payment Mode"
                             >
-                              ✎
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{width: "12px", height: "12px"}}>
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4z"/>
+                              </svg>
+                              Rename
                             </button>
                           )}
                           {mode.isSystem && <span style={{fontSize: "0.75rem", color: "var(--text-muted)", marginLeft: "0.5rem"}}>(System Mode)</span>}
@@ -396,16 +403,19 @@ export default function AdminSettings({ onBack }) {
                       )}
                     </div>
                     <div style={{display: "flex", gap: "0.5rem", alignItems: "center"}}>
-                      <label style={{fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "0.25rem", cursor: "pointer", color: "var(--text)"}}>
-                        <input
-                          type="checkbox"
-                          checked={mode.enabled}
-                          disabled={mode.id === "Cash" || mode.id === "Udhaar"}
-                          onChange={async (e) => {
-                            await dbService.savePaymentMode({ ...mode, enabled: e.target.checked });
-                          }}
-                        />
-                        Enabled
+                      <label style={{fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer", color: "var(--text)"}}>
+                        <span>Enabled</span>
+                        <label className="switch">
+                          <input
+                            type="checkbox"
+                            checked={mode.enabled}
+                            disabled={mode.id === "Cash" || mode.id === "Udhaar"}
+                            onChange={async (e) => {
+                              await dbService.savePaymentMode({ ...mode, enabled: e.target.checked });
+                            }}
+                          />
+                          <span className="slider"></span>
+                        </label>
                       </label>
                       {!mode.isSystem && (
                         <button
@@ -425,27 +435,34 @@ export default function AdminSettings({ onBack }) {
 
                   <div style={{display: "flex", alignItems: "center", gap: "1rem"}}>
                     <div style={{flex: 1}}>
-                      <label className="input-label" style={{fontSize: "0.75rem", marginBottom: "2px"}}>Upload QR Code</label>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          const reader = new FileReader();
-                          reader.onload = async (ev: any) => {
-                            const base64 = ev.target?.result as string;
-                            if (base64.length > 3_000_000) {
-                              alert("QR Image is too large! Please use a smaller file under ~3MB.");
-                              return;
-                            }
-                            await dbService.savePaymentMode({ ...mode, qrCode: base64 });
-                            alert("QR Code updated successfully!");
-                          };
-                          reader.readAsDataURL(file);
-                        }}
-                        style={{fontSize: "0.75rem"}}
-                      />
+                      <label className="qr-upload-zone">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{width: "20px", height: "20px", color: "var(--text-muted)"}}>
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+                        </svg>
+                        <span style={{fontSize: "0.8rem", fontWeight: "600", color: "var(--text-muted)"}}>
+                          {mode.qrCode ? "Replace QR Image" : "Upload QR Code Image"}
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const reader = new FileReader();
+                            reader.onload = async (ev: any) => {
+                              const base64 = ev.target?.result as string;
+                              if (base64.length > 3_000_000) {
+                                alert("QR Image is too large! Please use a smaller file under ~3MB.");
+                                return;
+                              }
+                              await dbService.savePaymentMode({ ...mode, qrCode: base64 });
+                              alert("QR Code updated successfully!");
+                            };
+                            reader.readAsDataURL(file);
+                          }}
+                          style={{display: "none"}}
+                        />
+                      </label>
                     </div>
                     {mode.qrCode && (
                       <div style={{display: "flex", alignItems: "center", gap: "0.25rem"}}>
@@ -522,8 +539,12 @@ export default function AdminSettings({ onBack }) {
           <div style={styles.card}>
             <h3 style={styles.cardHeader}>VAT Configuration</h3>
             <p style={{fontSize: "0.8rem", color: "#64748b", marginBottom: "0.75rem"}}>Thailand VAT is 7%. Businesses with annual revenue under 1.8M THB are exempt.</p>
-            <label style={{fontSize: "0.9rem", fontWeight: "600", color: "var(--text)", display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer", marginBottom: "0.75rem"}}>
-              <input type="checkbox" checked={taxEnabled} onChange={e => setTaxEnabled(e.target.checked)} /> Enable VAT
+            <label style={{fontSize: "0.9rem", fontWeight: "600", color: "var(--text)", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", marginBottom: "0.75rem"}}>
+              <span>Enable VAT</span>
+              <label className="switch">
+                <input type="checkbox" checked={taxEnabled} onChange={e => setTaxEnabled(e.target.checked)} />
+                <span className="slider"></span>
+              </label>
             </label>
             {taxEnabled && <div className="input-group"><label className="input-label">VAT Rate (%)</label><input type="number" value={taxRate} onChange={e => setTaxRate(e.target.value)} className="input-field" style={{maxWidth: "120px"}} min="0" max="100" step="0.5" /></div>}
             <button onClick={handleSaveTaxSettings} className="btn btn-primary" style={{padding: "0.6rem", width: "100%"}}>Save Tax Settings</button>

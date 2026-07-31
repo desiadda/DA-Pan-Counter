@@ -267,10 +267,11 @@ export default function InventoryView({ subPath, onNavigate }) {
             <label className="input-label">Low Stock Alert Limit (sticks/pcs)</label>
             <input type="number" value={lowStockLimit} onChange={(e) => setLowStockLimit(e.target.value)} placeholder="Warning limit" className="input-field" />
           </div>
-          <div style={{ gridColumn: "1 / -1", padding: "0.5rem 0" }}>
-            <label className="user-perm-toggle">
+          <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.75rem 0", borderBottom: "1px solid var(--border)" }}>
+            <span style={{ fontSize: "0.85rem", fontWeight: "600", color: "var(--text)" }}>Link Single / Box product variants (Cigarette items)</span>
+            <label className="switch">
               <input type="checkbox" checked={isCigarette} onChange={(e) => setIsCigarette(e.target.checked)} />
-              {" "} Link Single / Box product variants (Cigarette items)
+              <span className="slider"></span>
             </label>
           </div>
           {isCigarette && (

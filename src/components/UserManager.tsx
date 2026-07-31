@@ -163,14 +163,16 @@ export default function UserManager() {
           </div>
 
           <div className="input-group">
-            <label className="input-label">Permissions</label>
-            <div className="user-perm-grid">
+            <label className="input-label" style={{marginBottom: "0.5rem"}}>Permissions</label>
+            <div style={{display: "flex", flexDirection: "column", gap: "0.5rem", padding: "0.5rem", border: "1px solid var(--border)", borderRadius: "8px", backgroundColor: "var(--bg-hover, #f8fafc)"}}>
               {ALL_PERMS.map(p => (
-                <label key={p.key} className="user-perm-toggle">
-                  <input type="checkbox" checked={form.permissions[p.key] || false}
-                    onChange={() => togglePerm(p.key)} />
-                  <span>{p.label}</span>
-                </label>
+                <div key={p.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.5rem", borderBottom: "1px solid var(--border)", lastChild: { borderBottom: "none" } } as any}>
+                  <span style={{ fontSize: "0.85rem", fontWeight: "600", color: "var(--text)" }}>{p.label}</span>
+                  <label className="switch">
+                    <input type="checkbox" checked={form.permissions[p.key] || false} onChange={() => togglePerm(p.key)} />
+                    <span className="slider"></span>
+                  </label>
+                </div>
               ))}
             </div>
           </div>
