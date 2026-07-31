@@ -322,21 +322,21 @@ export default function FinanceView({ user }) {
               <button className="btn btn-outline btn-sm" onClick={() => setActiveTab("banks")}>Manage Banks</button>
             </div>
             <div className="coh-balances-grid">
-              {banks.map(b => (
+              {(banks || []).map(b => (
                 <div key={b.id} className="coh-balance-card" onClick={() => openStatement("bank", b.id, b.name, "🏦", b.balance || 0)}>
                   <span className="coh-card-chevron">›</span>
                   <div className="coh-balance-name">🏦 {b.name}</div>
                   <div className="coh-balance-value">฿{(b.balance || 0).toFixed(2)}</div>
                 </div>
               ))}
-              {users.map(u => (
+              {(users || []).map(u => (
                 <div key={u.id} className="coh-balance-card" onClick={() => openStatement("coh", u.id, u.name, "👤", dbService.getBalance(u.id) || 0)}>
                   <span className="coh-card-chevron">›</span>
                   <div className="coh-balance-name">👤 {u.name} <span style={{ fontSize: "0.65rem", color: "var(--text-muted)" }}>(COH)</span></div>
                   <div className="coh-balance-value">฿{(dbService.getBalance(u.id) || 0).toFixed(2)}</div>
                 </div>
               ))}
-              {banks.length === 0 && users.length === 0 && (
+              {(!banks || banks.length === 0) && (!users || users.length === 0) && (
                 <div className="coh-empty">No accounts yet. Add a bank to get started.</div>
               )}
             </div>
@@ -426,9 +426,9 @@ export default function FinanceView({ user }) {
             <select value={fromId} onChange={e => { setFromId(e.target.value); setError(""); setMsg(""); }} className="input-field" style={{ fontFamily: "inherit", marginTop: "0.35rem" }}>
               <option value="">Select source...</option>
               {fromType === "bank" ? (
-                banks.map(b => <option key={b.id} value={b.id}>{b.name} (฿{(b.balance || 0).toFixed(2)})</option>)
+                (banks || []).map(b => <option key={b.id} value={b.id}>{b.name} (฿{(b.balance || 0).toFixed(2)})</option>)
               ) : (
-                users.map(u => <option key={u.id} value={u.id}>{u.name} (฿{(dbService.getBalance(u.id) || 0).toFixed(2)})</option>)
+                (users || []).map(u => <option key={u.id} value={u.id}>{u.name} (฿{(dbService.getBalance(u.id) || 0).toFixed(2)})</option>)
               )}
             </select>
           </div>
@@ -441,9 +441,9 @@ export default function FinanceView({ user }) {
             <select value={toId} onChange={e => { setToId(e.target.value); setError(""); setMsg(""); }} className="input-field" style={{ fontFamily: "inherit", marginTop: "0.35rem" }}>
               <option value="">Select target...</option>
               {toType === "bank" ? (
-                banks.map(b => <option key={b.id} value={b.id}>{b.name} (฿{(b.balance || 0).toFixed(2)})</option>)
+                (banks || []).map(b => <option key={b.id} value={b.id}>{b.name} (฿{(b.balance || 0).toFixed(2)})</option>)
               ) : (
-                users.map(u => <option key={u.id} value={u.id}>{u.name} (฿{(dbService.getBalance(u.id) || 0).toFixed(2)})</option>)
+                (users || []).map(u => <option key={u.id} value={u.id}>{u.name} (฿{(dbService.getBalance(u.id) || 0).toFixed(2)})</option>)
               )}
             </select>
           </div>

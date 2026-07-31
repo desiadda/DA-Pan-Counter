@@ -4,7 +4,6 @@ import { useLangStore } from "../stores/langStore";
 import { useConfirmStore } from "../stores/confirmStore";
 import ModalPortal from "./ModalPortal";
 import { dbService } from "../firebase";
-import { getUsers } from "../db/auth";
 import { useT } from "../lang/translations";
 
 const TYPE_LABELS = ["asset", "liability", "equity", "income", "expense"];
@@ -62,12 +61,15 @@ export default function COAView({ user }) {
       dbService.getExpenses(),
       dbService.getAllBalances(),
     ]).then(([accs, ents, sups, bks, exps, coh]) => {
-      setAccounts(accs);
-      setEntries(ents);
-      setSuppliers(sups || []);
-      setBanks(bks || []);
-      setExpenses(exps || []);
-      setCohBalances(coh || []);
+      setAccounts(Array.isArray(accs) ? accs : []);
+      setEntries(Array.isArray(ents) ? ents : []);
+      setSuppliers(Array.isArray(sups) ? sups : []);
+      setBanks(Array.isArray(bks) ? bks : []);
+      setExpenses(Array.isArray(exps) ? exps : []);
+      setCohBalances(Array.isArray(coh) ? coh : []);
+      setLoading(false);
+    }).catch(err => {
+      console.error("COA refresh error:", err);
       setLoading(false);
     });
   }, []);
@@ -81,33 +83,36 @@ export default function COAView({ user }) {
   }, [refresh]);
 
   useEffect(() => {
-    if (accounts.length && !stmtAccountId) setStmtAccountId(accounts[0].id);
+    if (Array.isArray(accounts) && accounts.length && !stmtAccountId) {
+      setStmtAccountId(accounts[0].id);
+    }
   }, [accounts, stmtAccountId]);
 
   const liveBalances = useMemo(() => {
     const b = {};
     let cash = 0;
-    (cohBalances || []).forEach(c => { cash += c.balance || 0; });
+    (cohBalances || []).forEach(c => { cash += c?.balance || 0; });
     b["coh"] = cash;
-    b["bank"] = (banks || []).reduce((s, x) => s + (x.balance || 0), 0);
-    b["receivable"] = (customers || []).reduce((s, c) => s + (c.balance || 0), 0);
-    b["inventory"] = (products || []).reduce((s, p) => s + (p.stock || 0) * (p.costPrice || 0), 0);
-    b["payable"] = (suppliers || []).reduce((s, x) => s + (x.balance || 0), 0);
-    b["sales"] = (transactions || []).filter(t => t.type !== "return" && !t.isReturn).reduce((s, t) => s + (t.totalAmount || t.amount || 0), 0);
-    b["sales"] -= (transactions || []).filter(t => t.type === "return" || t.isReturn).reduce((s, t) => s + (t.amount || t.totalAmount || 0), 0);
-    b["expenses"] = (expenses || []).reduce((s, e) => s + (e.amount || 0), 0);
+    b["bank"] = (banks || []).reduce((s, x) => s + (x?.balance || 0), 0);
+    b["receivable"] = (customers || []).reduce((s, c) => s + (c?.balance || 0), 0);
+    b["inventory"] = (products || []).reduce((s, p) => s + (p?.stock || 0) * (p?.costPrice || 0), 0);
+    b["payable"] = (suppliers || []).reduce((s, x) => s + (x?.balance || 0), 0);
+    b["sales"] = (transactions || []).filter(t => t?.type !== "return" && !t?.isReturn).reduce((s, t) => s + (t?.totalAmount || t?.amount || 0), 0);
+    b["sales"] -= (transactions || []).filter(t => t?.type === "return" || t?.isReturn).reduce((s, t) => s + (t?.amount || t?.totalAmount || 0), 0);
+    b["expenses"] = (expenses || []).reduce((s, e) => s + (e?.amount || 0), 0);
     return b;
   }, [cohBalances, banks, customers, products, suppliers, transactions, expenses]);
 
   const accountBalances = useMemo(() => {
     const map = {};
-    accounts.forEach(a => {
+    (accounts || []).forEach(a => {
+      if (!a) return;
       if (a.system) {
         map[a.id] = liveBalances[a.source] || 0;
       } else {
         const isCreditType = a.type === "liability" || a.type === "equity" || a.type === "income";
         let bal = a.openingBalance || 0;
-        entries.filter(e => e.accountId === a.id).forEach(e => {
+        (entries || []).filter(e => e?.accountId === a.id).forEach(e => {
           if (isCreditType) {
             bal += (e.credit || 0) - (e.debit || 0);
           } else {
@@ -121,15 +126,17 @@ export default function COAView({ user }) {
   }, [accounts, entries, liveBalances]);
 
   const sortedAccounts = useMemo(() => {
-    return [...accounts].sort((a, b) => {
-      if (TYPE_ORDER[a.type] !== TYPE_ORDER[b.type]) return TYPE_ORDER[a.type] - TYPE_ORDER[b.type];
-      return String(a.code).localeCompare(String(b.code));
+    return [...(accounts || [])].sort((a, b) => {
+      const orderA = TYPE_ORDER[a?.type] ?? 99;
+      const orderB = TYPE_ORDER[b?.type] ?? 99;
+      if (orderA !== orderB) return orderA - orderB;
+      return String(a?.code || "").localeCompare(String(b?.code || ""));
     });
   }, [accounts]);
 
   const trial = useMemo(() => {
     let debit = 0, credit = 0;
-    const rows = sortedAccounts.map(a => {
+    const rows = (sortedAccounts || []).map(a => {
       const bal = accountBalances[a.id] || 0;
       const isDebitType = a.type === "asset" || a.type === "expense";
       if (bal >= 0) {
@@ -150,7 +157,7 @@ export default function COAView({ user }) {
 
   const openEdit = (a) => {
     setEditAccount(a);
-    setForm({ code: a.code, name: a.name, type: a.type, openingBalance: a.openingBalance || "", description: a.description || "" });
+    setForm({ code: a.code || "", name: a.name || "", type: a.type || "asset", openingBalance: a.openingBalance || "", description: a.description || "" });
     setShowForm(true);
   };
 
@@ -210,15 +217,15 @@ export default function COAView({ user }) {
   };
 
   const stmt = useMemo(() => {
-    const acc = accounts.find(a => a.id === stmtAccountId);
+    const acc = (accounts || []).find(a => a?.id === stmtAccountId);
     if (!acc) return { acc: null, rows: [], opening: 0, closing: 0, totalDebit: 0, totalCredit: 0 };
     const from = fromDate ? new Date(fromDate + "T00:00:00").getTime() : 0;
     const to = toDate ? new Date(toDate + "T23:59:59").getTime() : Infinity;
     const isCredit = acc.type === "liability" || acc.type === "equity" || acc.type === "income";
     let opening = acc.openingBalance || 0;
     let totalDebit = 0, totalCredit = 0;
-    const rows = entries
-      .filter(e => e.accountId === acc.id && e.date >= from && e.date <= to)
+    const rows = (entries || [])
+      .filter(e => e?.accountId === acc.id && (e?.date || 0) >= from && (e?.date || 0) <= to)
       .map(e => ({ ...e, dr: e.debit || 0, cr: e.credit || 0 }))
       .sort((a, b) => (a.date || 0) - (b.date || 0));
     let running = opening;
@@ -238,7 +245,7 @@ export default function COAView({ user }) {
     const lines = [
       [csvEscape("Account"), csvEscape(stmt.acc.code), csvEscape(stmt.acc.name)].join(","),
       [csvEscape("Date"), csvEscape("Note"), csvEscape("Debit"), csvEscape("Credit"), csvEscape("Balance")].join(","),
-      ...stmt.rows.map(r => {
+      ...(stmt.rows || []).map(r => {
         running += r.dr - r.cr;
         return [csvEscape(fmtDate(r.date)), csvEscape(r.note || ""), r.dr || "", r.cr || "", running.toFixed(2)].join(",");
       }),
@@ -270,7 +277,7 @@ export default function COAView({ user }) {
       <div class="muted">${stmt.acc.code} · ${stmt.acc.name} — ${new Date().toLocaleString()}</div>
       <table><tr><th>Date</th><th>Note</th><th>Debit</th><th>Credit</th><th>Balance</th></tr>
       <tr><td colspan="4">Opening Balance B/F</td><td>${stmt.opening.toFixed(2)}</td></tr>
-      ${stmt.rows.map(r => `<tr><td>${fmtDate(r.date)}</td><td>${r.note || ""}</td><td>${r.dr ? r.dr.toFixed(2) : ""}</td><td>${r.cr ? r.cr.toFixed(2) : ""}</td><td>${r.balance.toFixed(2)}</td></tr>`).join("")}
+      ${(stmt.rows || []).map(r => `<tr><td>${fmtDate(r.date)}</td><td>${r.note || ""}</td><td>${r.dr ? r.dr.toFixed(2) : ""}</td><td>${r.cr ? r.cr.toFixed(2) : ""}</td><td>${r.balance.toFixed(2)}</td></tr>`).join("")}
       <tr class="t"><td colspan="2">Total</td><td>${stmt.totalDebit.toFixed(2)}</td><td>${stmt.totalCredit.toFixed(2)}</td><td>${stmt.closing.toFixed(2)}</td></tr>
       <tr><td colspan="4">Closing Balance C/F</td><td>${stmt.closing.toFixed(2)}</td></tr>
       </table><script>window.print();</script></body></html>`);
@@ -282,7 +289,15 @@ export default function COAView({ user }) {
   const groups = useMemo(() => {
     const g = {};
     TYPE_LABELS.forEach(t => g[t] = []);
-    sortedAccounts.forEach(a => g[a.type].push(a));
+    (sortedAccounts || []).forEach(a => {
+      const typeKey = (a?.type || "").toLowerCase();
+      if (g[typeKey]) {
+        g[typeKey].push(a);
+      } else {
+        g["expense"] = g["expense"] || [];
+        g["expense"].push(a);
+      }
+    });
     return g;
   }, [sortedAccounts]);
 
@@ -313,7 +328,7 @@ export default function COAView({ user }) {
           </div>
           {TYPE_LABELS.map(t => {
             const list = groups[t];
-            if (!list || !list.length) return null;
+            if (!list || !Array.isArray(list) || !list.length) return null;
             const total = list.reduce((s, a) => s + (accountBalances[a.id] || 0), 0);
             return (
               <div key={t} className="card" style={{ marginBottom: 12 }}>
@@ -349,7 +364,6 @@ export default function COAView({ user }) {
                     ))}
                   </tbody>
                 </table>
-                {!list.length && <div className="empty-state">{tr("common.noData")}</div>}
               </div>
             );
           })}
@@ -369,7 +383,7 @@ export default function COAView({ user }) {
               <tr><th>{tr("coa.code")}</th><th>{tr("coa.name")}</th><th>{tr("coa.type")}</th><th>{tr("coa.debit")}</th><th>{tr("coa.credit")}</th></tr>
             </thead>
             <tbody>
-              {trial.rows.map(({ a, debit, credit }) => (
+              {(trial.rows || []).map(({ a, debit, credit }) => (
                 <tr key={a.id}>
                   <td className="text-muted coa-mono">{a.code}</td>
                   <td>{a.name}{a.system && <span className="coa-badge coa-badge-live" style={{ marginLeft: 6 }}>🔗</span>}</td>
@@ -394,7 +408,7 @@ export default function COAView({ user }) {
         <div className="card">
           <div className="card-header coa-stmt-filters">
             <select className="input-field" style={{ maxWidth: 240 }} value={stmtAccountId} onChange={e => setStmtAccountId(e.target.value)}>
-              {sortedAccounts.map(a => <option key={a.id} value={a.id}>{a.code} — {a.name}</option>)}
+              {(sortedAccounts || []).map(a => <option key={a.id} value={a.id}>{a.code} — {a.name}</option>)}
             </select>
             <input type="date" className="input-field" value={fromDate} onChange={e => setFromDate(e.target.value)} />
             <span className="text-muted">→</span>
@@ -421,7 +435,7 @@ export default function COAView({ user }) {
                 <td className="coa-mono">{fmt(stmt.opening)}</td>
                 {!stmt.acc?.system && <td></td>}
               </tr>
-              {stmt.rows.map(r => (
+              {(stmt.rows || []).map(r => (
                 <tr key={r.id}>
                   <td className="text-muted">{fmtDate(r.date)}</td>
                   <td>{r.note || "—"}</td>
@@ -431,7 +445,7 @@ export default function COAView({ user }) {
                   {!stmt.acc?.system && <td className="coa-actions"><button className="btn btn-ghost btn-sm" style={{ color: "var(--danger)" }} onClick={() => removeEntry(r)}>🗑</button></td>}
                 </tr>
               ))}
-              {!stmt.rows.length && <tr><td colSpan={6} className="empty-state">{tr("common.noData")}</td></tr>}
+              {(!stmt.rows || !stmt.rows.length) && <tr><td colSpan={6} className="empty-state">{tr("common.noData")}</td></tr>}
             </tbody>
             <tfoot>
               <tr className="coa-total-row">
