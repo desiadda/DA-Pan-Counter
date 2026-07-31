@@ -165,7 +165,7 @@ export async function initiateTransfer(fromUser, toUserId, toUserName, amount) {
   }
 }
 
-export async function approveTransfer(txId) {
+export async function approveTransfer(txId, actedBy) {
   try {
     let loggedTx = null;
     if (isFirebaseEnabled) {
@@ -193,6 +193,7 @@ export async function approveTransfer(txId) {
         transaction.update(txRef, {
           status: "approved",
           approvedAt: Date.now(),
+          actedBy: actedBy || "System",
         });
       });
     } else {
@@ -202,6 +203,7 @@ export async function approveTransfer(txId) {
       
       localTx.status = "approved";
       localTx.approvedAt = Date.now();
+      localTx.actedBy = actedBy || "System";
       saveTransactionsRaw(txs);
 
       const balances = getBalancesRaw();
@@ -220,7 +222,7 @@ export async function approveTransfer(txId) {
   }
 }
 
-export async function rejectTransfer(txId) {
+export async function rejectTransfer(txId, actedBy) {
   try {
     let tx;
     if (isFirebaseEnabled) {
@@ -240,6 +242,7 @@ export async function rejectTransfer(txId) {
         ...tx,
         status: "rejected",
         approvedAt: Date.now(),
+        actedBy: actedBy || "System",
       });
     } else {
       const txs = getTransactionsRaw();
@@ -247,6 +250,7 @@ export async function rejectTransfer(txId) {
       if (localTx) {
         localTx.status = "rejected";
         localTx.approvedAt = Date.now();
+        localTx.actedBy = actedBy || "System";
         saveTransactionsRaw(txs);
       }
     }

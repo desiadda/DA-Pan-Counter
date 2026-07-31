@@ -265,7 +265,7 @@ export default function FinanceView({ user }) {
                         {tx.fromType === "bank" ? "🏦" : "👤"} {tx.fromName} → {tx.toType === "bank" ? "🏦" : "👤"} {tx.toName}
                       </div>
                       <div className="text-muted" style={{ fontSize: "0.7rem" }}>
-                        {formatDate(tx.timestamp)}{tx.actor ? ` · by ${tx.actor}` : ""}
+                        {formatDate(tx.timestamp)}{tx.actor ? ` · 👤 ${tx.actor}` : ""}
                       </div>
                     </div>
                     <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "var(--primary)" }}>฿{tx.amount.toFixed(2)}</div>

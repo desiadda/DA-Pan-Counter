@@ -257,6 +257,7 @@ export default function POSView({ user }) {
           type: "Purchase",
           amount: total,
           description: `Bill processed with ${cart.length} items.`,
+          recordedBy: user.name || "System",
         };
         await dbService.updateUdhaarBalance(selectedCustomerId, total, ledgerEntry);
       }

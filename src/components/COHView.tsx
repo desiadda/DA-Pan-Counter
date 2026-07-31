@@ -97,7 +97,7 @@ export default function COHView({ user }) {
           in: isIn ? t.amount : null,
           out: isIn ? null : t.amount,
           description: `${typeLabel(t.type)} · ${t.fromUserName} → ${t.toUserName || t.toUserId || "System"}`,
-          detail: t.note || "",
+          detail: [t.actedBy ? `processed by ${t.actedBy}` : null, t.note || null].filter(Boolean).join(" · "),
           status: t.status,
         };
       });
@@ -255,6 +255,7 @@ export default function COHView({ user }) {
                       {tx.fromUserName} → {tx.toUserName || users.find(u => u.id === tx.toUserId)?.name || tx.toUserId || "System"}
                       {" · "}{formatDate(tx.timestamp)}
                     </div>
+                    {tx.actedBy && <div className="text-muted" style={{ fontSize: "0.7rem" }}>✓ processed by <b>{tx.actedBy}</b></div>}
                     {tx.note && <div className="text-muted" style={{ fontSize: "0.7rem", fontStyle: "italic" }}>{tx.note}</div>}
                   </div>
                   <div style={{ fontWeight: 700, fontSize: "0.95rem", color: tx.sign === "debit" ? "var(--error)" : "var(--primary)" }}>

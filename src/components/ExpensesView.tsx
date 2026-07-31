@@ -56,7 +56,8 @@ export default function ExpensesView() {
     }
     try {
       setSubmitting(true);
-      await dbService.addExpense({ amount: parseFloat(amount), category, note: note.trim(), date: Date.now() });
+      const u = JSON.parse(localStorage.getItem("pan_user") || "{}");
+      await dbService.addExpense({ amount: parseFloat(amount), category, note: note.trim(), date: Date.now(), createdBy: u.name || "System" });
       setAmount("");
       setNote("");
       loadExpenses();
@@ -166,7 +167,7 @@ export default function ExpensesView() {
               <div key={exp.id} className="expense-item">
                 <div className="expense-left">
                   <span className="expense-category">{exp.category}</span>
-                  <span className="expense-note">{exp.note || "—"} · {new Date(exp.date).toLocaleDateString()}</span>
+                  <span className="expense-note">{exp.note || "—"} · {new Date(exp.date).toLocaleDateString()}{exp.createdBy ? ` · 👤 ${exp.createdBy}` : ""}</span>
                 </div>
                 <div className="flex items-center gap-sm">
                   <span className="expense-amount">฿{exp.amount.toFixed(2)}</span>

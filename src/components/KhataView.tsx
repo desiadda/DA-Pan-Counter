@@ -80,7 +80,8 @@ export default function KhataView({ subPath, onNavigate }) {
       date: Date.now(), 
       type: "Payment", 
       amount: paymentVal, 
-      description: `${paymentMode} payment settled at counter` 
+      description: `${paymentMode} payment settled at counter`,
+      recordedBy: user?.name || "System",
     };
     try {
       await dbService.updateUdhaarBalance(
@@ -122,7 +123,7 @@ export default function KhataView({ subPath, onNavigate }) {
         <td style="padding:4px 6px;font-size:11px">${e.type}</td>
         <td style="padding:4px 6px;font-size:11px;text-align:right">${e.amount > 0 ? "฿"+e.amount.toFixed(2) : ""}</td>
         <td style="padding:4px 6px;font-size:11px;text-align:right;color:#dc2626">${e.amount < 0 ? "฿"+(Math.abs(e.amount)).toFixed(2) : ""}</td>
-        <td style="padding:4px 6px;font-size:11px">${e.description || ""}</td>
+        <td style="padding:4px 6px;font-size:11px">${e.description || ""}${e.recordedBy ? ` <span style="color:#94a3b8">(by ${e.recordedBy})</span>` : ""}</td>
       </tr>
     `).join("");
     w.document.write(`
@@ -217,7 +218,7 @@ export default function KhataView({ subPath, onNavigate }) {
                       <span className="ledger-date">{new Date(log.date).toLocaleString()}</span>
                     </div>
                     <div className="ledger-info">
-                      <span className="ledger-desc">{log.description}</span>
+                      <span className="ledger-desc">{log.description}{log.recordedBy ? ` · by ${log.recordedBy}` : ""}</span>
                       <span className={`ledger-amount ${log.type === "Payment" ? "ledger-amount-credit" : "ledger-amount-debit"}`}>
                         {log.type === "Payment" ? "-" : "+"}฿{log.amount}
                       </span>

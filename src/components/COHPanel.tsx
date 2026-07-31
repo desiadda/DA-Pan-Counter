@@ -98,7 +98,7 @@ export default function COHPanel({ user, users, onClose }) {
     if (submitting) return;
     try {
       setSubmitting(true);
-      await dbService.approveTransfer(txId);
+      await dbService.approveTransfer(txId, user.name || "System");
       load();
     } catch (err) {
       logError("COH", err.message, err.stack);
@@ -113,7 +113,7 @@ export default function COHPanel({ user, users, onClose }) {
     if (submitting) return;
     try {
       setSubmitting(true);
-      await dbService.rejectTransfer(txId);
+      await dbService.rejectTransfer(txId, user.name || "System");
       load();
     } catch (err) {
       logError("COH", err.message, err.stack);
@@ -355,6 +355,7 @@ export default function COHPanel({ user, users, onClose }) {
                       {tx.fromUserId === user.id ? `To: ${tx.toUserName || tx.toUserId}` : `From: ${tx.fromUserName}`}
                       {" · "}{formatDate(tx.timestamp)}
                     </span>
+                    {tx.actedBy && <span style={{ fontSize: "0.7rem", color: "#047857" }}>✓ processed by {tx.actedBy}</span>}
                     {tx.note && <span style={styles.historyNote}>{tx.note}</span>}
                   </div>
                   <span style={{ fontWeight: 700, color: tx.fromUserId === user.id ? "#dc2626" : "#047857", fontSize: "0.9rem" }}>

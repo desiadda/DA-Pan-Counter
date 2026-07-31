@@ -142,7 +142,7 @@ export const addTransaction = async (transaction) => {
   }
 };
 
-export const deleteTransaction = async (transactionId) => {
+export const deleteTransaction = async (transactionId, voidedBy) => {
   try {
     if (isFirebaseEnabled) {
       const docSnap = await getDoc(doc(db, "transactions", transactionId));
@@ -152,9 +152,9 @@ export const deleteTransaction = async (transactionId) => {
       await deleteDoc(doc(db, "transactions", transactionId));
 
       if (targetTx.paymentMode === "Cash") {
-        await adjustBalance(targetTx.cashierId || "system", -targetTx.totalAmount, `Voided cash bill: ${transactionId}`, targetTx.cashierName || "System");
+        await adjustBalance(targetTx.cashierId || "system", -targetTx.totalAmount, `Voided cash bill: ${transactionId}${voidedBy ? ` by ${voidedBy}` : ""}`, targetTx.cashierName || "System");
       }
-      logAudit("sale_voided", "transaction", transactionId, `Voided bill · ${targetTx.paymentMode} · ฿${(targetTx.totalAmount || 0).toFixed(2)}`, { amount: targetTx.totalAmount || 0 });
+      logAudit("sale_voided", "transaction", transactionId, `Voided bill · ${targetTx.paymentMode} · ฿${(targetTx.totalAmount || 0).toFixed(2)}${voidedBy ? ` · by ${voidedBy}` : ""}`, { amount: targetTx.totalAmount || 0 });
     }
   } catch (err) {
     logError("TRANSACTION", err.message, err.stack);

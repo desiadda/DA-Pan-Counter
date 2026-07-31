@@ -265,7 +265,7 @@ export default function ReportsView({ initialSubTab, onSubTabChange, user }) {
     return split;
   };
 
-  const handleVoidTransaction = async (txId) => { const ok = await confirm(`Are you sure you want to void Bill ID: ${txId}?`, { title: "Void Bill", message: "This will restore all items back to stock and reverse customer debt updates.", confirmLabel: "Void Bill", variant: "danger" }); if (ok) { setLoading(true); try { await dbService.deleteTransaction(txId); alert("Transaction voided successfully and inventory restocked!"); await loadData(); } catch (err) { logError("TRANSACTION", err.message, err.stack); alert("Failed to void transaction: " + err.message); } finally { setLoading(false); } } };
+  const handleVoidTransaction = async (txId) => { const ok = await confirm(`Are you sure you want to void Bill ID: ${txId}?`, { title: "Void Bill", message: "This will restore all items back to stock and reverse customer debt updates.", confirmLabel: "Void Bill", variant: "danger" }); if (ok) { setLoading(true); try { const u = JSON.parse(localStorage.getItem("pan_user") || "{}"); await dbService.deleteTransaction(txId, u.name || "System"); alert("Transaction voided successfully and inventory restocked!"); await loadData(); } catch (err) { logError("TRANSACTION", err.message, err.stack); alert("Failed to void transaction: " + err.message); } finally { setLoading(false); } } };
   const [editingModeTx, setEditingModeTx] = useState(null);
   const [editingModeVal, setEditingModeVal] = useState("");
   const [viewBillTx, setViewBillTx] = useState(null);
@@ -822,9 +822,11 @@ export default function ReportsView({ initialSubTab, onSubTabChange, user }) {
                 transactions.map(tx => (
                   <div key={tx.id} style={styles.txRow}>
                     <div style={styles.txRowLeft}>
-                      <div style={styles.txId}>Bill ID: {tx.id}</div>
+                      <div style={styles.txId}>Bill ID: {tx.id}{tx.type === "return" ? " · ↩️ RETURN" : ""}</div>
                       <div style={styles.txDate}>{new Date(tx.timestamp).toLocaleString()}</div>
-                      <div style={styles.txPaymentMode}>Mode: <b>{tx.paymentMode}</b> | {tx.cashierEmail}</div>
+                      <div style={styles.txPaymentMode}>Mode: <b>{tx.paymentMode}</b> | 👤 {tx.cashierName || tx.cashierEmail}</div>
+                      {tx.type === "return" && <div style={{fontSize: "0.7rem", color: "#d97706", marginTop: "2px", fontWeight: "bold"}}>Returned by: {tx.cashierName || tx.cashierEmail || "System"}</div>}
+                      {tx.editedBy && <div style={{fontSize: "0.7rem", color: "#2563eb", marginTop: "2px", fontWeight: "bold"}}>✏️ Mode edited by: {tx.editedBy}</div>}
                       <div style={{fontSize: "0.75rem", color: "#475569", marginTop: "4px"}}>Items: {(tx.items || []).map(item => `${item.name} (${item.quantity}x)`).join(", ") || "—"}</div>
                       {tx.taxEnabled && <div style={{fontSize: "0.7rem", color: "#d97706", marginTop: "2px", fontWeight: "bold"}}>VAT {tx.taxRate}%: ฿{(tx.taxAmount || 0).toFixed(2)}</div>}
                       {tx.discountAmount > 0 && <div style={{fontSize: "0.7rem", color: "#dc2626", marginTop: "2px", fontWeight: "bold"}}>Discount: {tx.discountType === "percent" ? `${tx.discountValue}%` : `฿${tx.discountValue}`} (-฿{tx.discountAmount.toFixed(2)}){tx.discountReason ? ` · ${tx.discountReason}` : ""}</div>}
