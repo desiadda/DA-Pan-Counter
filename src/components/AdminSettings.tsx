@@ -25,9 +25,8 @@ const getStore = () => {
   }
 };
 
-export default function AdminSettings({ subPath, onNavigate }) {
+export default function AdminSettings({ onBack }) {
   const lang = useLangStore((s) => s.lang);
-  const [activeTab, setActiveTab] = useState(subPath || "general");
   const confirm = useConfirmStore((s) => s.confirm);
   const theme = useUIStore((s) => s.theme);
   const toggleTheme = useUIStore((s) => s.toggleTheme);
