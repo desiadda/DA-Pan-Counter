@@ -2690,17 +2690,17 @@ textarea.input-field {
   backdrop-filter: blur(2px);
   z-index: 10000;
   display: flex;
-  justify-content: flex-start;
+  justify-content: flex-end;
   animation: fadeIn 0.2s ease-out;
 }
 .drawer-pane {
   width: 290px;
   height: 100%;
   background-color: var(--card-bg);
-  box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.15);
   display: flex;
   flex-direction: column;
-  animation: slideInLeft 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .drawer-header {
   padding: 1.25rem 1rem;
