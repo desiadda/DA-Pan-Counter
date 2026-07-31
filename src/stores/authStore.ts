@@ -53,9 +53,30 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       logError("AUTH", err.message, err.stack)
     }
 
+    // Auto-refresh current user's permissions when Firestore syncs user list
+    const handleUsersChanged = () => {
+      try {
+        const { user } = get()
+        if (!user) return
+        const raw = localStorage.getItem("pan_users")
+        if (!raw) return
+        const allUsers: User[] = JSON.parse(raw)
+        const fresh = allUsers.find(u => u.id === user.id)
+        if (fresh && fresh.permissions) {
+          const updated = { ...user, name: fresh.name, permissions: fresh.permissions, role: fresh.role }
+          set({ user: updated })
+          localStorage.setItem("pan_user", JSON.stringify(updated))
+        }
+      } catch (err: any) {
+        logError("AUTH", err.message, err.stack)
+      }
+    }
+    window.addEventListener("users-changed", handleUsersChanged)
+
     return () => {
       window.removeEventListener("online", handleOnline)
       window.removeEventListener("offline", handleOffline)
+      window.removeEventListener("users-changed", handleUsersChanged)
     }
   },
 }))

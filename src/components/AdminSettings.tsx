@@ -48,7 +48,10 @@ export default function AdminSettings({ onBack }) {
   // Step 1: verify secret password
   const handleResetStep1 = async () => {
     setResetError("");
-    if (user && user.permissions && !user.permissions.settingsReset) {
+    // Admin role always has factory reset access regardless of cached session
+    const isAdmin = user?.role === "admin";
+    const hasResetPerm = user?.permissions?.settingsReset === true;
+    if (user && !isAdmin && !hasResetPerm) {
       setResetError("❌ You do not have permission to perform a Factory Reset.");
       return;
     }
