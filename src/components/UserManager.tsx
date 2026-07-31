@@ -42,6 +42,7 @@ const PERM_CATEGORIES = [
       { key: "settingsManageUsers", label: "Create & Manage Users" },
       { key: "settingsReset", label: "Perform Factory Reset" },
     ]
+  }
 ];
 
 const ALL_PERMS = PERM_CATEGORIES.flatMap(cat => cat.perms);
