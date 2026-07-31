@@ -41,42 +41,58 @@ export default function AdminSettings({ onBack }) {
   const [activeTab, setActiveTab] = useState("general"); // general, payments, security, database
   const [isRestoring, setIsRestoring] = useState(false);
   const [resetConfirmPin, setResetConfirmPin] = useState("");
+  const [resetStep, setResetStep] = useState(0); // 0=idle, 1=typed-confirm, 2=executing
+  const [resetTyped, setResetTyped] = useState("");
+  const [resetError, setResetError] = useState("");
 
-  const handleFactoryReset = async () => {
+  // Step 1: verify secret password
+  const handleResetStep1 = async () => {
+    setResetError("");
+    if (user && user.permissions && !user.permissions.settingsReset) {
+      setResetError("❌ You do not have permission to perform a Factory Reset.");
+      return;
+    }
     try {
-      if (user && user.permissions && !user.permissions.settingsReset) {
-        alert("❌ You do not have permission to perform a Factory Reset.");
-        return;
-      }
       const inputHash = await sha256(resetConfirmPin.trim());
-      const masterHash = "956bea7e18228cf06bd92f62abf36bebfca5a608f43af333fec57a719774653d"; // SHA-256 hash of 'Swarnim@090909'
+      const masterHash = "956bea7e18228cf06bd92f62abf36bebfca5a608f43af333fec57a719774653d";
       if (inputHash !== masterHash) {
-        alert("❌ Invalid Secret Reset Password! Verification failed.");
+        setResetError("❌ Invalid Secret Reset Password! Please try again.");
         return;
       }
+      setResetStep(1);
+      setResetTyped("");
+    } catch (err: any) {
+      setResetError("Error: " + err.message);
+    }
+  };
 
-      const ok = await confirm(
-        "Are you absolutely sure you want to trigger a Factory Reset? All database records will be permanently deleted.",
-        { title: "CONFIRM FACTORY RESET", confirmLabel: "DELETE EVERYTHING", variant: "danger" }
-      );
-      if (!ok) return;
-
-      const typedOk = prompt("To confirm, please type 'RESET' below:");
-      if (typedOk !== "RESET") {
-        alert("Reset cancelled. Confirmation text did not match.");
-        return;
-      }
-
+  // Step 2: typed confirmation → execute
+  const handleResetExecute = async () => {
+    setResetError("");
+    if (resetTyped !== "RESET") {
+      setResetError("❌ Please type RESET exactly to confirm.");
+      return;
+    }
+    try {
+      setResetStep(2);
       setIsRestoring(true);
       await (dbService as any).factoryReset();
-      alert("App successfully reset to factory settings! Reloading...");
+      alert("✅ App successfully reset to factory settings! Reloading...");
       window.location.reload();
     } catch (err: any) {
       logError("SYSTEM", err.message, err.stack);
-      alert("Failed to reset: " + err.message);
+      setResetError("Failed to reset: " + err.message);
+      setResetStep(1);
     } finally {
       setIsRestoring(false);
     }
+  };
+
+  const handleResetCancel = () => {
+    setResetStep(0);
+    setResetConfirmPin("");
+    setResetTyped("");
+    setResetError("");
   };
 
   const handleExportBackup = () => {
@@ -627,31 +643,83 @@ export default function AdminSettings({ onBack }) {
           </div>
 
           {/* Factory Reset */}
-          <div style={{ ...styles.card, border: "1px solid #fee2e2", backgroundColor: "#fff5f5" }}>
+          <div style={{ ...styles.card, border: "1px solid #fee2e2", backgroundColor: theme === "dark" ? "#2d1515" : "#fff5f5" }}>
             <h3 style={{ ...styles.cardHeader, color: "#991b1b", borderBottom: "1px solid #fee2e2" }}>
               {lang === "hi" ? "🚨 फ़ैक्टरी रीसेट" : "🚨 Factory Reset"}
             </h3>
-            <p style={{ fontSize: "0.8rem", color: "#b91c1c", marginBottom: "0.75rem", fontWeight: "600" }}>
-              ⚠️ Warning: This will permanently delete all transactions, products, stock history, credit accounts (Udhaar), suppliers, and expenses. The application will be reset to default settings. This cannot be undone.
+            <p style={{ fontSize: "0.8rem", color: "#b91c1c", marginBottom: "1rem", fontWeight: "600", lineHeight: 1.5 }}>
+              ⚠️ Warning: This will permanently delete ALL transactions, products, stock history, credit accounts, suppliers, and expenses. This cannot be undone.
             </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-              <input
-                type="password"
-                placeholder="Enter Secret Reset Password..."
-                value={resetConfirmPin}
-                onChange={e => setResetConfirmPin(e.target.value)}
-                className="input-field"
-                style={{ maxWidth: "240px", fontSize: "0.85rem" }}
-              />
-              <button
-                onClick={handleFactoryReset}
-                disabled={!resetConfirmPin}
-                className="btn btn-danger"
-                style={{ padding: "0.6rem", alignSelf: "flex-start", opacity: !resetConfirmPin ? 0.5 : 1 }}
-              >
-                🗑️ Delete All Data & Reset App
-              </button>
-            </div>
+
+            {resetError && (
+              <div style={{ background: "#fee2e2", color: "#991b1b", padding: "0.5rem 0.75rem", borderRadius: "6px", fontSize: "0.82rem", fontWeight: 600, marginBottom: "0.75rem" }}>
+                {resetError}
+              </div>
+            )}
+
+            {/* Step 0: Enter secret password */}
+            {resetStep === 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                <label style={{ fontSize: "0.8rem", fontWeight: 700, color: "#991b1b" }}>Step 1 of 2 — Enter Secret Reset Password</label>
+                <input
+                  type="password"
+                  placeholder="Secret password..."
+                  value={resetConfirmPin}
+                  onChange={e => { setResetConfirmPin(e.target.value); setResetError(""); }}
+                  onKeyDown={e => e.key === "Enter" && resetConfirmPin && handleResetStep1()}
+                  className="input-field"
+                  style={{ maxWidth: "260px", fontSize: "0.85rem" }}
+                />
+                <button
+                  onClick={handleResetStep1}
+                  disabled={!resetConfirmPin}
+                  className="btn btn-danger"
+                  style={{ alignSelf: "flex-start", opacity: !resetConfirmPin ? 0.5 : 1 }}
+                >
+                  Verify Password →
+                </button>
+              </div>
+            )}
+
+            {/* Step 1: Type RESET to confirm */}
+            {resetStep === 1 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: "8px", padding: "0.75rem", marginBottom: "0.25rem" }}>
+                  <p style={{ margin: 0, fontSize: "0.85rem", color: "#7f1d1d", fontWeight: 700 }}>✅ Password verified. Final confirmation required.</p>
+                  <p style={{ margin: "0.25rem 0 0", fontSize: "0.8rem", color: "#991b1b" }}>Type <strong>RESET</strong> below to permanently delete all data:</p>
+                </div>
+                <input
+                  type="text"
+                  placeholder='Type RESET here...'
+                  value={resetTyped}
+                  onChange={e => { setResetTyped(e.target.value); setResetError(""); }}
+                  onKeyDown={e => e.key === "Enter" && resetTyped === "RESET" && handleResetExecute()}
+                  className="input-field"
+                  style={{ maxWidth: "260px", fontSize: "0.85rem", fontWeight: 700, letterSpacing: "0.1em" }}
+                  autoFocus
+                />
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <button
+                    onClick={handleResetExecute}
+                    disabled={resetTyped !== "RESET" || isRestoring}
+                    className="btn btn-danger"
+                    style={{ opacity: resetTyped !== "RESET" ? 0.5 : 1 }}
+                  >
+                    {isRestoring ? "⏳ Resetting..." : "🗑️ DELETE EVERYTHING"}
+                  </button>
+                  <button onClick={handleResetCancel} className="btn btn-outline" disabled={isRestoring}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Executing */}
+            {resetStep === 2 && (
+              <div style={{ textAlign: "center", padding: "1rem", color: "#991b1b", fontWeight: 700 }}>
+                ⏳ Performing factory reset... Please wait.
+              </div>
+            )}
           </div>
         </div>
       )}
