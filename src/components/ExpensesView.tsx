@@ -159,11 +159,11 @@ export default function ExpensesView() {
         <h3 className="section-subtitle" style={{ borderBottom: "1px solid var(--border)", paddingBottom: "0.5rem", marginBottom: "0.75rem" }}>History</h3>
         {loading ? (
           <div className="text-muted" style={{ textAlign: "center", padding: "2rem" }}>Loading...</div>
-        ) : expenses.length === 0 ? (
+        ) : (!expenses || expenses.length === 0) ? (
           <div className="coh-empty">No expenses recorded yet.</div>
         ) : (
           <div className="coh-tx-list" style={{ maxHeight: "300px" }}>
-            {expenses.map((exp) => (
+            {(expenses || []).map((exp) => (
               <div key={exp.id} className="expense-item">
                 <div className="expense-left">
                   <span className="expense-category">{exp.category}</span>

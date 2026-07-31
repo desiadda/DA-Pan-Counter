@@ -347,7 +347,7 @@ export default function COHPanel({ user, users, onClose }) {
         {tab === "balance" && (
           <div style={styles.section}>
             <div style={styles.recentList}>
-              {history.slice(0, 10).map(tx => (
+              {(history || []).slice(0, 10).map(tx => (
                 <div key={tx.id} style={styles.historyItem}>
                   <div>
                     <span style={{ fontWeight: 600, fontSize: "0.85rem" }}>
@@ -365,7 +365,7 @@ export default function COHPanel({ user, users, onClose }) {
                   </span>
                 </div>
               ))}
-              {history.length === 0 && <div style={styles.empty}>No transactions yet.</div>}
+              {(!history || history.length === 0) && <div style={styles.empty}>No transactions yet.</div>}
             </div>
           </div>
         )}
@@ -379,8 +379,8 @@ export default function COHPanel({ user, users, onClose }) {
               <label className="input-label">Transfer To</label>
               <select value={transferTo} onChange={e => setTransferTo(e.target.value)} className="input-field" style={{ fontFamily: "inherit" }}>
                 <option value="">Select user...</option>
-                {otherUsers.map(u => (
-                  <option key={u.id} value={u.id}>{u.name} (฿{dbService.getBalance(u.id).toFixed(2)})</option>
+                {(otherUsers || []).map(u => (
+                  <option key={u.id} value={u.id}>{u.name} (฿{(dbService.getBalance(u.id) || 0).toFixed(2)})</option>
                 ))}
               </select>
             </div>
@@ -398,10 +398,10 @@ export default function COHPanel({ user, users, onClose }) {
 
         {tab === "pending" && (
           <div style={styles.section}>
-            {pending.length === 0 ? (
+            {(!pending || pending.length === 0) ? (
               <div style={styles.empty}>No pending transfers.</div>
             ) : (
-              pending.map(tx => (
+              (pending || []).map(tx => (
                 <div key={tx.id} style={styles.pendingCard}>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700, color: "#1e293b", fontSize: "0.9rem" }}>From: {tx.fromUserName}</div>
@@ -425,7 +425,7 @@ export default function COHPanel({ user, users, onClose }) {
         {tab === "history" && (
           <div style={styles.section}>
             <div style={styles.recentList}>
-              {history.map(tx => (
+              {(history || []).map(tx => (
                 <div key={tx.id} style={styles.historyItem}>
                   <div>
                     <span style={{ fontWeight: 600, fontSize: "0.85rem" }}>

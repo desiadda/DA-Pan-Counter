@@ -521,7 +521,7 @@ export default function InventoryView({ subPath, onNavigate }) {
                                 <span>Cost Price</span>
                                 <span>Stock Left</span>
                               </div>
-                              {p.batches.map(b => (
+                              {(p.batches || []).map(b => (
                                 <div key={b.id} style={{ display: "flex", justifyContent: "space-between", fontFamily: "monospace" }}>
                                   <span style={{ color: "#0f766e" }}>{b.id}</span>
                                   <span style={{ fontWeight: 600 }}>฿{b.costPrice.toFixed(2)}</span>

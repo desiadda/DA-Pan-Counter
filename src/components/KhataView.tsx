@@ -210,7 +210,7 @@ export default function KhataView({ subPath, onNavigate }) {
               {(!selectedCust.ledger || selectedCust.ledger.length === 0) ? (
                 <div className="coh-empty">No transaction history found.</div>
               ) : (
-                selectedCust.ledger.map((log, idx) => (
+                (selectedCust.ledger || []).map((log, idx) => (
                   <div key={idx} className="ledger-item">
                     <div className="ledger-meta">
                       <span className={`ledger-type ${log.type === "Payment" ? "ledger-type-payment" : "ledger-type-purchase"}`}>
@@ -245,10 +245,10 @@ export default function KhataView({ subPath, onNavigate }) {
             <SkeletonList rows={4} />
           ) : (
             <div className="coh-tx-list">
-              {getFilteredCustomers().length === 0 ? (
-                <div className="coh-empty">No customers found in ledger.</div>
+              {(!getFilteredCustomers() || getFilteredCustomers().length === 0) ? (
+                <div className="coh-empty">No matching customers found.</div>
               ) : (
-                getFilteredCustomers().map(c => (
+                (getFilteredCustomers() || []).map(c => (
                   <div key={c.id} onClick={() => handleSelectCustomer(c)} className="customer-card">
                     <div className="customer-card-left">
                       <div className="customer-name">{c.name}</div>

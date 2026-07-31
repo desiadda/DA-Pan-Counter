@@ -159,14 +159,14 @@ export default function COHView({ user }) {
               <button className="btn btn-outline btn-sm" onClick={() => setActiveTab("adjust")}>Adjust</button>
             </div>
             <div className="coh-balances-grid">
-              {balances.map(b => (
+              {(balances || []).map(b => (
                 <div key={b.id} className="coh-balance-card" onClick={() => openStatement(b)}>
                   <span className="coh-card-chevron">›</span>
                   <div className="coh-balance-name">{b.name}</div>
                   <div className="coh-balance-value">฿{(b.coh || 0).toFixed(2)}</div>
                 </div>
               ))}
-              {balances.length === 0 && <div className="coh-empty">No users found.</div>}
+              {(!balances || balances.length === 0) && <div className="coh-empty">No users found.</div>}
             </div>
           </div>
         </>
@@ -185,7 +185,7 @@ export default function COHView({ user }) {
             <label className="input-label">User</label>
             <select value={adjustId || ""} onChange={e => { setAdjustId(e.target.value); setError(""); setMsg(""); }} className="input-field" style={{ fontFamily: "inherit" }}>
               <option value="">Select user...</option>
-              {users.map(u => (
+              {(users || []).map(u => (
                 <option key={u.id} value={u.id}>{u.name} (฿{(dbService.getBalance(u.id) || 0).toFixed(2)})</option>
               ))}
             </select>
@@ -236,16 +236,16 @@ export default function COHView({ user }) {
             </select>
             <select value={userFilter} onChange={e => setUserFilter(e.target.value)} className="input-field" style={{ fontFamily: "inherit", maxWidth: "150px", padding: "0.4rem", fontSize: "0.8rem" }}>
               <option value="all">All users</option>
-              {users.map(u => (
+              {(users || []).map(u => (
                 <option key={u.id} value={u.id}>{u.name}</option>
               ))}
             </select>
           </div>
           <div className="ledger-list">
-            {filteredTransactions.length === 0 ? (
+            {(!filteredTransactions || filteredTransactions.length === 0) ? (
               <div className="coh-empty">No transactions match your filters.</div>
             ) : (
-              filteredTransactions.slice(0, 100).map(tx => (
+              (filteredTransactions || []).slice(0, 100).map(tx => (
                 <div key={tx.id} className="coh-tx-row">
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 600, fontSize: "0.85rem", color: "var(--text)" }}>

@@ -334,7 +334,7 @@ export default function SupplierDirectory() {
                     <div style={{ display: "flex", flexDirection: "column", gap: "3px", marginTop: "0.25rem" }}>
                       {(() => {
                         let running = 0;
-                        return s.ledger.map((item, idx) => {
+                        return (s.ledger || []).map((item, idx) => {
                           running += item.type === "Payment" ? -Math.abs(item.amount || 0) : Math.abs(item.amount || 0);
                           return (
                             <div key={idx} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.72rem", borderBottom: "1px dashed #f1f5f9", paddingBottom: "2px", gap: "0.5rem" }}>
@@ -362,11 +362,11 @@ export default function SupplierDirectory() {
                   </div>
                 )}
 
-                {supPurchases.length > 0 && !selectedLedgerSup && (
+                {(supPurchases || []).length > 0 && !selectedLedgerSup && (
                   <div className="sup-purchases" style={{ marginTop: "0.25rem", borderTop: "1px solid #f1f5f9", paddingTop: "0.25rem" }}>
                     <span className="sup-purch-label">{tr("supplier.purchases")} ({supPurchases.length})</span>
                     <div className="flex-col gap-xs" style={{ marginTop: "0.25rem" }}>
-                      {supPurchases.slice(0, 3).map(po => (
+                      {(supPurchases || []).slice(0, 3).map(po => (
                         <div key={po.id} className="sup-purch-row" style={{ display: "flex", justifyContent: "space-between", fontSize: "0.72rem" }}>
                           <span className="text-xs text-muted">{new Date(po.createdAt).toLocaleDateString("en-GB")}</span>
                           <span className="text-sm font-semibold">฿{po.total?.toFixed(0)}</span>

@@ -297,8 +297,8 @@ export default function ReportsView({ initialSubTab, onSubTabChange, user }) {
 
   // ── Customer Purchase History ──
   const getCustomerHistory = () => {
-    return customers.map(c => {
-      const txForCustomer = transactions.filter(tx => tx.customerId === c.id && tx.type !== "return");
+    return (customers || []).map(c => {
+      const txForCustomer = (transactions || []).filter(tx => tx.customerId === c.id && tx.type !== "return");
       const totalSpent = txForCustomer.reduce((s, tx) => s + (tx.totalAmount || 0), 0);
       const lastPurchase = txForCustomer.reduce((max, tx) => Math.max(max, tx.timestamp || 0), 0);
       return { ...c, visits: txForCustomer.length, totalSpent, lastPurchase };
@@ -1173,10 +1173,10 @@ export default function ReportsView({ initialSubTab, onSubTabChange, user }) {
             </div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-            {staffPerformance.length === 0 ? (
+            {(!staffPerformance || staffPerformance.length === 0) ? (
               <div style={{ textAlign: "center", color: "#94a3b8", padding: "1rem" }}>No staff analytics available.</div>
             ) : (
-              staffPerformance.map(staff => (
+              (staffPerformance || []).map(staff => (
                 <div key={staff.name} style={{ padding: "0.75rem", backgroundColor: "#f8fafc", borderRadius: "8px", border: "1px solid #cbd5e1", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div>
                     <div style={{ fontWeight: "bold", color: "#1e293b" }}>{staff.name}</div>
