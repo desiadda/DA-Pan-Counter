@@ -3,6 +3,8 @@ import { dbService } from "../firebase";
 import { useConfirmStore } from "../stores/confirmStore";
 import { useDBStore } from "../stores/dbStore";
 import { useAuthStore } from "../stores/authStore";
+import { useLangStore } from "../stores/langStore";
+import { useT } from "../lang/translations";
 import { SkeletonTable } from "./Skeleton";
 import { logError } from "../db/errorLog";
 import PriceHistoryModal from "./PriceHistoryModal";
@@ -22,6 +24,8 @@ const escapeCSV = (val: any) => {
 };
 
 export default function InventoryView({ subPath, onNavigate }) {
+  const lang = useLangStore((s) => s.lang);
+  const tr = useT(lang);
   const confirm = useConfirmStore((s) => s.confirm);
   const products = useDBStore((s) => s.products);
   const user = useAuthStore((s) => s.user);
