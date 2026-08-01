@@ -347,10 +347,10 @@ export default function DashboardWidgets({ onNavigate }: DashboardWidgetsProps) 
                 </span>
                 <div>
                   <h3 style={{ margin: 0, fontSize: "1.15rem" }}>
-                    {type === "sales" && "Today's Sales Register (आज की बिक्री विवरण)"}
-                    {type === "bills" && "Today's Bills & Receipt History (आज के बिल)"}
-                    {type === "khata" && "Customer Khata & Pending Udhaar (बकाया उधार खाते)"}
-                    {type === "stock" && "Low Stock Inventory Alerts (कम स्टॉक उत्पाद)"}
+                    {type === "sales" && tr("dashboard.salesModalTitle")}
+                    {type === "bills" && tr("dashboard.billsModalTitle")}
+                    {type === "khata" && tr("dashboard.khataModalTitle")}
+                    {type === "stock" && tr("dashboard.stockModalTitle")}
                   </h3>
                   <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
                     Real-time transaction & inventory analytics

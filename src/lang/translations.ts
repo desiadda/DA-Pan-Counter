@@ -10,7 +10,13 @@ export const LS_LANG_KEY = "pan_language";
 
 const translations = {
   en: {
-    app: { title: "Paan Counter" },
+    app: { title: "Paan Counter", loggedOutOtherDevice: "Your account has been logged in on another device. You will be logged out.", offlineNotice: "You are offline. Please check your internet connection." },
+    dashboard: {
+      salesModalTitle: "Today's Sales Register",
+      billsModalTitle: "Today's Bills & Receipt History",
+      khataModalTitle: "Customer Khata & Pending Udhaar",
+      stockModalTitle: "Low Stock Inventory Alerts",
+    },
     nav: { pos: "POS", stock: "Stock", credit: "Credit Accounts", menu: "Menu" },
     pos: {
       todaySales: "Today's Sales", billsToday: "Bills Today", khataDue: "Khata Due", lowStock: "Low Stock",
@@ -59,7 +65,7 @@ const translations = {
     admin: {
       title: "Menu",
       reports: "Reports", expenses: "Expenses", users: "Users",
-      cashOnHand: "Cash on Hand", finance: "Finance", coa: "Chart of Accounts", settings: "Settings", errorLogs: "Error Logs",
+      cashOnHand: "Cash on Hand", finance: "Finance", coa: "Chart of Accounts", settings: "Settings", errorLogs: "Error Logs", factoryReset: "🚨 Factory Reset",
     },
     reports: {
       overview: "Overview", products: "Products", customers: "Customers",
@@ -75,6 +81,7 @@ const translations = {
       confirm: "Are you sure?", yes: "Yes", no: "No", cancel: "Cancel",
       print: "Print / PDF", download: "Download", back: "Back",
       success: "Success", error: "Error",
+      somethingWentWrong: "Oops! Something went wrong", errorSubtitle: "An unexpected error occurred in the application.", reloadApp: "🔄 Reload Paan Counter", contactAdmin: "If the issue persists, please contact your administrator.",
     },
     shift: {
       title: "Shift Management", openShift: "Open New Shift", closeShift: "Close Shift",
@@ -175,6 +182,10 @@ const translations = {
       pending: "Pending", pendingApprovals: "Pending Approvals", history: "History",
       statement: "Statement", verifyCash: "Verify Cash", adjust: "Adjust",
       approve: "Approve", reject: "Reject",
+      pendingReceived: "Pending Transfer Received:", systemBalance: "System Balance:",
+      actualCash: "Actual Drawer Cash", noteOptional: "Note (optional)", difference: "Difference:",
+      perfectMatch: "✅ Everything is correct! Perfect Match.", shortageMsg: "Shortage: You are short of cash!",
+      surplusMsg: "Surplus: You have extra cash!", confirmReconcile: "Confirm & Reconcile",
     },
     return: {
       title: "Return Items", returnReason: "Return reason (optional)",
@@ -207,7 +218,13 @@ const translations = {
   },
 
   hi: {
-    app: { title: "पान काउंटर" },
+    app: { title: "पान काउंटर", loggedOutOtherDevice: "आपका खाता किसी अन्य डिवाइस पर लॉग इन किया गया है। आप लॉग आउट हो जाएंगे।", offlineNotice: "आप ऑफ़लाइन हैं। कृपया अपना इंटरनेट कनेक्शन जांचें।" },
+    dashboard: {
+      salesModalTitle: "आज का बिक्री रजिस्टर",
+      billsModalTitle: "आज के बिल और रसीद इतिहास",
+      khataModalTitle: "ग्राहक खाता और बकाया उधार",
+      stockModalTitle: "कम स्टॉक वाले उत्पाद",
+    },
     nav: { pos: "POS", stock: "स्टॉक", credit: "क्रेडिट खाते", menu: "मेनू" },
     pos: {
       todaySales: "आज की बिक्री", billsToday: "आज के बिल", khataDue: "बकाया खाता", lowStock: "कम स्टॉक",
@@ -254,7 +271,7 @@ const translations = {
     },
     admin: {
       title: "मेनू", reports: "रिपोर्ट", expenses: "खर्च", users: "उपयोगकर्ता",
-      cashOnHand: "नकद शेष", finance: "वित्त", coa: "खाता बही", settings: "सेटिंग्स", errorLogs: "एरर लॉग",
+      cashOnHand: "नकद शेष", finance: "वित्त", coa: "खाता बही", settings: "सेटिंग्स", errorLogs: "एरर लॉग", factoryReset: "🚨 फ़ैक्टरी रीसेट",
     },
     reports: {
       overview: "अवलोकन", products: "उत्पाद", customers: "ग्राहक",
@@ -270,6 +287,7 @@ const translations = {
       confirm: "क्या आपको यकीन है?", yes: "हाँ", no: "नहीं", cancel: "रद्द करें",
       print: "प्रिंट / PDF", download: "डाउनलोड", back: "वापस",
       success: "सफल", error: "त्रुटि",
+      somethingWentWrong: "अरे! कुछ गड़बड़ हो गई", errorSubtitle: "एप्लिकेशन में एक अप्रत्याशित त्रुटि हुई।", reloadApp: "🔄 पान काउंटर को पुनः लोड करें", contactAdmin: "यदि समस्या बनी रहती है, तो कृपया अपने व्यवस्थापक से संपर्क करें।",
     },
     shift: {
       title: "शिफ्ट प्रबंधन", openShift: "नई शिफ्ट खोलें", closeShift: "शिफ्ट बंद करें",
@@ -363,6 +381,10 @@ const translations = {
       pending: "लंबित", pendingApprovals: "लंबित स्वीकृतियाँ", history: "इतिहास",
       statement: "स्टेटमेंट", verifyCash: "गल्ला मिलान", adjust: "समायोजन",
       approve: "स्वीकृत करें", reject: "अस्वीकृत करें",
+      pendingReceived: "प्राप्त ट्रांसफर (स्वीकृति लंबित):", systemBalance: "सिस्टम बैलेंस:",
+      actualCash: "गल्ले में नकद रूपये", noteOptional: "टिप्पणी (वैकल्पिक)", difference: "अंतर:",
+      perfectMatch: "✅ सब कुछ सही है! गल्ला पूरी तरह से मेल खाता है।", shortageMsg: "कमी: गल्ले में पैसे कम हैं!",
+      surplusMsg: "बिक्री: गल्ले में पैसे ज्यादा हैं!", confirmReconcile: "मिलान पक्का करें",
     },
     return: {
       title: "वापसी आइटम", returnReason: "वापसी का कारण (वैकल्पिक)",
@@ -394,7 +416,13 @@ const translations = {
   },
 
   th: {
-    app: { title: "พานเคาน์เตอร์" },
+    app: { title: "พานเคาน์เตอร์", loggedOutOtherDevice: "บัญชีของคุณเข้าสู่ระบบในอุปกรณ์อื่น คุณจะถูกออกจากระบบ", offlineNotice: "คุณอยู่ออฟไลน์ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต" },
+    dashboard: {
+      salesModalTitle: "สมุดบันทึกยอดขายวันนี้",
+      billsModalTitle: "ประวัติบิลและใบเสร็จวันนี้",
+      khataModalTitle: "บัญชีลูกหนี้และยอดค้างชำระ",
+      stockModalTitle: "แจ้งเตือนสินค้าใกล้หมด",
+    },
     nav: { pos: "POS", stock: "สต็อก", credit: "บัญชีเครดิต", menu: "เมนู" },
     pos: {
       todaySales: "ยอดขายวันนี้", billsToday: "บิลวันนี้", khataDue: "ยอดค้างชำระ", lowStock: "สต็อกน้อย",
@@ -527,6 +555,10 @@ const translations = {
       pending: "รอดำเนินการ", pendingApprovals: "รออนุมัติ", history: "ประวัติ",
       statement: "ใบแจ้งยอด", verifyCash: "ตรวจสอบเงินสด", adjust: "ปรับยอด",
       approve: "อนุมัติ", reject: "ปฏิเสธ",
+      pendingReceived: "รายการโอนที่รอการอนุมัติ:", systemBalance: "ยอดเงินในระบบ:",
+      actualCash: "เงินสดในเก๊ะจริง", noteOptional: "หมายเหตุ (ไม่บังคับ)", difference: "ผลต่าง:",
+      perfectMatch: "✅ ถูกต้องทั้งหมด! ยอดตรงกันสมบูรณ์", shortageMsg: "เงินขาด: เงินในเก๊ะขาด!",
+      surplusMsg: "เงินเกิน: มีเงินในเก๊ะเกิน!", confirmReconcile: "ยืนยันการปรับยอด",
     },
     return: { title: "คืนสินค้า", refundTotal: "ยอดคืนเงิน", processReturn: "ดำเนินการคืน" },
     coa: {
@@ -549,7 +581,13 @@ const translations = {
   },
 
   my: {
-    app: { title: "ပန်ကောင်တာ" },
+    app: { title: "ပန်ကောင်တာ", loggedOutOtherDevice: "သင့်အကောင့်သည် အခြားစက်ပစ္စည်းတွင် ဝင်ရောက်ထားသည်။ လော့ဂ်အောက် လုပ်ပါမည်။", offlineNotice: "အော့ဖ်လိုင်း ဖြစ်နေသည်။ အင်တာနက် လိုင်းကို စစ်ဆေးပါ။" },
+    dashboard: {
+      salesModalTitle: "ယနေ့ အရောင်းမှတ်တမ်း",
+      billsModalTitle: "ယနေ့ ဘေလ်နှင့် ပြေစာမှတ်တမ်း",
+      khataModalTitle: "ဖောက်သည် ခါတာ နှင့် ကျန်ရှိသော အကြွေး",
+      stockModalTitle: "လက်ကျန်နည်းသော ပစ္စည်းများ",
+    },
     nav: { pos: "POS", stock: "စတော့", credit: "အကြွေးအကောင့်များ", menu: "မီနူး" },
     pos: {
       todaySales: "ယနေ့ရောင်းရငွေ", billsToday: "ယနေ့ဘေလ်များ", khataDue: "အကြွေးကျန်", lowStock: "စတော့နည်း",
@@ -668,6 +706,10 @@ const translations = {
       pending: "ဆိုင်းငံ့", pendingApprovals: "အတည်ပြုရန်စောင့်ဆိုင်းဆဲ", history: "မှတ်တမ်း",
       statement: "ရှင်းတမ်း", verifyCash: "ငွေသားစစ်ဆေးရန်", adjust: "ချိန်ညှိရန်",
       approve: "အတည်ပြုရန်", reject: "ငြင်းပယ်ရန်",
+      pendingReceived: "လက်ခံရရှိသော လွှဲပြောင်းမှု (အတည်ပြုရန် ကျန်ရှိ):", systemBalance: "စနစ်လက်ကျန် ငွေ:",
+      actualCash: "ဂလ္လာအကွက်ထဲရှိ လက်ငင်းငွေ", noteOptional: "မှတ်ချက် (စိတ်ကြိုက်)", difference: "ကွာခြားချက်:",
+      perfectMatch: "✅ အားလုံး မှန်ကန်ပါသည်! ကွက်တိ ကိုက်ညီပါသည်", shortageMsg: "လိုအပ်ချက်: ဂလ္လာတွင် ငွေလိုနေပါသည်!",
+      surplusMsg: "ပိုလျှံမှု: ဂလ္လာတွင် ငွေပိုနေပါသည်!", confirmReconcile: "အတည်ပြု၍ စာရင်းညှိပါ",
     },
     return: { title: "ပစ္စည်းပြန်အမ်းရန်", refundTotal: "ငွေပြန်အမ်းစုစုပေါင်း", processReturn: "ပြန်အမ်းခြင်းလုပ်ဆောင်ရန်" },
     coa: {

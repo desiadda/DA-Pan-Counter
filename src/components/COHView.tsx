@@ -232,7 +232,7 @@ export default function COHView({ user }) {
       {pending.length > 0 && (
         <div style={{ background: "var(--card-bg, #fffbebf5)", border: "2px solid #f59e0b", borderRadius: "12px", padding: "12px", marginBottom: "14px" }}>
           <div style={{ fontWeight: 700, color: "#b45309", marginBottom: "8px", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "6px" }}>
-            <span>📩</span> <span>Pending Transfer Received (स्वीकृति लंबित):</span>
+            <span>📩</span> <span>{tr("coh.pendingReceived")}</span>
           </div>
           {pending.map(tx => (
             <div key={tx.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--bg, #ffffff)", padding: "10px 12px", borderRadius: "8px", border: "1px solid #fde68a", marginTop: "6px" }}>

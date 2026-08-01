@@ -214,9 +214,7 @@ function AppContent() {
       if (currentUser && currentUser.sessionId) {
         const matched = currentUsers.find(u => u.id === currentUser.id);
         if (matched && matched.sessionId && matched.sessionId !== currentUser.sessionId) {
-          const alertMsg = lang === "hi" 
-            ? "आपका खाता किसी अन्य डिवाइस पर लॉग इन किया गया है। आप लॉग आउट हो जाएंगे।"
-            : "Your account has been logged in on another device. You will be logged out.";
+          const alertMsg = tr("app.loggedOutOtherDevice");
           alert(alertMsg);
           localStorage.removeItem("pan_user");
           useAuthStore.setState({ user: null });
@@ -455,9 +453,7 @@ function AppContent() {
         <div className="bg-red-500 text-white py-2 px-4 text-xs font-semibold text-center flex items-center justify-center gap-2">
           <span>⚠️</span>
           <span>
-            {lang === "hi" 
-              ? "आप ऑफ़लाइन हैं। कृपया अपना इंटरनेट कनेक्शन जांचें।" 
-              : "You are offline. Please check your internet connection."}
+            {tr("app.offlineNotice")}
           </span>
         </div>
       )}

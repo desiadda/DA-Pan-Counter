@@ -61,18 +61,18 @@ export default class GlobalErrorBoundary extends Component<Props, State> {
           <div style={styles.card}>
             <div style={styles.iconContainer}>⚠️</div>
             <h1 style={styles.title}>
-              {lang === "hi" ? "अरे! कुछ गड़बड़ हो गई" : "Oops! Something went wrong"}
+              {t("common.somethingWentWrong", lang)}
             </h1>
-            <p style={styles.subtitle}>Something went wrong with the application layout.</p>
+            <p style={styles.subtitle}>{t("common.errorSubtitle", lang)}</p>
             
             <div style={styles.errorDetails}>
               <code>{this.state.error?.message || "Unknown rendering error"}</code>
             </div>
 
             <button onClick={this.handleReload} style={styles.button}>
-              🔄 Reload Paan Counter
+              {t("common.reloadApp", lang)}
             </button>
-            <p style={styles.footer}>If the issue persists, please contact your administrator.</p>
+            <p style={styles.footer}>{t("common.contactAdmin", lang)}</p>
           </div>
         </div>
       );

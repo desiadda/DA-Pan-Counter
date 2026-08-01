@@ -465,9 +465,7 @@ function PurchaseOrderForm({ initialItems, products, suppliers, orders, paymentM
 
       {!supplierId ? (
         <div style={{ padding: "1rem", textAlign: "center", color: "#64748b", border: "1px dashed #cbd5e1", borderRadius: "8px", margin: "1rem 0", fontSize: "0.85rem" }}>
-          {lang === "hi" 
-            ? "⚠️ कृपया आइटम जोड़ने के लिए पहले सप्लायर चुनें।"
-            : `⚠️ ${tr("purchase.selectSupplierFirst")}`}
+          ⚠️ {tr("purchase.selectSupplierFirst")}
         </div>
       ) : (
         <div style={styles.itemsSection}>

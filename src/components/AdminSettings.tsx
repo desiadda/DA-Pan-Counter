@@ -4,7 +4,11 @@ import { sha256 } from "../db/hash";
 import { useConfirmStore } from "../stores/confirmStore";
 import { useUIStore } from "../stores/uiStore";
 import { useLangStore } from "../stores/langStore";
+import { useT } from "../lang/translations";
 import { getErrors, getCategories, markAllAsRead, clearErrors } from "../db/errorLog";
+
+// ... inside AdminSettings function:
+// const tr = useT(lang);
 import { logError } from "../db/errorLog";
 import { useDBStore } from "../stores/dbStore";
 import { useAuthStore } from "../stores/authStore";
@@ -38,6 +42,7 @@ const getStore = () => {
 
 export default function AdminSettings({ onBack }) {
   const lang = useLangStore((s) => s.lang);
+  const tr = useT(lang);
   const confirm = useConfirmStore((s) => s.confirm);
   const theme = useUIStore((s) => s.theme);
   const toggleTheme = useUIStore((s) => s.toggleTheme);
@@ -671,7 +676,7 @@ export default function AdminSettings({ onBack }) {
           {/* Factory Reset */}
           <div style={{ ...styles.card, border: "1px solid #fee2e2", backgroundColor: theme === "dark" ? "#2d1515" : "#fff5f5" }}>
             <h3 style={{ ...styles.cardHeader, color: "#991b1b", borderBottom: "1px solid #fee2e2" }}>
-              {lang === "hi" ? "🚨 फ़ैक्टरी रीसेट" : "🚨 Factory Reset"}
+              {tr("admin.factoryReset")}
             </h3>
             <p style={{ fontSize: "0.8rem", color: "#b91c1c", marginBottom: "1rem", fontWeight: "600", lineHeight: 1.5 }}>
               ⚠️ Warning: This will permanently delete ALL transactions, products, stock history, credit accounts, suppliers, and expenses. This cannot be undone.
