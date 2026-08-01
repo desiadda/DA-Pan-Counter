@@ -38,6 +38,7 @@ export default function InventoryView({ subPath, onNavigate }) {
   const [sellingPrice, setSellingPrice] = useState("");
   const [stock, setStock] = useState("");
   const [lowStockLimit, setLowStockLimit] = useState(String(DEFAULT_LOW_STOCK_LIMIT));
+  const [isNonInventory, setIsNonInventory] = useState(false);
   
   const [isCigarette, setIsCigarette] = useState(false);
   const [packSize, setPackSize] = useState(String(DEFAULT_PACK_SIZE));
@@ -86,11 +87,12 @@ export default function InventoryView({ subPath, onNavigate }) {
     setEditId(p.id);
     setName(p.name);
     setCategory(p.category);
-    setCostPrice(p.costPrice.toString());
+    setCostPrice(p.costPrice != null ? p.costPrice.toString() : "0");
     setSellingPrice(p.sellingPrice.toString());
     setStock(p.stock.toString());
     setLowStockLimit(p.lowStockLimit.toString());
     setBarcode(p.barcode || "");
+    setIsNonInventory(!!p.isNonInventory || p.stock >= 9999);
     
     setIsCigarette(p.isCigarette || false);
     setPackSize(p.packSize ? p.packSize.toString() : String(DEFAULT_PACK_SIZE));
@@ -117,6 +119,7 @@ export default function InventoryView({ subPath, onNavigate }) {
     setStock("");
     setLowStockLimit(String(DEFAULT_LOW_STOCK_LIMIT));
     setBarcode("");
+    setIsNonInventory(false);
     setIsCigarette(false);
     setPackSize(String(DEFAULT_PACK_SIZE));
     setCostPricePack("");
@@ -132,20 +135,22 @@ export default function InventoryView({ subPath, onNavigate }) {
       alert("❌ You do not have permission to add/edit products.");
       return;
     }
-    if (!name.trim() || !costPrice || !sellingPrice) {
-      alert("Please fill all pricing fields.");
+    if (!name.trim() || sellingPrice === "" || isNaN(parseFloat(sellingPrice))) {
+      alert(tr("inventory.pleaseFill"));
       return;
     }
-    if (!isCigarette && !stock) {
-      alert("Please fill stock amount.");
+    if (!isCigarette && !isNonInventory && !stock) {
+      alert(tr("inventory.pleaseFillStock"));
       return;
     }
     if (isCigarette && (!costPricePack || !sellingPricePack || !stockPack || !packSize)) {
-      alert("Please fill all box/pack variant fields.");
+      alert(tr("inventory.pleaseFillVariant"));
       return;
     }
     let totalStock = parseInt(stock) || 0;
-    if (isCigarette) {
+    if (isNonInventory) {
+      totalStock = 9999;
+    } else if (isCigarette) {
       const bStock = parseInt(stockPack) || 0;
       const pSize = parseInt(packSize) || DEFAULT_PACK_SIZE;
       const lStock = parseInt(looseStock) || 0;
@@ -156,10 +161,11 @@ export default function InventoryView({ subPath, onNavigate }) {
       name: name.trim(),
       category,
       barcode: barcode.trim(),
-      costPrice: parseFloat(costPrice),
-      sellingPrice: parseFloat(sellingPrice),
+      costPrice: parseFloat(costPrice) || 0,
+      sellingPrice: parseFloat(sellingPrice) || 0,
       stock: totalStock,
-      lowStockLimit: parseInt(lowStockLimit),
+      lowStockLimit: isNonInventory ? 0 : (parseInt(lowStockLimit) || 0),
+      isNonInventory,
       isCigarette,
       packSize: isCigarette ? parseInt(packSize) : null,
       costPricePack: isCigarette ? parseFloat(costPricePack) : null,
@@ -171,7 +177,7 @@ export default function InventoryView({ subPath, onNavigate }) {
       await dbService.saveProduct(updatedProduct);
       handleCancel();
       loadProducts();
-      alert("Product saved successfully!");
+      alert(tr("inventory.saved"));
     } catch (err) {
       logError("INVENTORY", err.message, err.stack);
       alert("❌ " + (err.message || "Failed to save product"));
@@ -341,22 +347,31 @@ export default function InventoryView({ subPath, onNavigate }) {
           </div>
           <div className="input-group">
             <label className="input-label">Cost Price (฿)</label>
-            <input type="number" value={costPrice} onChange={(e) => setCostPrice(e.target.value)} placeholder="Store purchase price" className="input-field" />
+            <input type="number" value={costPrice} onChange={(e) => setCostPrice(e.target.value)} placeholder="Store purchase price (optional)" className="input-field" />
           </div>
           <div className="input-group">
             <label className="input-label">Selling Price (฿)</label>
             <input type="number" value={sellingPrice} onChange={(e) => setSellingPrice(e.target.value)} placeholder="Counter selling price" className="input-field" />
           </div>
-          {!isCigarette && (
+          <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.5rem 0", borderBottom: "1px solid var(--border)" }}>
+            <span style={{ fontSize: "0.85rem", fontWeight: "600", color: "var(--text)" }}>{tr("inventory.nonInventory")}</span>
+            <label className="switch">
+              <input type="checkbox" checked={isNonInventory} onChange={(e) => setIsNonInventory(e.target.checked)} />
+              <span className="slider"></span>
+            </label>
+          </div>
+          {!isNonInventory && !isCigarette && (
             <div className="input-group">
               <label className="input-label">Current Stock</label>
               <input type="number" value={stock} onChange={(e) => setStock(e.target.value)} placeholder="In-stock count" className="input-field" />
             </div>
           )}
-          <div className="input-group">
-            <label className="input-label">Low Stock Alert Limit (sticks/pcs)</label>
-            <input type="number" value={lowStockLimit} onChange={(e) => setLowStockLimit(e.target.value)} placeholder="Warning limit" className="input-field" />
-          </div>
+          {!isNonInventory && (
+            <div className="input-group">
+              <label className="input-label">Low Stock Alert Limit (sticks/pcs)</label>
+              <input type="number" value={lowStockLimit} onChange={(e) => setLowStockLimit(e.target.value)} placeholder="Warning limit" className="input-field" />
+            </div>
+          )}
           <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.75rem 0", borderBottom: "1px solid var(--border)" }}>
             <span style={{ fontSize: "0.85rem", fontWeight: "600", color: "var(--text)" }}>Link Single / Box product variants (Cigarette items)</span>
             <label className="switch">
@@ -456,7 +471,8 @@ export default function InventoryView({ subPath, onNavigate }) {
               </thead>
               <tbody>
                 {displayProducts().map(p => {
-                  const isLow = p.stock <= p.lowStockLimit;
+                  const isUnlimited = p.isNonInventory || p.stock >= 9999;
+                  const isLow = !isUnlimited && p.stock <= p.lowStockLimit;
                   const isExpanded = !!expandedBatches[p.id];
                   const hasBatches = p.batches && p.batches.length > 0;
                   return (
@@ -477,7 +493,7 @@ export default function InventoryView({ subPath, onNavigate }) {
                         </td>
                         <td data-label="Category" style={{ padding: "0.6rem 0.5rem", verticalAlign: "middle" }}>{p.category}</td>
                         <td data-label="Cost" style={{ padding: "0.6rem 0.5rem", verticalAlign: "middle" }}>
-                          {p.isCigarette ? <span>฿{p.costPrice} / ฿{p.costPricePack}</span> : <span>฿{p.costPrice}</span>}
+                          {p.isCigarette ? <span>฿{p.costPrice} / ฿{p.costPricePack}</span> : <span>฿{p.costPrice || 0}</span>}
                         </td>
                         <td data-label="Sell" style={{ padding: "0.6rem 0.5rem", verticalAlign: "middle" }}>
                           {p.isCigarette ? <span>฿{p.sellingPrice} / ฿{p.sellingPricePack}</span> : <span>฿{p.sellingPrice}</span>}
@@ -486,7 +502,11 @@ export default function InventoryView({ subPath, onNavigate }) {
                           {(() => { const m = getMarginPct(p); return m === null ? <span className="text-muted">—</span> : <span style={{ fontWeight: 700, color: getMarginColor(m) }}>{m.toFixed(0)}%</span>; })()}
                         </td>
                         <td data-label="Stock" style={{ padding: "0.6rem 0.5rem", verticalAlign: "middle" }}>
-                          {p.isCigarette ? (
+                          {isUnlimited ? (
+                            <span style={{ fontWeight: "bold", color: "#16a34a", fontSize: "0.85rem" }}>
+                              ⚡ {tr("inventory.unlimited")}
+                            </span>
+                          ) : p.isCigarette ? (
                             <span style={{ fontWeight: "bold", color: isLow ? "#ea580c" : "inherit" }}>
                               {p.stock}p / {(p.stockPack != null ? p.stockPack : Math.floor(p.stock / (p.packSize || DEFAULT_PACK_SIZE)))}box
                               {isLow && <span className="stock-badge stock-badge-low" style={{ marginLeft: 4 }}>⚠️</span>}

@@ -69,8 +69,9 @@ export default function POSView({ user }) {
     const price = isPack ? product.sellingPricePack : product.sellingPrice;
     const cost = isPack ? product.costPricePack : product.costPrice;
     const requiredSticks = isPack ? (product.packSize || DEFAULT_PACK_SIZE) : 1;
+    const isUnlimited = product.isNonInventory || product.stock >= 9999;
 
-    if (product.stock < requiredSticks) {
+    if (!isUnlimited && product.stock < requiredSticks) {
       alert("Not enough stock available for this selection.");
       return;
     }
@@ -83,7 +84,7 @@ export default function POSView({ user }) {
         .filter(item => item.realProductId === product.id || item.productId === product.id)
         .reduce((sum, item) => sum + (item.quantity * (item.isPack ? (product.packSize || DEFAULT_PACK_SIZE) : 1)), 0);
 
-      if (totalSticksInCart + requiredSticks > product.stock) {
+      if (!isUnlimited && totalSticksInCart + requiredSticks > product.stock) {
         alert("Cannot add more. Exceeds total available stock!");
         return prev;
       }
@@ -104,6 +105,7 @@ export default function POSView({ user }) {
         costPrice: cost,
         quantity: 1,
         currentStock: product.stock,
+        isNonInventory: isUnlimited,
         packSize: product.packSize || DEFAULT_PACK_SIZE,
         isPack,
       }];
@@ -119,7 +121,7 @@ export default function POSView({ user }) {
       if (newQty <= 0) {
         const user = useAuthStore.getState().user;
         const _isAdmin = user?.role === "admin";
-    if (user && !_isAdmin && !user.permissions?.posVoidCart) {
+        if (user && !_isAdmin && !user.permissions?.posVoidCart) {
           alert("❌ You do not have permission to delete items from the cart.");
           return prev;
         }
@@ -132,8 +134,9 @@ export default function POSView({ user }) {
         .reduce((sum, item) => sum + (item.quantity * (item.isPack ? (item.packSize || DEFAULT_PACK_SIZE) : 1)), 0);
 
       const newSticksForTarget = newQty * (targetItem.isPack ? (targetItem.packSize || DEFAULT_PACK_SIZE) : 1);
+      const isUnlimited = targetItem.isNonInventory || targetItem.currentStock >= 9999;
 
-      if (otherSticksInCart + newSticksForTarget > targetItem.currentStock) {
+      if (!isUnlimited && otherSticksInCart + newSticksForTarget > targetItem.currentStock) {
         alert("Not enough stock available!");
         return prev;
       }

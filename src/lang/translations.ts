@@ -52,6 +52,8 @@ const translations = {
       edit: "Edit", history: "History", delete: "Delete",
       saved: "Product saved successfully!", pleaseFill: "Please fill all pricing fields.",
       pleaseFillStock: "Please fill stock amount.", pleaseFillVariant: "Please fill all box/pack variant fields.",
+      nonInventory: "Non-Inventory / Freshly Prepared Item (Unlimited Stock & Optional Cost)",
+      unlimited: "Unlimited (Prepared)",
     },
     credit: {
       title: "Credit Accounts", search: "Search customers...",
@@ -259,6 +261,8 @@ const translations = {
       edit: "संपादित", history: "इतिहास", delete: "हटाएं",
       saved: "उत्पाद सफलतापूर्वक सेव हुआ!", pleaseFill: "कृपया सभी मूल्य फील्ड भरें।",
       pleaseFillStock: "कृपया स्टॉक राशि भरें।", pleaseFillVariant: "कृपया सभी बॉक्स/पैक फील्ड भरें।",
+      nonInventory: "बिना स्टॉक / ताज़ा तैयार आइटम (अनलिमिटेड स्टॉक & ऐच्छिक लागत)",
+      unlimited: "अनलिमिटेड (तैयार)",
     },
     credit: {
       title: "क्रेडिट खाते", search: "ग्राहक खोजें...",
@@ -448,7 +452,9 @@ const translations = {
       costPrice: "ราคาทุน (฿)", sellingPrice: "ราคาขาย (฿)",
       currentStock: "สต็อกปัจจุบัน", lowStockLimit: "ขีดจำกัดสต็อกน้อย",
       linkVariants: "เชื่อมโยงรูปแบบเดี่ยว/กล่อง (บุหรี่)",
-      saved: "บันทึกสินค้าสำเร็จ!",
+      saved: "บันทึกสินค้าเรียบร้อยแล้ว!",
+      nonInventory: "สินค้าไม่มีสต็อก / สินค้าปรุงสด (สต็อกไม่จำกัด & ต้นทุนไม่บังคับ)",
+      unlimited: "ไม่จำกัด (ปรุงสด)",
       edit: "แก้ไข", history: "ประวัติ", delete: "ลบ",
     },
     credit: {
@@ -604,6 +610,8 @@ const translations = {
       productName: "ထုတ်ကုန်အမည်", category: "အမျိုးအစား",
       saved: "ထုတ်ကုန်သိမ်းဆည်းပြီးပါပြီ!",
       edit: "ပြင်ဆင်", history: "မှတ်တမ်း", delete: "ဖျက်ရန်",
+      nonInventory: "စတော့မလိုသော / လတ်လတ်ဆတ်ဆတ် ပြင်ဆင်သောပစ္စည်း (အကန့်အသတ်မဲ့စတော့)",
+      unlimited: "အကန့်အသတ်မဲ့",
     },
     credit: {
       title: "အကြွေးအကောင့်များ", search: "ဖောက်သည်ရှာရန်...",
