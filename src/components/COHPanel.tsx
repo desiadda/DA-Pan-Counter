@@ -3,6 +3,7 @@ import { dbService } from "../firebase";
 import { logError } from "../db/errorLog";
 import { useLangStore } from "../stores/langStore";
 import { useT } from "../lang/translations";
+import { getUsers } from "../db/auth";
 import ModalPortal from "./ModalPortal";
 import { DEFAULT_STORE_NAME } from "../constants";
 
@@ -315,7 +316,8 @@ export default function COHPanel({ user, users, onClose }) {
     printWindow.document.close();
   };
 
-  const otherUsers = users.filter(u => u.id !== user.id);
+  const availableUsers = (users && Array.isArray(users) && users.length > 0) ? users : getUsers();
+  const otherUsers = (availableUsers || []).filter(u => u?.id !== user?.id);
   const formatDate = (ts) => new Date(ts).toLocaleString();
 
   return (

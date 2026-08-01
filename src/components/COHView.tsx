@@ -211,16 +211,19 @@ export default function COHView({ user }) {
     setStmt({ name: u.name, balance: dbService.getBalance(u.id) || 0, rows });
   };
 
+  const canAdjust = user?.role === "admin" || !!user?.permissions?.settings;
+
   const tabs = [
     { key: "balances", label: `💰 ${tr("coh.balance")}` },
     { key: "transfer", label: `📤 ${tr("coh.transfer")}` },
     { key: "pending", label: `📩 ${tr("coh.pending")}${pending.length > 0 ? ` (${pending.length})` : ""}` },
-    { key: "adjust", label: `⚙️ ${tr("coh.adjust")}` },
+    ...(canAdjust ? [{ key: "adjust", label: `⚙️ ${tr("coh.adjust")}` }] : []),
     { key: "history", label: `📒 ${tr("coh.history")}` },
     { key: "reconcile", label: `🔍 ${tr("coh.verifyCash")}` },
   ];
 
-  const otherUsers = users.filter(u => u.id !== user?.id);
+  const availableUsers = (users && Array.isArray(users) && users.length > 0) ? users : getUsers();
+  const otherUsers = (availableUsers || []).filter(u => u?.id !== user?.id);
 
   return (
     <div className="coh-container">

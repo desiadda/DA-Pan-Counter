@@ -261,7 +261,7 @@ function AppContent() {
     if (key === "coa") return user?.role === "admin" || !!user?.permissions?.finance;
     if (key === "settings") return !!user?.permissions?.settings;
     if (key === "users") return user?.role === "admin" || !!user?.permissions?.settingsManageUsers;
-    if (key === "coh") return !!user?.permissions?.settings;
+    if (key === "coh") return true;
     if (key === "errors") return !!user?.permissions?.settings;
     if (key === "audit") return user?.role === "admin" || !!user?.permissions?.settings;
     return !!user?.permissions?.[key];
@@ -269,7 +269,7 @@ function AppContent() {
 
   // Section-level permission guard for direct URL / render protection
   const sectionPerm = (key: string) => {
-    if (key === "pos" || key === "menu") return null;
+    if (key === "pos" || key === "menu" || key === "coh") return null;
     if (key === "inventory") return "stock";
     if (key === "khata") return "khata";
     if (key === "reports") return "reports";
@@ -277,7 +277,7 @@ function AppContent() {
     if (key === "finance") return "finance";
     if (key === "coa") return "finance";
     if (key === "users") return "users";
-    if (key === "settings" || key === "coh" || key === "errors" || key === "audit") return "settings";
+    if (key === "settings" || key === "errors" || key === "audit") return "settings";
     return null;
   };
 
