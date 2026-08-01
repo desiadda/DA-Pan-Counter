@@ -33,6 +33,8 @@ const translations = {
       enterCash: "Received cash must be greater or equal to total.",
       selectUdhaar: "Please select a customer for Udhaar.",
       quickAdd10: "+10", quickAdd50: "+50", quickAdd100: "+100", quickAdd500: "+500",
+      quickTapFavorites: "⭐ Top Favorites (Fast Tap)",
+      pinHint: "Click ⭐ on any item to pin/unpin",
     },
     inventory: {
       title: "Inventory Manager",
@@ -158,6 +160,9 @@ const translations = {
     },
     stock: {
       adjustTitle: "Adjust Stock", stockCount: "Stock Count",
+      customAmount: "Custom Amount",
+      quickTapFavorites: "⭐ Top Favorites (Fast Tap)",
+      pinHint: "Click ⭐ on any item to pin/unpin",
       movements: "Stock Movements", reasons: "Reason", note: "Note (optional)",
       enterQty: "Enter a quantity (use +/- for add/remove).",
       qty: "Quantity", failed: "Failed to adjust stock",
@@ -167,13 +172,6 @@ const translations = {
       systemStock: "System Stock", counted: "Counted", difference: "Difference",
       openingBatch: "Opening Batch", runningBalance: "Running Balance",
       verifySystem: "Ledger does not match system stock — please review.",
-    },
-    common: {
-      close: "Close", save: "Save", delete: "Delete", edit: "Edit",
-      loading: "Loading...", noData: "No data available",
-      confirm: "Are you sure?", yes: "Yes", no: "No", cancel: "Cancel",
-      print: "Print / PDF", download: "Download", back: "Back",
-      success: "Success", error: "Error",
     },
     auth: {
       enterPin: "Enter your PIN", login: "Login", logout: "Log Out",
@@ -353,6 +351,9 @@ const translations = {
       confirmQ: "इन उत्पादों पर मूल्य परिवर्तन लागू करें?", confirmImpact: "इन्वेंट्री मूल्य प्रभाव",
       apply: "लागू करें", back: "वापस", noMatch: "फ़िल्टर से मेल खाता कोई उत्पाद नहीं।",
       updated: "उत्पाद सफलतापूर्वक अपडेट हुए!", selectAtLeastOne: "कम से कम एक उत्पाद चुनें और मान्य मान दर्ज करें।",
+      customAmount: "कस्टम राशि",
+      quickTapFavorites: "⭐ टॉप पसंदीदा आइटम्स (फास्ट टैप)",
+      pinHint: "पिन/अनपिन करने के लिए ⭐ पर क्लिक करें",
       products: "उत्पाद",
     },
     stmt: {
@@ -513,6 +514,9 @@ const translations = {
       statement: "ใบแจ้งยอด", paySupplier: "จ่ายซัพพลายเออร์", viewLedger: "ดูบัญชี", hideLedger: "ซ่อนบัญชี",
       ledger: "บัญชีรายการ", closingBalance: "ยอดคงเหลือปลายงวด",
       udhaarCredit: "เครดิต", recordPaymentTo: "บันทึกการชำระเงินให้",
+      customAmount: "จำนวนเงินกำหนดเอง",
+      quickTapFavorites: "⭐ รายการยอดนิยม (แตะเร็ว)",
+      pinHint: "คลิก ⭐ เพื่อปักหมุด/ยกเลิกปักหมุด",
       amount: "จำนวน (฿)", submitPayment: "ส่งชำระเงิน",
       deleteQ: "ต้องการลบซัพพลายเออร์นี้หรือไม่?",
       noMatch: "ไม่พบซัพพลายเออร์", purchases: "การซื้อ",
@@ -611,6 +615,9 @@ const translations = {
       saved: "ထုတ်ကုန်သိမ်းဆည်းပြီးပါပြီ!",
       edit: "ပြင်ဆင်", history: "မှတ်တမ်း", delete: "ဖျက်ရန်",
       nonInventory: "စတော့မလိုသော / လတ်လတ်ဆတ်ဆတ် ပြင်ဆင်သောပစ္စည်း (အကန့်အသတ်မဲ့စတော့)",
+      customAmount: "စိတ်ကြိုက်ပမာဏ",
+      quickTapFavorites: "⭐ လူကြိုက်များသော ပစ္စည်းများ",
+      pinHint: "ပင်ထိုးရန်/ဖြုတ်ရန် ⭐ ကို နှိပ်ပါ",
       unlimited: "အကန့်အသတ်မဲ့",
     },
     credit: {
