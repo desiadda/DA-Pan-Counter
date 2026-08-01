@@ -5,9 +5,28 @@ import App from "./App"
 import GlobalErrorBoundary from "./components/GlobalErrorBoundary"
 import "./index.css"
 
+// ── Anti-Caching & Instant Cache Invalidation ──
+// Unregister all legacy service workers & wipe CacheStorage on startup so clients always fetch fresh code
+if (typeof window !== "undefined") {
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      for (const registration of registrations) {
+        registration.unregister();
+      }
+    }).catch(() => {});
+  }
+  if ("caches" in window) {
+    caches.keys().then((keys) => {
+      for (const key of keys) {
+        caches.delete(key);
+      }
+    }).catch(() => {});
+  }
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: { staleTime: 30_000, retry: 1, refetchOnWindowFocus: false },
+    queries: { staleTime: 0, retry: 1, refetchOnWindowFocus: true },
   },
 })
 
