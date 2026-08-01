@@ -4,6 +4,7 @@ import { LS_KEYS } from "../constants";
 import { logError } from "./errorLog";
 import { getLocalData, setLocalData } from "./storage";
 import { logAudit, getActorInfo } from "./audit";
+import { getUsers } from "./auth";
 
 function getBalancesRaw() {
   return getLocalData(LS_KEYS.COH_BALANCES, {});
@@ -62,13 +63,14 @@ export function setBalanceLocal(userId, balance) {
   saveBalancesRaw(balances);
 }
 
-export function getAllBalances(users) {
-  const balances = getBalancesRaw();
-  return users.map(u => ({
-    id: u.id,
-    name: u.name,
-    role: u.role,
-    coh: balances[u.id] || 0,
+export function getAllBalances(users?: any[]) {
+  const allUsers = (users && Array.isArray(users) && users.length > 0) ? users : (getUsers() || []);
+  const balances = getBalancesRaw() || {};
+  return (allUsers || []).map(u => ({
+    id: u?.id || "",
+    name: u?.name || "Unknown",
+    role: u?.role || "staff",
+    coh: balances[u?.id] || 0,
   }));
 }
 

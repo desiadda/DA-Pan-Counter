@@ -91,7 +91,7 @@ export default function COAView({ user }) {
   const liveBalances = useMemo(() => {
     const b = {};
     let cash = 0;
-    (cohBalances || []).forEach(c => { cash += c?.balance || 0; });
+    (cohBalances || []).forEach(c => { cash += c?.coh ?? c?.balance ?? 0; });
     b["coh"] = cash;
     b["bank"] = (banks || []).reduce((s, x) => s + (x?.balance || 0), 0);
     b["receivable"] = (customers || []).reduce((s, c) => s + (c?.balance || 0), 0);
@@ -114,9 +114,9 @@ export default function COAView({ user }) {
         let bal = a.openingBalance || 0;
         (entries || []).filter(e => e?.accountId === a.id).forEach(e => {
           if (isCreditType) {
-            bal += (e.credit || 0) - (e.debit || 0);
+            bal += (e?.credit || 0) - (e?.debit || 0);
           } else {
-            bal += (e.debit || 0) - (e.credit || 0);
+            bal += (e?.debit || 0) - (e?.credit || 0);
           }
         });
         map[a.id] = bal;
@@ -126,7 +126,7 @@ export default function COAView({ user }) {
   }, [accounts, entries, liveBalances]);
 
   const sortedAccounts = useMemo(() => {
-    return [...(accounts || [])].sort((a, b) => {
+    return [...(accounts || [])].filter(Boolean).sort((a, b) => {
       const orderA = TYPE_ORDER[a?.type] ?? 99;
       const orderB = TYPE_ORDER[b?.type] ?? 99;
       if (orderA !== orderB) return orderA - orderB;
@@ -136,7 +136,8 @@ export default function COAView({ user }) {
 
   const trial = useMemo(() => {
     let debit = 0, credit = 0;
-    const rows = (sortedAccounts || []).map(a => {
+    const rows = (sortedAccounts || []).filter(Boolean).map(a => {
+      if (!a) return null;
       const bal = accountBalances[a.id] || 0;
       const isDebitType = a.type === "asset" || a.type === "expense";
       if (bal >= 0) {
@@ -145,7 +146,7 @@ export default function COAView({ user }) {
       }
       if (isDebitType) { credit += -bal; return { a, debit: 0, credit: -bal, bal }; }
       debit += -bal; return { a, debit: -bal, credit: 0, bal };
-    });
+    }).filter(Boolean);
     return { rows, debit, credit, diff: Math.abs(debit - credit) };
   }, [sortedAccounts, accountBalances]);
 

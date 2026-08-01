@@ -46,14 +46,15 @@ export const getAccounts = async () => {
       return list;
     }
     let list = getLocalData(LS_ACCOUNTS, null);
-    if (!list || list.length === 0) {
+    if (!list || !Array.isArray(list) || list.length === 0) {
       list = defaultAccounts();
       setLocalData(LS_ACCOUNTS, list);
     }
-    return list;
+    return Array.isArray(list) ? list : defaultAccounts();
   } catch (err) {
     logError("STORAGE", err.message, err.stack);
-    return getLocalData(LS_ACCOUNTS, defaultAccounts());
+    const fallback = getLocalData(LS_ACCOUNTS, defaultAccounts());
+    return Array.isArray(fallback) ? fallback : defaultAccounts();
   }
 };
 
@@ -62,7 +63,8 @@ export const saveAccount = async (account) => {
     if (isFirebaseEnabled) {
       await syncAccountToFirebase(account);
     } else {
-      const list = getLocalData(LS_ACCOUNTS, defaultAccounts());
+      let list = getLocalData(LS_ACCOUNTS, defaultAccounts());
+      if (!Array.isArray(list)) list = defaultAccounts();
       if (account.id) {
         const idx = list.findIndex(a => a.id === account.id);
         if (idx !== -1) list[idx] = { ...list[idx], ...account };
@@ -91,9 +93,11 @@ export const deleteAccount = async (id) => {
       await Promise.all(toDelete.map(d => deleteDoc(doc(db, "coa_entries", d.id))));
     } else {
       let list = getLocalData(LS_ACCOUNTS, defaultAccounts());
+      if (!Array.isArray(list)) list = defaultAccounts();
       list = list.filter(a => a.id !== id);
       setLocalData(LS_ACCOUNTS, list);
       let entries = getLocalData(LS_ENTRIES, []);
+      if (!Array.isArray(entries)) entries = [];
       entries = entries.filter(e => e.accountId !== id);
       setLocalData(LS_ENTRIES, entries);
     }
@@ -114,11 +118,13 @@ export const getEntries = async () => {
       return list;
     }
     const list = getLocalData(LS_ENTRIES, []);
-    list.sort((a, b) => (a.date || 0) - (b.date || 0));
-    return list;
+    const arr = Array.isArray(list) ? list : [];
+    arr.sort((a, b) => (a.date || 0) - (b.date || 0));
+    return arr;
   } catch (err) {
     logError("STORAGE", err.message, err.stack);
-    return getLocalData(LS_ENTRIES, []);
+    const list = getLocalData(LS_ENTRIES, []);
+    return Array.isArray(list) ? list : [];
   }
 };
 
