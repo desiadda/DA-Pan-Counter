@@ -1,7 +1,7 @@
 import { isFirebaseEnabled, saveConfig, clearConfig, getConfig, migrateLocalDataToFirestore } from "./config";
-import { getProducts, getLowStockCount, getLowStockProducts, saveProduct, deleteProduct, addStockAdjustment, getStockAdjustments, initStockAdjustmentsListener } from "./products";
-import { getTransactions, addTransaction, deleteTransaction, returnTransaction, updateTransactionPaymentMode } from "./transactions";
-import { getCustomers, saveCustomer, updateUdhaarBalance } from "./customers";
+import { getProducts, getLowStockCount, getLowStockProducts, saveProduct, deleteProduct, addStockAdjustment, getStockAdjustments, initStockAdjustmentsListener, initProductsListener } from "./products";
+import { getTransactions, addTransaction, deleteTransaction, returnTransaction, updateTransactionPaymentMode, initTransactionsListener } from "./transactions";
+import { getCustomers, saveCustomer, updateUdhaarBalance, initCustomersListener } from "./customers";
 import { login, logout, getCurrentUser, onAuthStateChangedListener, initUsersListener } from "./auth";
 import { getExpenses, addExpense, deleteExpense, EXPENSE_CATEGORIES } from "./expenses";
 import {
@@ -12,12 +12,13 @@ import {
 } from "./coh";
 import { recordPriceChange, getPriceHistory, getAllPriceHistory, clearPriceHistory } from "./priceHistory";
 import { getPurchaseOrders, savePurchaseOrder, receivePurchaseOrder, cancelPurchaseOrder } from "./purchases";
-import { getSuppliers, saveSupplier, deleteSupplier, updateSupplierBalance, recordSupplierPayment } from "./suppliers";
+import { getSuppliers, saveSupplier, deleteSupplier, updateSupplierBalance, recordSupplierPayment, initSuppliersListener } from "./suppliers";
 import { initFinanceListener, getBanks, addBank, updateBank, deleteBank, getFinanceTransactions, financeTransfer } from "./finance";
 import { initSettingsListener, saveAppSettings } from "./settings";
 import { initAuditListener, getAuditLogs, logAudit } from "./audit";
 import { getAccounts, saveAccount, deleteAccount, getEntries, addEntry, deleteEntry, initCOAListener, ACCOUNT_TYPES, SYSTEM_ACCOUNTS } from "./coa";
-
+import { getPaymentModes, savePaymentMode, deletePaymentMode } from "./paymentModes";
+import { factoryReset } from "./reset";
 
 export const dbService = {
   isFirebase: () => isFirebaseEnabled,
@@ -36,14 +37,17 @@ export const dbService = {
   addStockAdjustment,
   getStockAdjustments,
   initStockAdjustmentsListener,
+  initProductsListener,
   getTransactions,
   addTransaction,
   deleteTransaction,
   returnTransaction,
   updateTransactionPaymentMode,
+  initTransactionsListener,
   getCustomers,
   saveCustomer,
   updateUdhaarBalance,
+  initCustomersListener,
   getExpenses,
   addExpense,
   deleteExpense,
@@ -73,6 +77,7 @@ export const dbService = {
   deleteSupplier,
   updateSupplierBalance,
   recordSupplierPayment,
+  initSuppliersListener,
   migrateLocalDataToFirestore,
   getPaymentModes,
   savePaymentMode,
@@ -98,8 +103,5 @@ export const dbService = {
   initCOAListener,
   ACCOUNT_TYPES,
   SYSTEM_ACCOUNTS,
+  factoryReset,
 };
-
-import { getPaymentModes, savePaymentMode, deletePaymentMode } from "./paymentModes";
-import { factoryReset } from "./reset";
-(dbService as any).factoryReset = factoryReset;

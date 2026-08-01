@@ -63,6 +63,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       logError("AUTH", err.message, err.stack)
     }
 
+    // Single Active Session Auto-Logout Listener
+    const handleSessionTerminated = () => {
+      set({ user: null })
+      localStorage.removeItem("pan_user")
+      alert("⚠️ Your account has been logged in on another device or browser. This session has been automatically logged out.")
+    }
+    window.addEventListener("session-terminated", handleSessionTerminated)
+
     // Auto-refresh current user's permissions when Firestore syncs user list
     const handleUsersChanged = () => {
       try {
@@ -72,12 +80,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         if (!raw) return
         const allUsers: User[] = JSON.parse(raw)
         const fresh = allUsers.find(u => u.id === user.id)
-        if (fresh && fresh.permissions) {
-          const roleDefaults = fresh.role === "admin" ? ADMIN_PERMISSIONS : DEFAULT_PERMISSIONS
-          const permissions = { ...roleDefaults, ...fresh.permissions }
-          const updated = { ...user, name: fresh.name, permissions, role: fresh.role }
-          set({ user: updated })
-          localStorage.setItem("pan_user", JSON.stringify(updated))
+        if (fresh) {
+          // If session mismatch detected, terminate old session!
+          if (fresh.sessionId && user.sessionId && fresh.sessionId !== user.sessionId) {
+            handleSessionTerminated()
+            return
+          }
+          if (fresh.permissions) {
+            const roleDefaults = fresh.role === "admin" ? ADMIN_PERMISSIONS : DEFAULT_PERMISSIONS
+            const permissions = { ...roleDefaults, ...fresh.permissions }
+            const updated = { ...user, name: fresh.name, permissions, role: fresh.role, sessionId: fresh.sessionId || user.sessionId }
+            set({ user: updated })
+            localStorage.setItem("pan_user", JSON.stringify(updated))
+          }
         }
       } catch (err: any) {
         logError("AUTH", err.message, err.stack)
@@ -89,6 +104,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       window.removeEventListener("online", handleOnline)
       window.removeEventListener("offline", handleOffline)
       window.removeEventListener("users-changed", handleUsersChanged)
+      window.removeEventListener("session-terminated", handleSessionTerminated)
     }
   },
 }))

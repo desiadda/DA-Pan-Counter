@@ -1,6 +1,8 @@
 import { collection, getDocs, doc, deleteDoc, runTransaction, setDoc, onSnapshot, query, orderBy } from "firebase/firestore";
 import { db, isFirebaseEnabled, localizeError } from "./config";
+import { LS_KEYS } from "../constants";
 import { logError } from "./errorLog";
+import { setLocalData } from "./storage";
 import { useDBStore } from "../stores/dbStore";
 import { logAudit, getActorInfo } from "./audit";
 import { DEFAULT_PACK_SIZE } from "../constants";
@@ -273,5 +275,24 @@ export function initStockAdjustmentsListener(callback) {
     callback(list);
   }, (err) => {
     logError("INVENTORY", err.message, err.stack);
+  });
+}
+
+let productsListenerActive = false;
+
+export function initProductsListener() {
+  if (!isFirebaseEnabled || !db || productsListenerActive) return;
+  productsListenerActive = true;
+
+  onSnapshot(collection(db, "products"), (snapshot) => {
+    const list = [];
+    snapshot.forEach(docSnap => {
+      list.push({ id: docSnap.id, ...docSnap.data() });
+    });
+    setLocalData(LS_KEYS.PRODUCTS, list);
+    useDBStore.getState().setProducts(list);
+    window.dispatchEvent(new CustomEvent("products-changed"));
+  }, (err) => {
+    logError("INVENTORY", "Products listener error: " + err.message, err.stack);
   });
 }

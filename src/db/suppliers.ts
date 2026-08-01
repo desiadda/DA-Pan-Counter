@@ -1,10 +1,28 @@
-import { collection, doc, setDoc, addDoc, deleteDoc, getDocs, runTransaction } from "firebase/firestore";
+import { collection, doc, setDoc, addDoc, deleteDoc, getDocs, runTransaction, onSnapshot } from "firebase/firestore";
 import { db, isFirebaseEnabled } from "./config";
 import { logError } from "./errorLog";
 import { getLocalData, setLocalData } from "./storage";
 import { logAudit } from "./audit";
 
 const LS_KEY = "pan_suppliers";
+
+let suppliersListenerActive = false;
+
+export function initSuppliersListener() {
+  if (!isFirebaseEnabled || !db || suppliersListenerActive) return;
+  suppliersListenerActive = true;
+
+  onSnapshot(collection(db, "suppliers"), (snapshot) => {
+    const list = [];
+    snapshot.forEach(docSnap => {
+      list.push({ id: docSnap.id, ...docSnap.data() });
+    });
+    setLocalData(LS_KEY, list);
+    window.dispatchEvent(new CustomEvent("suppliers-changed"));
+  }, (err) => {
+    logError("STORAGE", "Suppliers listener error: " + err.message, err.stack);
+  });
+}
 
 async function syncSupplierToFirebase(supplier) {
   const { id, ...data } = supplier;

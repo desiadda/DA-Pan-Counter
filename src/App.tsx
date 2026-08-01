@@ -178,6 +178,10 @@ function AppContent() {
     dbService.initFinanceListener();
     dbService.initCOAListener();
     dbService.initSettingsListener();
+    dbService.initProductsListener?.();
+    dbService.initCustomersListener?.();
+    dbService.initTransactionsListener?.();
+    dbService.initSuppliersListener?.();
     dbService.migrateLocalDataToFirestore().finally(() => {
       // Clear stale offline caches — safe now because onSnapshot listeners are already active
       if (isFirebaseEnabled) {

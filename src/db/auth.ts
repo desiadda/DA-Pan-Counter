@@ -19,20 +19,25 @@ export function initUsersListener() {
     });
     setLocalData(LS_KEYS.USERS, list);
 
-    // ── Auto-refresh active session permissions ──
-    // If the currently logged-in user exists in the fresh list, update their
-    // cached session so permissions are always up-to-date without re-login.
+    // ── Single Active Session & Permissions Auto-Refresh ──
     try {
       const raw = localStorage.getItem(LS_KEYS.USER);
       if (raw) {
         const session = JSON.parse(raw);
         const fresh = list.find(u => u.id === session.id);
         if (fresh) {
+          // If a new session was created for this user on another device/browser, terminate old session!
+          if (fresh.sessionId && session.sessionId && fresh.sessionId !== session.sessionId) {
+            localStorage.removeItem(LS_KEYS.USER);
+            window.dispatchEvent(new CustomEvent("session-terminated"));
+            return;
+          }
           const updated = {
             ...session,
             name: fresh.name,
             role: fresh.role,
             permissions: fresh.permissions,
+            sessionId: fresh.sessionId || session.sessionId,
           };
           localStorage.setItem(LS_KEYS.USER, JSON.stringify(updated));
         }

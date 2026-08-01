@@ -1,9 +1,32 @@
-import { collection, doc, writeBatch, getDocs, deleteDoc, setDoc, getDoc, runTransaction } from "firebase/firestore";
+import { collection, doc, writeBatch, getDocs, deleteDoc, setDoc, getDoc, runTransaction, onSnapshot } from "firebase/firestore";
 import { db, isFirebaseEnabled, localizeError } from "./config";
+import { LS_KEYS } from "../constants";
 import { adjustBalance } from "./coh";
 import { logError } from "./errorLog";
+import { setLocalData } from "./storage";
 import { logAudit, getActorInfo } from "./audit";
 import { DEFAULT_PACK_SIZE } from "../constants";
+import { useDBStore } from "../stores/dbStore";
+
+let transactionsListenerActive = false;
+
+export function initTransactionsListener() {
+  if (!isFirebaseEnabled || !db || transactionsListenerActive) return;
+  transactionsListenerActive = true;
+
+  onSnapshot(collection(db, "transactions"), (snapshot) => {
+    const list = [];
+    snapshot.forEach(docSnap => {
+      list.push({ id: docSnap.id, ...docSnap.data() });
+    });
+    list.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    setLocalData(LS_KEYS.TRANSACTIONS, list);
+    useDBStore.getState().setTransactions(list);
+    window.dispatchEvent(new CustomEvent("transactions-changed"));
+  }, (err) => {
+    logError("POS", "Transactions listener error: " + err.message, err.stack);
+  });
+}
 
 export const getTransactions = async () => {
   try {

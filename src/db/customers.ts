@@ -1,7 +1,10 @@
-import { collection, getDocs, doc, setDoc, updateDoc, getDoc, runTransaction } from "firebase/firestore";
+import { collection, getDocs, doc, setDoc, updateDoc, getDoc, runTransaction, onSnapshot } from "firebase/firestore";
 import { db, isFirebaseEnabled, localizeError } from "./config";
+import { LS_KEYS } from "../constants";
 import { logError } from "./errorLog";
+import { setLocalData } from "./storage";
 import { logAudit } from "./audit";
+import { useDBStore } from "../stores/dbStore";
 
 async function syncCustomerToFirebase(customer) {
   const { id, ...data } = customer;
@@ -12,6 +15,25 @@ async function syncCustomerToFirebase(customer) {
     customer.id = ref.id;
     await setDoc(ref, { ...data, id: ref.id });
   }
+}
+
+let customersListenerActive = false;
+
+export function initCustomersListener() {
+  if (!isFirebaseEnabled || !db || customersListenerActive) return;
+  customersListenerActive = true;
+
+  onSnapshot(collection(db, "customers"), (snapshot) => {
+    const list = [];
+    snapshot.forEach(docSnap => {
+      list.push({ id: docSnap.id, ...docSnap.data() });
+    });
+    setLocalData(LS_KEYS.CUSTOMERS, list);
+    useDBStore.getState().setCustomers(list);
+    window.dispatchEvent(new CustomEvent("customers-changed"));
+  }, (err) => {
+    logError("KHATA", "Customers listener error: " + err.message, err.stack);
+  });
 }
 
 async function syncUdhaarToFirebase(customerId, balance, ledger) {
