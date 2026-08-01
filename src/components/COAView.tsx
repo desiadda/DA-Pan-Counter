@@ -7,7 +7,8 @@ import { dbService } from "../firebase";
 import { useT } from "../lang/translations";
 
 const TYPE_LABELS = ["asset", "liability", "equity", "income", "expense"];
-const TYPE_ORDER = { asset: 0, liability: 1, equity: 2, income: 3, expense: 4 };
+const TYPE_ORDER: Record<string, number> = { asset: 0, liability: 1, equity: 2, income: 3, expense: 4 };
+const TYPE_ICON: Record<string, string> = { asset: "🏦", liability: "💳", equity: "📊", income: "📈", expense: "📉" };
 
 function fmt(n: number) {
   return "฿" + (isFinite(n) ? n.toFixed(2) : "0.00");
@@ -23,7 +24,11 @@ function csvEscape(v: string) {
   return '"' + String(v).replace(/"/g, '""') + '"';
 }
 
-export default function COAView({ user }) {
+interface COAViewProps {
+  user?: any;
+}
+
+export default function COAView({ user }: COAViewProps) {
   const tr = useT(useLangStore((s) => s.lang));
   const confirm = useConfirmStore((s) => s.confirm);
 
@@ -31,26 +36,30 @@ export default function COAView({ user }) {
   const customers = useDBStore((s) => s.customers);
   const transactions = useDBStore((s) => s.transactions);
 
-  const [suppliers, setSuppliers] = useState([]);
-  const [banks, setBanks] = useState([]);
-  const [expenses, setExpenses] = useState([]);
-  const [cohBalances, setCohBalances] = useState([]);
-  const [activeTab, setActiveTab] = useState("accounts");
-  const [accounts, setAccounts] = useState([]);
-  const [entries, setEntries] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [suppliers, setSuppliers] = useState<any[]>([]);
+  const [banks, setBanks] = useState<any[]>([]);
+  const [expenses, setExpenses] = useState<any[]>([]);
+  const [cohBalances, setCohBalances] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<string>("accounts");
+  const [accounts, setAccounts] = useState<any[]>([]);
+  const [entries, setEntries] = useState<any[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
 
-  const [showForm, setShowForm] = useState(false);
-  const [editAccount, setEditAccount] = useState(null);
-  const [form, setForm] = useState({ code: "", name: "", type: "asset", openingBalance: "", description: "" });
+  const [showForm, setShowForm] = useState<boolean>(false);
+  const [editAccount, setEditAccount] = useState<any>(null);
+  const [form, setForm] = useState<{ code: string; name: string; type: string; openingBalance: string; description: string }>({
+    code: "", name: "", type: "asset", openingBalance: "", description: ""
+  });
 
-  const [showEntryForm, setShowEntryForm] = useState(false);
-  const [entryTarget, setEntryTarget] = useState(null);
-  const [entryForm, setEntryForm] = useState({ date: Date.now(), debit: "", credit: "", note: "" });
+  const [showEntryForm, setShowEntryForm] = useState<boolean>(false);
+  const [entryTarget, setEntryTarget] = useState<any>(null);
+  const [entryForm, setEntryForm] = useState<{ date: number; debit: string; credit: string; note: string }>({
+    date: Date.now(), debit: "", credit: "", note: ""
+  });
 
-  const [stmtAccountId, setStmtAccountId] = useState("");
-  const [fromDate, setFromDate] = useState("");
-  const [toDate, setToDate] = useState("");
+  const [stmtAccountId, setStmtAccountId] = useState<string>("");
+  const [fromDate, setFromDate] = useState<string>("");
+  const [toDate, setToDate] = useState<string>("");
 
   const refresh = useCallback(() => {
     Promise.all([
@@ -89,30 +98,30 @@ export default function COAView({ user }) {
   }, [accounts, stmtAccountId]);
 
   const liveBalances = useMemo(() => {
-    const b = {};
+    const b: Record<string, number> = {};
     let cash = 0;
-    (cohBalances || []).forEach(c => { cash += c?.coh ?? c?.balance ?? 0; });
+    (cohBalances || []).forEach((c: any) => { cash += c?.coh ?? c?.balance ?? 0; });
     b["coh"] = cash;
-    b["bank"] = (banks || []).reduce((s, x) => s + (x?.balance || 0), 0);
-    b["receivable"] = (customers || []).reduce((s, c) => s + (c?.balance || 0), 0);
-    b["inventory"] = (products || []).reduce((s, p) => s + (p?.stock || 0) * (p?.costPrice || 0), 0);
-    b["payable"] = (suppliers || []).reduce((s, x) => s + (x?.balance || 0), 0);
-    b["sales"] = (transactions || []).filter(t => t?.type !== "return" && !t?.isReturn).reduce((s, t) => s + (t?.totalAmount || t?.amount || 0), 0);
-    b["sales"] -= (transactions || []).filter(t => t?.type === "return" || t?.isReturn).reduce((s, t) => s + (t?.amount || t?.totalAmount || 0), 0);
-    b["expenses"] = (expenses || []).reduce((s, e) => s + (e?.amount || 0), 0);
+    b["bank"] = (banks || []).reduce((s: number, x: any) => s + (x?.balance || 0), 0);
+    b["receivable"] = (customers || []).reduce((s: number, c: any) => s + (c?.balance || 0), 0);
+    b["inventory"] = (products || []).reduce((s: number, p: any) => s + (p?.stock || 0) * (p?.costPrice || 0), 0);
+    b["payable"] = (suppliers || []).reduce((s: number, x: any) => s + (x?.balance || 0), 0);
+    b["sales"] = (transactions || []).filter((t: any) => t?.type !== "return" && !t?.isReturn).reduce((s: number, t: any) => s + (t?.totalAmount || t?.amount || 0), 0);
+    b["sales"] -= (transactions || []).filter((t: any) => t?.type === "return" || t?.isReturn).reduce((s: number, t: any) => s + (t?.amount || t?.totalAmount || 0), 0);
+    b["expenses"] = (expenses || []).reduce((s: number, e: any) => s + (e?.amount || 0), 0);
     return b;
   }, [cohBalances, banks, customers, products, suppliers, transactions, expenses]);
 
   const accountBalances = useMemo(() => {
-    const map = {};
-    (accounts || []).forEach(a => {
+    const map: Record<string, number> = {};
+    (accounts || []).forEach((a: any) => {
       if (!a) return;
       if (a.system) {
         map[a.id] = liveBalances[a.source] || 0;
       } else {
         const isCreditType = a.type === "liability" || a.type === "equity" || a.type === "income";
         let bal = a.openingBalance || 0;
-        (entries || []).filter(e => e?.accountId === a.id).forEach(e => {
+        (entries || []).filter((e: any) => e?.accountId === a.id).forEach((e: any) => {
           if (isCreditType) {
             bal += (e?.credit || 0) - (e?.debit || 0);
           } else {
@@ -126,7 +135,7 @@ export default function COAView({ user }) {
   }, [accounts, entries, liveBalances]);
 
   const sortedAccounts = useMemo(() => {
-    return [...(accounts || [])].filter(Boolean).sort((a, b) => {
+    return [...(accounts || [])].filter(Boolean).sort((a: any, b: any) => {
       const orderA = TYPE_ORDER[a?.type] ?? 99;
       const orderB = TYPE_ORDER[b?.type] ?? 99;
       if (orderA !== orderB) return orderA - orderB;
@@ -136,7 +145,7 @@ export default function COAView({ user }) {
 
   const trial = useMemo(() => {
     let debit = 0, credit = 0;
-    const rows = (sortedAccounts || []).filter(Boolean).map(a => {
+    const rows = (sortedAccounts || []).filter(Boolean).map((a: any) => {
       if (!a) return null;
       const bal = accountBalances[a.id] || 0;
       const isDebitType = a.type === "asset" || a.type === "expense";
@@ -156,7 +165,7 @@ export default function COAView({ user }) {
     setShowForm(true);
   };
 
-  const openEdit = (a) => {
+  const openEdit = (a: any) => {
     setEditAccount(a);
     setForm({ code: a.code || "", name: a.name || "", type: a.type || "asset", openingBalance: a.openingBalance || "", description: a.description || "" });
     setShowForm(true);
@@ -165,7 +174,7 @@ export default function COAView({ user }) {
   const submitAccount = async () => {
     if (!form.code.trim()) { alert(tr("coa.codeRequired")); return; }
     if (!form.name.trim()) { alert(tr("coa.nameRequired")); return; }
-    const payload = {
+    const payload: any = {
       code: form.code.trim(),
       name: form.name.trim(),
       type: form.type,
@@ -179,7 +188,7 @@ export default function COAView({ user }) {
     refresh();
   };
 
-  const removeAccount = async (a) => {
+  const removeAccount = async (a: any) => {
     if (a.system) { alert(tr("coa.cannotDeleteSystem")); return; }
     const ok = await confirm(tr("coa.deleteAccountConfirm"), {
       title: tr("coa.deleteAccount"), confirmLabel: tr("coa.deleteAccount"), variant: "danger",
@@ -189,7 +198,7 @@ export default function COAView({ user }) {
     refresh();
   };
 
-  const openEntry = (a) => {
+  const openEntry = (a: any) => {
     setEntryTarget(a);
     setEntryForm({ date: Date.now(), debit: "", credit: "", note: "" });
     setShowEntryForm(true);
@@ -210,7 +219,7 @@ export default function COAView({ user }) {
     refresh();
   };
 
-  const removeEntry = async (e) => {
+  const removeEntry = async (e: any) => {
     const ok = await confirm(tr("coa.deleteEntry"), { confirmLabel: tr("coa.deleteEntry"), variant: "danger" });
     if (!ok) return;
     await dbService.deleteCoaEntry(e.id);
@@ -218,7 +227,7 @@ export default function COAView({ user }) {
   };
 
   const stmt = useMemo(() => {
-    const acc = (accounts || []).find(a => a?.id === stmtAccountId);
+    const acc = (accounts || []).find((a: any) => a?.id === stmtAccountId);
     if (!acc) return { acc: null, rows: [], opening: 0, closing: 0, totalDebit: 0, totalCredit: 0 };
     const from = fromDate ? new Date(fromDate + "T00:00:00").getTime() : 0;
     const to = toDate ? new Date(toDate + "T23:59:59").getTime() : Infinity;
@@ -226,11 +235,11 @@ export default function COAView({ user }) {
     let opening = acc.openingBalance || 0;
     let totalDebit = 0, totalCredit = 0;
     const rows = (entries || [])
-      .filter(e => e?.accountId === acc.id && (e?.date || 0) >= from && (e?.date || 0) <= to)
-      .map(e => ({ ...e, dr: e.debit || 0, cr: e.credit || 0 }))
-      .sort((a, b) => (a.date || 0) - (b.date || 0));
+      .filter((e: any) => e?.accountId === acc.id && (e?.date || 0) >= from && (e?.date || 0) <= to)
+      .map((e: any) => ({ ...e, dr: e.debit || 0, cr: e.credit || 0 }))
+      .sort((a: any, b: any) => (a.date || 0) - (b.date || 0));
     let running = opening;
-    rows.forEach(e => {
+    rows.forEach((e: any) => {
       totalDebit += e.dr;
       totalCredit += e.cr;
       running += isCredit ? (e.cr - e.dr) : (e.dr - e.cr);
@@ -246,7 +255,7 @@ export default function COAView({ user }) {
     const lines = [
       [csvEscape("Account"), csvEscape(stmt.acc.code), csvEscape(stmt.acc.name)].join(","),
       [csvEscape("Date"), csvEscape("Note"), csvEscape("Debit"), csvEscape("Credit"), csvEscape("Balance")].join(","),
-      ...(stmt.rows || []).map(r => {
+      ...(stmt.rows || []).map((r: any) => {
         running += r.dr - r.cr;
         return [csvEscape(fmtDate(r.date)), csvEscape(r.note || ""), r.dr || "", r.cr || "", running.toFixed(2)].join(",");
       }),
@@ -278,19 +287,17 @@ export default function COAView({ user }) {
       <div class="muted">${stmt.acc.code} · ${stmt.acc.name} — ${new Date().toLocaleString()}</div>
       <table><tr><th>Date</th><th>Note</th><th>Debit</th><th>Credit</th><th>Balance</th></tr>
       <tr><td colspan="4">Opening Balance B/F</td><td>${stmt.opening.toFixed(2)}</td></tr>
-      ${(stmt.rows || []).map(r => `<tr><td>${fmtDate(r.date)}</td><td>${r.note || ""}</td><td>${r.dr ? r.dr.toFixed(2) : ""}</td><td>${r.cr ? r.cr.toFixed(2) : ""}</td><td>${r.balance.toFixed(2)}</td></tr>`).join("")}
+      ${(stmt.rows || []).map((r: any) => `<tr><td>${fmtDate(r.date)}</td><td>${r.note || ""}</td><td>${r.dr ? r.dr.toFixed(2) : ""}</td><td>${r.cr ? r.cr.toFixed(2) : ""}</td><td>${r.balance.toFixed(2)}</td></tr>`).join("")}
       <tr class="t"><td colspan="2">Total</td><td>${stmt.totalDebit.toFixed(2)}</td><td>${stmt.totalCredit.toFixed(2)}</td><td>${stmt.closing.toFixed(2)}</td></tr>
       <tr><td colspan="4">Closing Balance C/F</td><td>${stmt.closing.toFixed(2)}</td></tr>
       </table><script>window.print();</script></body></html>`);
     w.document.close();
   };
 
-  const TYPE_ICON = { asset: "🏦", liability: "💳", equity: "📊", income: "📈", expense: "📉" };
-
   const groups = useMemo(() => {
-    const g = {};
+    const g: Record<string, any[]> = {};
     TYPE_LABELS.forEach(t => g[t] = []);
-    (sortedAccounts || []).forEach(a => {
+    (sortedAccounts || []).forEach((a: any) => {
       const typeKey = (a?.type || "").toLowerCase();
       if (g[typeKey]) {
         g[typeKey].push(a);
@@ -330,7 +337,7 @@ export default function COAView({ user }) {
           {TYPE_LABELS.map(t => {
             const list = groups[t];
             if (!list || !Array.isArray(list) || !list.length) return null;
-            const total = list.reduce((s, a) => s + (accountBalances[a.id] || 0), 0);
+            const total = list.reduce((s: number, a: any) => s + (accountBalances[a.id] || 0), 0);
             return (
               <div key={t} className="card" style={{ marginBottom: 12 }}>
                 <div className="card-header">
@@ -342,7 +349,7 @@ export default function COAView({ user }) {
                     <tr><th>{tr("coa.code")}</th><th>{tr("coa.name")}</th><th>{tr("coa.balance")}</th><th></th></tr>
                   </thead>
                   <tbody>
-                    {list.map(a => (
+                    {list.map((a: any) => (
                       <tr key={a.id}>
                         <td className="text-muted coa-mono">{a.code}</td>
                         <td>
@@ -384,7 +391,7 @@ export default function COAView({ user }) {
               <tr><th>{tr("coa.code")}</th><th>{tr("coa.name")}</th><th>{tr("coa.type")}</th><th>{tr("coa.debit")}</th><th>{tr("coa.credit")}</th></tr>
             </thead>
             <tbody>
-              {(trial.rows || []).map(({ a, debit, credit }) => (
+              {(trial.rows || []).map(({ a, debit, credit }: any) => (
                 <tr key={a.id}>
                   <td className="text-muted coa-mono">{a.code}</td>
                   <td>{a.name}{a.system && <span className="coa-badge coa-badge-live" style={{ marginLeft: 6 }}>🔗</span>}</td>
@@ -409,7 +416,7 @@ export default function COAView({ user }) {
         <div className="card">
           <div className="card-header coa-stmt-filters">
             <select className="input-field" style={{ maxWidth: 240 }} value={stmtAccountId} onChange={e => setStmtAccountId(e.target.value)}>
-              {(sortedAccounts || []).map(a => <option key={a.id} value={a.id}>{a.code} — {a.name}</option>)}
+              {(sortedAccounts || []).map((a: any) => <option key={a.id} value={a.id}>{a.code} — {a.name}</option>)}
             </select>
             <input type="date" className="input-field" value={fromDate} onChange={e => setFromDate(e.target.value)} />
             <span className="text-muted">→</span>
@@ -436,7 +443,7 @@ export default function COAView({ user }) {
                 <td className="coa-mono">{fmt(stmt.opening)}</td>
                 {!stmt.acc?.system && <td></td>}
               </tr>
-              {(stmt.rows || []).map(r => (
+              {(stmt.rows || []).map((r: any) => (
                 <tr key={r.id}>
                   <td className="text-muted">{fmtDate(r.date)}</td>
                   <td>{r.note || "—"}</td>
