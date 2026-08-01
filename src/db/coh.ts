@@ -275,9 +275,17 @@ export async function rejectTransfer(txId, actedBy) {
   }
 }
 
-export function getPendingForUser(userId) {
+export function getPendingForUser(userIdOrUser: any) {
   try {
-    return getTransactionsRaw().filter(t => t.toUserId === userId && t.status === "pending");
+    const txs = getTransactionsRaw();
+    const id = typeof userIdOrUser === "object" ? userIdOrUser?.id : userIdOrUser;
+    const isAdmin = typeof userIdOrUser === "object" ? (userIdOrUser?.role === "admin" || userIdOrUser?.permissions?.settings) : false;
+    const idStr = String(id || "").trim().toLowerCase();
+    return (txs || []).filter(t => {
+      if (t?.status !== "pending") return false;
+      if (isAdmin) return true;
+      return String(t?.toUserId || "").trim().toLowerCase() === idStr;
+    });
   } catch (err) {
     logError("COH", err.message, err.stack);
     console.error("getPendingForUser: Error getting pending transfers", err);
@@ -295,10 +303,12 @@ export function getPendingCount(userId) {
   }
 }
 
-export function getHistoryForUser(userId) {
+export function getHistoryForUser(userIdOrUser: any) {
   try {
+    const id = typeof userIdOrUser === "object" ? userIdOrUser?.id : userIdOrUser;
+    const idStr = String(id || "").trim().toLowerCase();
     return getTransactionsRaw().filter(t =>
-      t.fromUserId === userId || t.toUserId === userId
+      String(t.fromUserId || "").trim().toLowerCase() === idStr || String(t.toUserId || "").trim().toLowerCase() === idStr
     );
   } catch (err) {
     logError("COH", err.message, err.stack);

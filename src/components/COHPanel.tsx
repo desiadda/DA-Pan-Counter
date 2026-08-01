@@ -335,9 +335,28 @@ export default function COHPanel({ user, users, onClose }) {
         </div>
 
         {pending.length > 0 && (
-          <button onClick={() => setTab("pending")} style={styles.pendingBadge}>
-            📩 {pending.length} pending transfer{pending.length > 1 ? "s" : ""}
-          </button>
+          <div style={{ background: "var(--card-bg, #fffbebf5)", border: "2px solid #f59e0b", borderRadius: "12px", padding: "12px", marginBottom: "14px" }}>
+            <div style={{ fontWeight: 700, color: "#b45309", marginBottom: "8px", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "6px" }}>
+              <span>📩</span> <span>Pending Transfer Received (स्वीकृति लंबित):</span>
+            </div>
+            {pending.map(tx => (
+              <div key={tx.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--bg, #ffffff)", padding: "10px 12px", borderRadius: "8px", border: "1px solid #fde68a", marginTop: "6px" }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: "0.9rem" }}>From: {tx.fromUserName}</div>
+                  <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#047857" }}>฿{(tx.amount || 0).toFixed(2)}</div>
+                  {tx.note && <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{tx.note}</div>}
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                  <button onClick={() => handleApprove(tx.id)} disabled={submitting} className="btn btn-primary" style={{ padding: "0.35rem 0.75rem", fontSize: "0.8rem", whiteSpace: "nowrap" }}>
+                    {submitting ? "..." : "✓ Approve"}
+                  </button>
+                  <button onClick={() => handleReject(tx.id)} disabled={submitting} className="btn btn-danger" style={{ padding: "0.35rem 0.75rem", fontSize: "0.8rem", whiteSpace: "nowrap" }}>
+                    ✕ Reject
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
 
         <div style={styles.tabs}>
