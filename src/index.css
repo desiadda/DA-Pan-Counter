@@ -2205,6 +2205,7 @@ textarea.input-field {
   gap: 0.35rem;
   overflow-x: auto;
   scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
   border-bottom: 1px solid var(--border);
   padding-bottom: 0.5rem;
 }
@@ -2219,8 +2220,8 @@ textarea.input-field {
   font-size: 0.82rem;
   font-weight: 700;
   color: var(--text-muted);
-  background: var(--bg-hover, #f1f5f9);
-  border: none;
+  background: var(--hover-bg, #f1f5f9);
+  border: 1px solid var(--border);
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -2229,8 +2230,9 @@ textarea.input-field {
 }
 
 .view-tab-active {
-  background: #047857;
-  color: #ffffff;
+  background: var(--primary);
+  color: var(--text-on-primary, #ffffff);
+  border-color: var(--primary);
 }
 
 .kpi-grid {

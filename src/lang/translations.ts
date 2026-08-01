@@ -172,7 +172,8 @@ const translations = {
     },
     coh: {
       title: "Cash on Hand", balance: "Balance", transfer: "Transfer",
-      pendingApprovals: "Pending Approvals", history: "History",
+      pending: "Pending", pendingApprovals: "Pending Approvals", history: "History",
+      statement: "Statement", verifyCash: "Verify Cash", adjust: "Adjust",
       approve: "Approve", reject: "Reject",
     },
     return: {
@@ -358,9 +359,10 @@ const translations = {
       invalidPin: "गलत PIN। पुनः प्रयास करें।", maxAttempts: "अधिकतम प्रयास समाप्त।",
     },
     coh: {
-      title: "नकद शेष", balance: "शेष", transfer: "ट्रांसफर",
-      pendingApprovals: "लंबित स्वीकृतियाँ", history: "इतिहास",
-      approve: "स्वीकृत", reject: "अस्वीकृत",
+      title: "नकद शेष (COH)", balance: "शेष", transfer: "ट्रांसफर",
+      pending: "लंबित", pendingApprovals: "लंबित स्वीकृतियाँ", history: "इतिहास",
+      statement: "स्टेटमेंट", verifyCash: "गल्ला मिलान", adjust: "समायोजन",
+      approve: "स्वीकृत करें", reject: "अस्वीकृत करें",
     },
     return: {
       title: "वापसी आइटम", returnReason: "वापसी का कारण (वैकल्पिक)",
@@ -517,7 +519,15 @@ const translations = {
       openingBatch: "ล็อตเริ่มต้น", runningBalance: "ยอดหมุนเวียน",
       verifySystem: "บัญชีไม่ตรงกับสต็อกระบบ — กรุณาตรวจสอบ",
     },
-    auth: { enterPin: "ใส่ PIN ของคุณ", login: "เข้าสู่ระบบ", logout: "ออกจากระบบ" },
+    auth: {
+      enterPin: "กรอก PIN ของคุณ", login: "เข้าสู่ระบบ", logout: "ออกจากระบบ",
+    },
+    coh: {
+      title: "เงินสดในมือ (COH)", balance: "ยอดคงเหลือ", transfer: "โอนเงิน",
+      pending: "รอดำเนินการ", pendingApprovals: "รออนุมัติ", history: "ประวัติ",
+      statement: "ใบแจ้งยอด", verifyCash: "ตรวจสอบเงินสด", adjust: "ปรับยอด",
+      approve: "อนุมัติ", reject: "ปฏิเสธ",
+    },
     return: { title: "คืนสินค้า", refundTotal: "ยอดคืนเงิน", processReturn: "ดำเนินการคืน" },
     coa: {
       title: "ผังบัญชี", accounts: "บัญชี", trialBalance: "งบทดลอง",
@@ -653,6 +663,12 @@ const translations = {
       verifySystem: "စာရင်းသည် စနစ်စတော့နှင့်မကိုက်ညီပါ — စစ်ဆေးပါ",
     },
     auth: { enterPin: "သင့် PIN ထည့်ပါ", login: "ဝင်ရန်", logout: "ထွက်ရန်" },
+    coh: {
+      title: "လက်ထဲငွေ (COH)", balance: "လက်ကျန်", transfer: "လွှဲပြောင်းရန်",
+      pending: "ဆိုင်းငံ့", pendingApprovals: "အတည်ပြုရန်စောင့်ဆိုင်းဆဲ", history: "မှတ်တမ်း",
+      statement: "ရှင်းတမ်း", verifyCash: "ငွေသားစစ်ဆေးရန်", adjust: "ချိန်ညှိရန်",
+      approve: "အတည်ပြုရန်", reject: "ငြင်းပယ်ရန်",
+    },
     return: { title: "ပစ္စည်းပြန်အမ်းရန်", refundTotal: "ငွေပြန်အမ်းစုစုပေါင်း", processReturn: "ပြန်အမ်းခြင်းလုပ်ဆောင်ရန်" },
     coa: {
       title: "အကောင့်ဇယား", accounts: "အကောင့်များ", trialBalance: "စမ်းသပ်လက်ကျန်",

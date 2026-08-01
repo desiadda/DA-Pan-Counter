@@ -2,11 +2,13 @@ import { useState, useEffect } from "react";
 import { dbService } from "../firebase";
 import { logError } from "../db/errorLog";
 import { useLangStore } from "../stores/langStore";
+import { useT } from "../lang/translations";
 import ModalPortal from "./ModalPortal";
 import { DEFAULT_STORE_NAME } from "../constants";
 
 export default function COHPanel({ user, users, onClose }) {
   const lang = useLangStore((s) => s.lang);
+  const tr = useT(lang);
   const [balance, setBalance] = useState(0);
   const [pending, setPending] = useState([]);
   const [history, setHistory] = useState([]);
@@ -339,7 +341,7 @@ export default function COHPanel({ user, users, onClose }) {
         <div style={styles.tabs}>
           {["balance", "transfer", "pending", "history", "statement", "reconcile"].map(t => (
             <button key={t} onClick={() => setTab(t)} style={{...styles.tab, ...(tab === t ? styles.activeTab : {})}}>
-              {t === "balance" ? "Balance" : t === "transfer" ? "Transfer" : t === "pending" ? `Pending${pending.length > 0 ? ` (${pending.length})` : ""}` : t === "history" ? "History" : t === "statement" ? "Statement" : "Verify Cash"}
+              {t === "balance" ? tr("coh.balance") : t === "transfer" ? tr("coh.transfer") : t === "pending" ? `${tr("coh.pending")}${pending.length > 0 ? ` (${pending.length})` : ""}` : t === "history" ? tr("coh.history") : t === "statement" ? tr("coh.statement") : tr("coh.verifyCash")}
             </button>
           ))}
         </div>
@@ -645,53 +647,72 @@ export default function COHPanel({ user, users, onClose }) {
 
 const styles = {
   overlay: {
-    position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.4)",
+    position: "fixed", inset: 0, backgroundColor: "var(--overlay, rgba(0,0,0,0.4))",
     display: "flex", alignItems: "flex-end", justifyContent: "center",
     zIndex: 1000,
   },
   panel: {
-    backgroundColor: "#fff", width: "100%", maxWidth: "480px",
+    backgroundColor: "var(--card-bg, #fff)", color: "var(--text, #1e293b)",
+    width: "100%", maxWidth: "480px",
     borderRadius: "16px 16px 0 0", padding: "1.25rem",
     display: "flex", flexDirection: "column", gap: "0.75rem",
     maxHeight: "85vh", overflowY: "auto",
   },
   header: { display: "flex", justifyContent: "space-between", alignItems: "center" },
-  title: { fontSize: "1.1rem", fontWeight: 800, color: "#1e293b" },
-  closeBtn: { background: "none", border: "none", fontSize: "1.25rem", cursor: "pointer", color: "#64748b" },
+  title: { fontSize: "1.1rem", fontWeight: 800, color: "var(--text, #1e293b)" },
+  closeBtn: { background: "none", border: "none", fontSize: "1.25rem", cursor: "pointer", color: "var(--text-muted, #64748b)" },
   balanceBar: {
     display: "flex", justifyContent: "space-between", alignItems: "center",
-    backgroundColor: "#f0fdf4", padding: "0.75rem 1rem", borderRadius: "12px",
-    border: "1px solid #bbf7d0",
+    backgroundColor: "var(--primary-light, #f0fdf4)", padding: "0.75rem 1rem", borderRadius: "12px",
+    border: "1px solid var(--border, #bbf7d0)",
   },
-  balanceLabel: { fontSize: "0.85rem", fontWeight: 600, color: "#166534" },
-  balanceValue: { fontSize: "1.35rem", fontWeight: 800, color: "#15803d" },
+  balanceLabel: { fontSize: "0.85rem", fontWeight: 600, color: "var(--primary, #166534)" },
+  balanceValue: { fontSize: "1.35rem", fontWeight: 800, color: "var(--primary, #15803d)" },
   pendingBadge: {
-    backgroundColor: "#fefce8", border: "1px solid #fef08a", borderRadius: "8px",
-    padding: "0.5rem", fontSize: "0.85rem", fontWeight: 600, color: "#a16207",
+    backgroundColor: "var(--warning-light, #fefce8)", border: "1px solid var(--border, #fef08a)", borderRadius: "8px",
+    padding: "0.5rem", fontSize: "0.85rem", fontWeight: 600, color: "var(--warning, #a16207)",
     cursor: "pointer", fontFamily: "inherit", textAlign: "center",
   },
-  tabs: { display: "flex", gap: "4px", overflowX: "auto" },
-  tab: {
-    flex: 1, padding: "0.5rem 0", fontSize: "0.8rem", fontWeight: 600,
-    color: "#64748b", background: "#f1f5f9", border: "none", borderRadius: "8px",
-    cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit",
+  tabs: {
+    display: "flex",
+    gap: "6px",
+    overflowX: "auto",
+    paddingBottom: "4px",
+    WebkitOverflowScrolling: "touch",
+    scrollbarWidth: "none",
+    msOverflowStyle: "none",
   },
-  activeTab: { backgroundColor: "#047857", color: "#fff" },
+  tab: {
+    flexShrink: 0,
+    minWidth: "max-content",
+    padding: "0.55rem 0.85rem",
+    fontSize: "0.82rem",
+    fontWeight: 600,
+    color: "var(--text-muted, #64748b)",
+    background: "var(--hover-bg, #f1f5f9)",
+    border: "1px solid var(--border, #cbd5e1)",
+    borderRadius: "8px",
+    cursor: "pointer",
+    whiteSpace: "nowrap",
+    fontFamily: "inherit",
+    transition: "all 0.15s ease",
+  },
+  activeTab: { backgroundColor: "var(--primary, #047857)", color: "var(--text-on-primary, #fff)", borderColor: "var(--primary, #047857)" },
   section: { display: "flex", flexDirection: "column", gap: "0.75rem" },
-  error: { color: "#ef4444", fontSize: "0.8rem", fontWeight: 600, backgroundColor: "#fef2f2", padding: "0.5rem", borderRadius: "6px", textAlign: "center" },
-  success: { color: "#15803d", fontSize: "0.8rem", fontWeight: 600, backgroundColor: "#f0fdf4", padding: "0.5rem", borderRadius: "6px", textAlign: "center" },
+  error: { color: "var(--error, #ef4444)", fontSize: "0.8rem", fontWeight: 600, backgroundColor: "var(--error-light, #fef2f2)", padding: "0.5rem", borderRadius: "6px", textAlign: "center" },
+  success: { color: "var(--primary, #15803d)", fontSize: "0.8rem", fontWeight: 600, backgroundColor: "var(--primary-light, #f0fdf4)", padding: "0.5rem", borderRadius: "6px", textAlign: "center" },
   pendingCard: {
     display: "flex", justifyContent: "space-between", alignItems: "center",
-    padding: "0.75rem", backgroundColor: "#fffbeb", borderRadius: "12px",
-    border: "1px solid #fde68a",
+    padding: "0.75rem", backgroundColor: "var(--warning-light, #fffbeb)", borderRadius: "12px",
+    border: "1px solid var(--border, #fde68a)",
   },
   recentList: { display: "flex", flexDirection: "column", gap: "0.5rem" },
   historyItem: {
     display: "flex", justifyContent: "space-between", alignItems: "center",
-    padding: "0.6rem", backgroundColor: "#f8fafc", borderRadius: "8px",
-    border: "1px solid #e2e8f0",
+    padding: "0.6rem", backgroundColor: "var(--card-bg, #f8fafc)", borderRadius: "8px",
+    border: "1px solid var(--border, #e2e8f0)",
   },
-  historyMeta: { display: "block", fontSize: "0.65rem", color: "#94a3b8", marginTop: "1px" },
-  historyNote: { display: "block", fontSize: "0.7rem", color: "#64748b", fontStyle: "italic" },
-  empty: { textAlign: "center", color: "#94a3b8", padding: "1rem", fontSize: "0.85rem" },
+  historyMeta: { display: "block", fontSize: "0.65rem", color: "var(--text-muted, #94a3b8)", marginTop: "1px" },
+  historyNote: { display: "block", fontSize: "0.7rem", color: "var(--text-muted, #64748b)", fontStyle: "italic" },
+  empty: { textAlign: "center", color: "var(--text-muted, #94a3b8)", padding: "1rem", fontSize: "0.85rem" },
 };
