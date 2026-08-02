@@ -104,7 +104,7 @@ export default function COAView({ user }: COAViewProps) {
     b["coh"] = cash;
     b["bank"] = (banks || []).reduce((s: number, x: any) => s + (x?.balance || 0), 0);
     b["receivable"] = (customers || []).reduce((s: number, c: any) => s + (c?.balance || 0), 0);
-    b["inventory"] = (products || []).reduce((s: number, p: any) => s + (p?.stock || 0) * (p?.costPrice || 0), 0);
+    b["inventory"] = (products || []).filter((p: any) => !(p?.isNonInventory || (p?.stock || 0) >= 9999)).reduce((s: number, p: any) => s + (p?.stock || 0) * (p?.costPrice || 0), 0);
     b["payable"] = (suppliers || []).reduce((s: number, x: any) => s + (x?.balance || 0), 0);
     b["sales"] = (transactions || []).filter((t: any) => t?.type !== "return" && !t?.isReturn).reduce((s: number, t: any) => s + (t?.totalAmount || t?.amount || 0), 0);
     b["sales"] -= (transactions || []).filter((t: any) => t?.type === "return" || t?.isReturn).reduce((s: number, t: any) => s + (t?.amount || t?.totalAmount || 0), 0);

@@ -279,7 +279,9 @@ export default function ReportsView({ initialSubTab, onSubTabChange, user }) {
 
   // ── Low Stock / Dead Stock / Valuation ──
   const getLowStockItems = () => {
-    return products.filter(p => p.stock <= (p.lowStockLimit || DEFAULT_LOW_STOCK_LIMIT)).sort((a, b) => (a.stock / (a.lowStockLimit || DEFAULT_LOW_STOCK_LIMIT)) - (b.stock / (b.lowStockLimit || DEFAULT_LOW_STOCK_LIMIT)));
+    return products
+      .filter(p => !(p.isNonInventory || p.stock >= 9999) && p.stock <= (p.lowStockLimit || DEFAULT_LOW_STOCK_LIMIT))
+      .sort((a, b) => (a.stock / (a.lowStockLimit || DEFAULT_LOW_STOCK_LIMIT)) - (b.stock / (b.lowStockLimit || DEFAULT_LOW_STOCK_LIMIT)));
   };
 
   const getDeadStockItems = () => {
@@ -289,11 +291,13 @@ export default function ReportsView({ initialSubTab, onSubTabChange, user }) {
       if (tx.timestamp >= cutoff) (tx.items || []).forEach(i => soldIds.add(i.realProductId || i.productId));
     });
     return products
-      .filter(p => !soldIds.has(p.id) && p.stock > 0)
+      .filter(p => !(p.isNonInventory || p.stock >= 9999) && !soldIds.has(p.id) && p.stock > 0)
       .sort((a, b) => (a.stock * (a.costPrice || 0)) - (b.stock * (b.costPrice || 0)));
   };
 
-  const getStockValuation = () => products.reduce((s, p) => s + (p.stock || 0) * (p.costPrice || 0), 0);
+  const getStockValuation = () => products
+    .filter(p => !(p.isNonInventory || p.stock >= 9999))
+    .reduce((s, p) => s + (p.stock || 0) * (p.costPrice || 0), 0);
 
   // ── Customer Purchase History ──
   const getCustomerHistory = () => {
@@ -911,11 +915,11 @@ export default function ReportsView({ initialSubTab, onSubTabChange, user }) {
               <div style={{ flex: 1, minWidth: "120px", padding: "0.75rem", backgroundColor: "#f0fdf4", borderRadius: "8px", border: "1px solid #bbf7d0" }}>
                 <div style={{ fontSize: "0.7rem", color: "#166534", fontWeight: "600", textTransform: "uppercase" }}>Stock Value (at cost)</div>
                 <div style={{ fontSize: "1.1rem", fontWeight: "800", color: "#15803d" }}>{fmt(getStockValuation())}</div>
-                <div style={{ fontSize: "0.7rem", color: "#94a3b8" }}>{products.length} products on shelf</div>
+                <div style={{ fontSize: "0.7rem", color: "#94a3b8" }}>{products.filter(p => !(p.isNonInventory || p.stock >= 9999)).length} tracked items</div>
               </div>
               <div style={{ flex: 1, minWidth: "120px", padding: "0.75rem", backgroundColor: "#eff6ff", borderRadius: "8px", border: "1px solid #bfdbfe" }}>
                 <div style={{ fontSize: "0.7rem", color: "#1e40af", fontWeight: "600", textTransform: "uppercase" }}>Total Units in Stock</div>
-                <div style={{ fontSize: "1.1rem", fontWeight: "800", color: "#2563eb" }}>{products.reduce((s, p) => s + (p.stock || 0), 0)}</div>
+                <div style={{ fontSize: "1.1rem", fontWeight: "800", color: "#2563eb" }}>{products.filter(p => !(p.isNonInventory || p.stock >= 9999)).reduce((s, p) => s + (p.stock || 0), 0)}</div>
                 <div style={{ fontSize: "0.7rem", color: "#94a3b8" }}>{lowStockItems.length} low stock alerts</div>
               </div>
             </div>

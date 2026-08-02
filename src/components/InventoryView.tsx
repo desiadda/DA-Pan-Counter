@@ -264,7 +264,7 @@ export default function InventoryView({ subPath, onNavigate }) {
     document.body.removeChild(link);
   };
 
-  const lowStockProducts = () => products.filter(p => p.stock <= (p.lowStockLimit || DEFAULT_LOW_STOCK_LIMIT));
+  const lowStockProducts = () => products.filter(p => !(p.isNonInventory || p.stock >= 9999) && p.stock <= (p.lowStockLimit || DEFAULT_LOW_STOCK_LIMIT));
 
   const createReorderPO = () => {
     const items = lowStockProducts().map(p => {
@@ -312,25 +312,28 @@ export default function InventoryView({ subPath, onNavigate }) {
         <StockCountView products={products} onApplied={loadProducts} />
       ) : (
       <>
-      {!loading && products.length > 0 && (
-        <div className="inventory-value-summary">
-          <div className="value-card">
-            <span className="value-label">Cost Value</span>
-            <span className="value-amount value-amount-error">฿{products.reduce((sum, p) => sum + (p.stock * p.costPrice), 0).toLocaleString()}</span>
-            <span className="value-sub">Total purchase cost</span>
+      {!loading && products.length > 0 && (() => {
+        const trackedProducts = products.filter(p => !(p.isNonInventory || p.stock >= 9999));
+        return (
+          <div className="inventory-value-summary">
+            <div className="value-card">
+              <span className="value-label">Cost Value</span>
+              <span className="value-amount value-amount-error">฿{trackedProducts.reduce((sum, p) => sum + (p.stock * (p.costPrice || 0)), 0).toLocaleString()}</span>
+              <span className="value-sub">Tracked physical stock cost</span>
+            </div>
+            <div className="value-card">
+              <span className="value-label">Sales Value</span>
+              <span className="value-amount value-amount-green">฿{trackedProducts.reduce((sum, p) => sum + (p.stock * (p.sellingPrice || 0)), 0).toLocaleString()}</span>
+              <span className="value-sub">If tracked stock sells</span>
+            </div>
+            <div className="value-card">
+              <span className="value-label">Est. Profit</span>
+              <span className="value-amount value-amount-blue">฿{trackedProducts.reduce((sum, p) => sum + (p.stock * ((p.sellingPrice || 0) - (p.costPrice || 0))), 0).toLocaleString()}</span>
+              <span className="value-sub">Sales − Cost</span>
+            </div>
           </div>
-          <div className="value-card">
-            <span className="value-label">Sales Value</span>
-            <span className="value-amount value-amount-green">฿{products.reduce((sum, p) => sum + (p.stock * p.sellingPrice), 0).toLocaleString()}</span>
-            <span className="value-sub">If all stock sells</span>
-          </div>
-          <div className="value-card">
-            <span className="value-label">Est. Profit</span>
-            <span className="value-amount value-amount-blue">฿{products.reduce((sum, p) => sum + (p.stock * (p.sellingPrice - p.costPrice)), 0).toLocaleString()}</span>
-            <span className="value-sub">Sales − Cost</span>
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       <div className="card">
         <h3 className="section-subtitle" style={{ borderBottom: "1px solid var(--border)", paddingBottom: "0.5rem", marginBottom: "0.75rem" }}>{isEditing ? "Edit Product" : "Add New Product"}</h3>
