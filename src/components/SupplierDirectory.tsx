@@ -78,20 +78,33 @@ export default function SupplierDirectory() {
     const obDateMs = openingBalanceDate ? new Date(openingBalanceDate + "T12:00:00").getTime() : Date.now();
     try {
       setSubmitting(true);
-      await dbService.saveSupplier(editSup ? {
-        ...editSup, name: name.trim(), contact: contact.trim(),
-        phone: phone.trim(), address: address.trim(),
-      } : {
-        name: name.trim(), contact: contact.trim(),
-        phone: phone.trim(), address: address.trim(),
-        balance: ob,
-        ledger: ob > 0 ? [{
-          date: obDateMs,
-          type: "Opening Balance",
-          amount: ob,
-          description: "Opening balance (initial udhaar)",
-        }] : [],
-      });
+      if (editSup) {
+        await dbService.saveSupplier({
+          ...editSup, name: name.trim(), contact: contact.trim(),
+          phone: phone.trim(), address: address.trim(),
+        });
+        if (ob > 0) {
+          await dbService.adjustSupplierBalance(
+            editSup.id,
+            ob,
+            "Opening Balance",
+            "Opening balance adjustment",
+            obDateMs
+          );
+        }
+      } else {
+        await dbService.saveSupplier({
+          name: name.trim(), contact: contact.trim(),
+          phone: phone.trim(), address: address.trim(),
+          balance: ob,
+          ledger: ob > 0 ? [{
+            date: obDateMs,
+            type: "Opening Balance",
+            amount: ob,
+            description: "Opening balance (initial udhaar)",
+          }] : [],
+        });
+      }
       reset();
       load();
     } catch (err) {
@@ -265,32 +278,30 @@ export default function SupplierDirectory() {
             <label className="input-label">{tr("supplier.address")}</label>
             <input type="text" value={address} onChange={e => setAddress(e.target.value)} className="input-field" placeholder={tr("supplier.address")} />
           </div>
-          {!editSup && (
-            <div style={{ display: "grid", gridTemplateColumns: openingBalance && parseFloat(openingBalance) > 0 ? "1fr 1fr" : "1fr", gap: "0.5rem" }}>
+          <div style={{ display: "grid", gridTemplateColumns: openingBalance && parseFloat(openingBalance) > 0 ? "1fr 1fr" : "1fr", gap: "0.5rem" }}>
+            <div className="input-group" style={{ marginBottom: 0 }}>
+              <label className="input-label">{tr("supplier.openingBalance")} <span style={{ fontWeight: 400, color: "#94a3b8" }}>— {tr("supplier.openingBalanceHint")}</span></label>
+              <input
+                type="number"
+                value={openingBalance}
+                onChange={e => setOpeningBalance(e.target.value)}
+                className="input-field"
+                placeholder="0.00"
+                min="0"
+              />
+            </div>
+            {openingBalance && parseFloat(openingBalance) > 0 && (
               <div className="input-group" style={{ marginBottom: 0 }}>
-                <label className="input-label">{tr("supplier.openingBalance")} <span style={{ fontWeight: 400, color: "#94a3b8" }}>— {tr("supplier.openingBalanceHint")}</span></label>
+                <label className="input-label">{tr("supplier.entryDate")}</label>
                 <input
-                  type="number"
-                  value={openingBalance}
-                  onChange={e => setOpeningBalance(e.target.value)}
+                  type="date"
+                  value={openingBalanceDate}
+                  onChange={e => setOpeningBalanceDate(e.target.value)}
                   className="input-field"
-                  placeholder="0.00"
-                  min="0"
                 />
               </div>
-              {openingBalance && parseFloat(openingBalance) > 0 && (
-                <div className="input-group" style={{ marginBottom: 0 }}>
-                  <label className="input-label">{tr("supplier.entryDate")}</label>
-                  <input
-                    type="date"
-                    value={openingBalanceDate}
-                    onChange={e => setOpeningBalanceDate(e.target.value)}
-                    className="input-field"
-                  />
-                </div>
-              )}
-            </div>
-          )}
+            )}
+          </div>
           <div className="flex-btn-group">
             <button type="submit" disabled={submitting} className="btn btn-primary btn-sm">
               {submitting ? tr("supplier.saving") : (editSup ? tr("supplier.update") : tr("supplier.save"))}
