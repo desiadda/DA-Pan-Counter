@@ -21,18 +21,35 @@ import { dbService } from "./firebase";
 import { getCriticalUnreadCount } from "./db/errorLog";
 import { SkeletonCard, SkeletonTable } from "./components/Skeleton";
 
-const POSView = lazy(() => import("./components/POSView"));
-const InventoryView = lazy(() => import("./components/InventoryView"));
-const KhataView = lazy(() => import("./components/KhataView"));
-const ReportsView = lazy(() => import("./components/ReportsView"));
-const ExpensesView = lazy(() => import("./components/ExpensesView"));
-const UserManager = lazy(() => import("./components/UserManager"));
-const COHView = lazy(() => import("./components/COHView"));
-const FinanceView = lazy(() => import("./components/FinanceView"));
-const COAView = lazy(() => import("./components/COAView"));
-const AdminSettings = lazy(() => import("./components/AdminSettings"));
-const ErrorLogView = lazy(() => import("./components/ErrorLogView"));
-const AuditLogView = lazy(() => import("./components/AuditLogView"));
+function safeLazy(importFn: () => Promise<any>) {
+  return lazy(async () => {
+    try {
+      return await importFn();
+    } catch (err: any) {
+      const isChunkError = err?.message?.includes("dynamically imported module") || err?.message?.includes("Loading chunk") || err?.message?.includes("fetch");
+      const reloaded = sessionStorage.getItem("page_reloaded_for_chunk");
+      if (isChunkError && !reloaded) {
+        sessionStorage.setItem("page_reloaded_for_chunk", "true");
+        window.location.reload();
+        return new Promise(() => {});
+      }
+      throw err;
+    }
+  });
+}
+
+const POSView = safeLazy(() => import("./components/POSView"));
+const InventoryView = safeLazy(() => import("./components/InventoryView"));
+const KhataView = safeLazy(() => import("./components/KhataView"));
+const ReportsView = safeLazy(() => import("./components/ReportsView"));
+const ExpensesView = safeLazy(() => import("./components/ExpensesView"));
+const UserManager = safeLazy(() => import("./components/UserManager"));
+const COHView = safeLazy(() => import("./components/COHView"));
+const FinanceView = safeLazy(() => import("./components/FinanceView"));
+const COAView = safeLazy(() => import("./components/COAView"));
+const AdminSettings = safeLazy(() => import("./components/AdminSettings"));
+const ErrorLogView = safeLazy(() => import("./components/ErrorLogView"));
+const AuditLogView = safeLazy(() => import("./components/AuditLogView"));
 
 const navItems = [
   {
@@ -129,6 +146,7 @@ function AppContent() {
   }, [activeTab]);
 
   useEffect(() => {
+    sessionStorage.removeItem("page_reloaded_for_chunk");
     setActiveTab(getTabFromPath());
     setSubPath(getSubPath());
   }, [location.pathname]);
