@@ -109,14 +109,34 @@ export const updateSupplierBalance = async (supplierId, amountChange, ledgerEntr
           currentLedger = data.ledger || [];
         }
         const newBal = currentBal + amountChange;
-        const newLedger = [...currentLedger, ledgerEntry];
+        const newLedger = [...currentLedger, ledgerEntry].sort((a, b) => (a.date || 0) - (b.date || 0));
         firestoreTx.update(docRef, { balance: newBal, ledger: newLedger });
       });
+    } else {
+      const list = getLocalData(LS_KEY, []);
+      const idx = list.findIndex(s => s.id === supplierId);
+      if (idx !== -1) {
+        list[idx].balance = (list[idx].balance || 0) + amountChange;
+        list[idx].ledger = [...(list[idx].ledger || []), ledgerEntry].sort((a, b) => (a.date || 0) - (b.date || 0));
+        setLocalData(LS_KEY, list);
+      }
     }
   } catch (err) {
     logError("STORAGE", err.message, err.stack);
     throw err;
   }
+};
+
+export const adjustSupplierBalance = async (supplierId, amount, type = "Opening Balance", description = "", dateMs = Date.now()) => {
+  const ledgerEntry = {
+    date: dateMs,
+    type: type || "Opening Balance",
+    amount: Math.abs(amount),
+    description: description || "Backdated adjustment",
+  };
+  const amountChange = type === "Payment" ? -Math.abs(amount) : amount;
+  await updateSupplierBalance(supplierId, amountChange, ledgerEntry);
+  logAudit("supplier_balance_adjusted", "supplier", supplierId, `Adjusted balance by ฿${amount.toFixed(2)} (${type})`, { amount, dateMs });
 };
 
 export const recordSupplierPayment = async (supplierId, supplierName, amount, paymentMode, cashierId, cashierName) => {

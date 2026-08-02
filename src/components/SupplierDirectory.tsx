@@ -23,16 +23,23 @@ export default function SupplierDirectory() {
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [openingBalance, setOpeningBalance] = useState("");
+  const [openingBalanceDate, setOpeningBalanceDate] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("name");
   const [statementSup, setStatementSup] = useState(null);
 
-  // Supplier Khata States
+  // Supplier Khata & Adjust States
   const [selectedLedgerSup, setSelectedLedgerSup] = useState(null);
   const [paymentSup, setPaymentSup] = useState(null);
   const [payAmount, setPayAmount] = useState("");
   const [payMode, setPayMode] = useState("Cash");
+
+  const [adjustSup, setAdjustSup] = useState(null);
+  const [adjustAmt, setAdjustAmt] = useState("");
+  const [adjustDate, setAdjustDate] = useState("");
+  const [adjustDesc, setAdjustDesc] = useState("");
+  const [adjustType, setAdjustType] = useState("Opening Balance");
 
   useEffect(() => {
     if (isFirebaseEnabled && db) {
@@ -68,6 +75,7 @@ export default function SupplierDirectory() {
     e.preventDefault();
     if (!name.trim() || submitting) return;
     const ob = parseFloat(openingBalance) || 0;
+    const obDateMs = openingBalanceDate ? new Date(openingBalanceDate + "T12:00:00").getTime() : Date.now();
     try {
       setSubmitting(true);
       await dbService.saveSupplier(editSup ? {
@@ -78,7 +86,7 @@ export default function SupplierDirectory() {
         phone: phone.trim(), address: address.trim(),
         balance: ob,
         ledger: ob > 0 ? [{
-          date: Date.now(),
+          date: obDateMs,
           type: "Opening Balance",
           amount: ob,
           description: "Opening balance (initial udhaar)",
@@ -143,9 +151,37 @@ export default function SupplierDirectory() {
     }
   };
 
+  const handleAdjustSubmit = async (e) => {
+    e.preventDefault();
+    const amt = parseFloat(adjustAmt);
+    if (!amt || isNaN(amt) || !adjustSup || submitting) return;
+    try {
+      setSubmitting(true);
+      const dateMs = adjustDate ? new Date(adjustDate + "T12:00:00").getTime() : Date.now();
+      await dbService.adjustSupplierBalance(
+        adjustSup.id,
+        amt,
+        adjustType || "Opening Balance",
+        adjustDesc.trim() || "Backdated Opening Balance adjustment",
+        dateMs
+      );
+      setAdjustSup(null);
+      setAdjustAmt("");
+      setAdjustDesc("");
+      setAdjustDate("");
+      alert("✅ " + tr("supplier.applyAdjust") + "!");
+      load();
+    } catch (err) {
+      console.error(err);
+      alert("❌ Failed to adjust balance: " + err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const reset = () => {
     setShowForm(false); setEditSup(null); setName("");
-    setContact(""); setPhone(""); setAddress(""); setOpeningBalance("");
+    setContact(""); setPhone(""); setAddress(""); setOpeningBalance(""); setOpeningBalanceDate("");
   };
 
   const payModeOptions = useMemo(() => {
@@ -230,16 +266,29 @@ export default function SupplierDirectory() {
             <input type="text" value={address} onChange={e => setAddress(e.target.value)} className="input-field" placeholder={tr("supplier.address")} />
           </div>
           {!editSup && (
-            <div className="input-group" style={{ marginBottom: 0 }}>
-              <label className="input-label">{tr("supplier.openingBalance")} <span style={{ fontWeight: 400, color: "#94a3b8" }}>— {tr("supplier.openingBalanceHint")}</span></label>
-              <input
-                type="number"
-                value={openingBalance}
-                onChange={e => setOpeningBalance(e.target.value)}
-                className="input-field"
-                placeholder="0.00"
-                min="0"
-              />
+            <div style={{ display: "grid", gridTemplateColumns: openingBalance && parseFloat(openingBalance) > 0 ? "1fr 1fr" : "1fr", gap: "0.5rem" }}>
+              <div className="input-group" style={{ marginBottom: 0 }}>
+                <label className="input-label">{tr("supplier.openingBalance")} <span style={{ fontWeight: 400, color: "#94a3b8" }}>— {tr("supplier.openingBalanceHint")}</span></label>
+                <input
+                  type="number"
+                  value={openingBalance}
+                  onChange={e => setOpeningBalance(e.target.value)}
+                  className="input-field"
+                  placeholder="0.00"
+                  min="0"
+                />
+              </div>
+              {openingBalance && parseFloat(openingBalance) > 0 && (
+                <div className="input-group" style={{ marginBottom: 0 }}>
+                  <label className="input-label">{tr("supplier.entryDate")}</label>
+                  <input
+                    type="date"
+                    value={openingBalanceDate}
+                    onChange={e => setOpeningBalanceDate(e.target.value)}
+                    className="input-field"
+                  />
+                </div>
+              )}
             </div>
           )}
           <div className="flex-btn-group">
@@ -278,6 +327,32 @@ export default function SupplierDirectory() {
         </form>
       )}
 
+      {/* Adjust Balance / Backdate Form Sheet */}
+      {adjustSup && (
+        <form onSubmit={handleAdjustSubmit} className="card" style={{ display: "flex", flexDirection: "column", gap: "0.5rem", border: "1.5px solid #6366f1" }}>
+          <h4 style={{ margin: 0, fontSize: "0.85rem", fontWeight: 700, color: "#4f46e5" }}>⚙️ {tr("supplier.adjustBalance")}: {adjustSup.name}</h4>
+          <p style={{ margin: 0, fontSize: "0.72rem", color: "#64748b" }}>{tr("supplier.backdateHint")}</p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
+            <div className="input-group" style={{ marginBottom: 0 }}>
+              <label className="input-label">{tr("supplier.amount")}</label>
+              <input type="number" value={adjustAmt} onChange={e => setAdjustAmt(e.target.value)} className="input-field" placeholder="0.00" step="0.01" required autoFocus />
+            </div>
+            <div className="input-group" style={{ marginBottom: 0 }}>
+              <label className="input-label">{tr("supplier.entryDate")}</label>
+              <input type="date" value={adjustDate} onChange={e => setAdjustDate(e.target.value)} className="input-field" required />
+            </div>
+          </div>
+          <div className="input-group" style={{ marginBottom: 0 }}>
+            <label className="input-label">{tr("coh.noteRequired")}</label>
+            <input type="text" value={adjustDesc} onChange={e => setAdjustDesc(e.target.value)} className="input-field" placeholder="e.g. Opening Balance (Old register B/F)" />
+          </div>
+          <div className="flex-btn-group">
+            <button type="submit" disabled={submitting} className="btn btn-primary btn-sm">{tr("supplier.applyAdjust")}</button>
+            <button type="button" onClick={() => setAdjustSup(null)} className="btn btn-outline btn-sm">{tr("supplier.cancel")}</button>
+          </div>
+        </form>
+      )}
+
       {suppliers.length === 0 ? (
         <div className="sup-empty">{tr("supplier.noSuppliers")}</div>
       ) : filteredSuppliers.length === 0 ? (
@@ -312,6 +387,15 @@ export default function SupplierDirectory() {
                 <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.25rem", flexWrap: "wrap" }}>
                   <button onClick={() => setStatementSup(s)} className="btn btn-outline" style={{ padding: "3px 8px", fontSize: "0.7rem", borderRadius: "6px" }}>
                     📄 {tr("supplier.statement")}
+                  </button>
+                  <button onClick={() => {
+                    setAdjustSup(s);
+                    setAdjustAmt("");
+                    setAdjustDate(new Date().toISOString().split("T")[0]);
+                    setAdjustDesc("Opening balance (initial udhaar)");
+                    setAdjustType("Opening Balance");
+                  }} className="btn btn-outline" style={{ padding: "3px 8px", fontSize: "0.7rem", borderRadius: "6px" }}>
+                    ⚙️ {tr("supplier.adjustBalance")}
                   </button>
                   {(s.balance || 0) > 0 && (
                     <button onClick={() => setPaymentSup(s)} className="btn btn-primary" style={{ padding: "3px 8px", fontSize: "0.7rem", borderRadius: "6px" }}>

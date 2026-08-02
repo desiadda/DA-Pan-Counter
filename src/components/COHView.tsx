@@ -211,7 +211,7 @@ export default function COHView({ user }) {
     setStmt({ name: u.name, balance: dbService.getBalance(u.id) || 0, rows });
   };
 
-  const canAdjust = user?.role === "admin" || !!user?.permissions?.settings;
+  const canAdjust = user?.role === "admin" || !!user?.permissions?.cohAdjust;
 
   const tabs = [
     { key: "balances", label: `💰 ${tr("coh.balance")}` },
@@ -374,14 +374,16 @@ export default function COHView({ user }) {
       {/* ── Adjust ── */}
       {activeTab === "adjust" && (
         <div className="card">
-          <h4 className="section-subtitle" style={{ borderBottom: "1px solid var(--border)", paddingBottom: "0.5rem", marginBottom: "0.5rem" }}>Adjust Balance</h4>
+          <h4 className="section-subtitle" style={{ borderBottom: "1px solid var(--border)", paddingBottom: "0.5rem", marginBottom: "0.5rem" }}>
+            {tr("coh.adjustBalance")}
+          </h4>
           <p className="text-muted" style={{ fontSize: "0.75rem", margin: "0 0 0.5rem" }}>
-            Use positive amounts to add cash, negative amounts to deduct. A note is required for audit.
+            {tr("coh.adjustHint")}
           </p>
           {error && <div className="error-inline">{error}</div>}
           {msg && <div className="success-inline">{msg}</div>}
           <div className="input-group">
-            <label className="input-label">User</label>
+            <label className="input-label">{tr("coh.selectUser")}</label>
             <select value={adjustId || ""} onChange={e => { setAdjustId(e.target.value); setError(""); setMsg(""); }} className="input-field" style={{ fontFamily: "inherit" }}>
               <option value="">Select user...</option>
               {(users || []).map(u => (
@@ -390,7 +392,7 @@ export default function COHView({ user }) {
             </select>
           </div>
           <div className="input-group">
-            <label className="input-label">Amount (use +/-, e.g. 500 or -200)</label>
+            <label className="input-label">{tr("coh.amountHint")}</label>
             <input type="number" value={adjustAmt} onChange={e => { setAdjustAmt(e.target.value); setError(""); setMsg(""); }} className="input-field" placeholder="0" />
             <div className="filter-bar" style={{ marginTop: "0.35rem", marginBottom: 0 }}>
               {QUICK_CASH_CHIPS.map(v => (
@@ -402,11 +404,23 @@ export default function COHView({ user }) {
             </div>
           </div>
           <div className="input-group">
-            <label className="input-label">Note (required for audit)</label>
-            <input type="text" value={adjustNote} onChange={e => { setAdjustNote(e.target.value); setError(""); setMsg(""); }} className="input-field" placeholder="Reason for adjustment" />
+            <label className="input-label">{tr("coh.noteRequired")}</label>
+            <input type="text" value={adjustNote} onChange={e => { setAdjustNote(e.target.value); setError(""); setMsg(""); }} className="input-field" placeholder={tr("coh.reasonPlaceholder")} />
+            <div className="filter-bar" style={{ marginTop: "0.35rem", marginBottom: 0 }}>
+              {[tr("coh.openingBalance"), tr("coh.shiftStart"), tr("coh.cashRefill")].map((reason) => (
+                <button
+                  key={reason}
+                  type="button"
+                  className="quick-chip"
+                  onClick={() => { setAdjustNote(reason); setError(""); setMsg(""); }}
+                >
+                  📌 {reason}
+                </button>
+              ))}
+            </div>
           </div>
           <button onClick={handleAdjust} disabled={submitting} className="btn btn-primary" style={{ width: "100%", padding: "0.6rem" }}>
-            {submitting ? "Saving..." : "Apply Adjustment"}
+            {submitting ? "..." : tr("coh.applyAdjustment")}
           </button>
         </div>
       )}

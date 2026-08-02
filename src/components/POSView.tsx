@@ -14,10 +14,12 @@ import CheckoutModal from "./CheckoutModal";
 import ScanBarcode from "./ScanBarcode";
 import DashboardWidgets from "./DashboardWidgets";
 import ShortcutsModal from "./ShortcutsModal";
-import { useAuthStore } from "../stores/authStore";
-import { DEFAULT_DISCOUNT_REASONS, DEFAULT_PACK_SIZE, DEFAULT_VAT_RATE, UDHAAR_MODE } from "../constants";
+import { useLangStore } from "../stores/langStore";
+import { useT } from "../lang/translations";
 
 export default function POSView({ user }) {
+  const lang = useLangStore((s) => s.lang);
+  const tr = useT(lang);
   const navigate = useNavigate();
   const confirm = useConfirmStore((s) => s.confirm);
   const openMobileCart = useCartStore((s) => s.openMobileCart);
@@ -360,7 +362,43 @@ export default function POSView({ user }) {
         </div>
       </div>
 
-      <DashboardWidgets onNavigate={(tab) => { navigate("/" + tab, { replace: true }); }} />
+      {/* ── Section Separator for Today's Summary / Dashboard Widgets ── */}
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "0.75rem",
+        marginTop: "2rem",
+        marginBottom: "1rem",
+        borderTop: "2px dashed var(--border, #cbd5e1)",
+        paddingTop: "1.25rem"
+      }}>
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          fontWeight: 800,
+          fontSize: "0.95rem",
+          color: "var(--primary, #047857)",
+          letterSpacing: "0.02em"
+        }}>
+          <span style={{ fontSize: "1.1rem" }}>📊</span>
+          <span>{tr("pos.todaySummary")}</span>
+        </div>
+        <div style={{ flex: 1, height: "1px", backgroundColor: "var(--border, #e2e8f0)" }} />
+        <span style={{ fontSize: "0.75rem", color: "var(--text-muted, #64748b)", fontStyle: "italic" }}>
+          {tr("pos.summaryHint")}
+        </span>
+      </div>
+
+      <div style={{
+        backgroundColor: "var(--card-bg, #ffffff)",
+        border: "1px solid var(--border, #e2e8f0)",
+        borderRadius: "16px",
+        padding: "1.25rem",
+        boxShadow: "0 2px 12px rgba(0,0,0,0.03)"
+      }}>
+        <DashboardWidgets onNavigate={(tab) => { navigate("/" + tab, { replace: true }); }} />
+      </div>
 
       {cart.length > 0 && createPortal(
         <>

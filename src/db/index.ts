@@ -12,7 +12,7 @@ import {
 } from "./coh";
 import { recordPriceChange, getPriceHistory, getAllPriceHistory, clearPriceHistory } from "./priceHistory";
 import { getPurchaseOrders, savePurchaseOrder, receivePurchaseOrder, cancelPurchaseOrder } from "./purchases";
-import { getSuppliers, saveSupplier, deleteSupplier, updateSupplierBalance, recordSupplierPayment, initSuppliersListener } from "./suppliers";
+import { getSuppliers, saveSupplier, deleteSupplier, updateSupplierBalance, adjustSupplierBalance, recordSupplierPayment, initSuppliersListener } from "./suppliers";
 import { initFinanceListener, getBanks, addBank, updateBank, deleteBank, getFinanceTransactions, financeTransfer } from "./finance";
 import { initSettingsListener, saveAppSettings } from "./settings";
 import { initAuditListener, getAuditLogs, logAudit } from "./audit";
@@ -76,6 +76,7 @@ export const dbService = {
   saveSupplier,
   deleteSupplier,
   updateSupplierBalance,
+  adjustSupplierBalance,
   recordSupplierPayment,
   initSuppliersListener,
   migrateLocalDataToFirestore,
