@@ -52,7 +52,7 @@ const translations = {
       boxStock: "Current Boxes Stock", looseStock: "Current Loose Pcs Stock",
       updateProduct: "Update Product", addProductBtn: "Add Product", cancel: "Cancel",
       productStockStatus: "Product Stock Status", refresh: "Refresh",
-      product: "Product", cost: "Cost", sell: "Sell", stock: "Stock", restock: "Restock", actions: "Actions",
+      product: "Product", cost: "Cost", sell: "Sell", stock: "Stock", actions: "Actions",
       edit: "Edit", history: "History", delete: "Delete",
       saved: "Product saved successfully!", pleaseFill: "Please fill all pricing fields.",
       pleaseFillStock: "Please fill stock amount.", pleaseFillVariant: "Please fill all box/pack variant fields.",
@@ -271,7 +271,7 @@ const translations = {
       boxStock: "बॉक्स स्टॉक", looseStock: "खुले पीस स्टॉक",
       updateProduct: "उत्पाद अपडेट करें", addProductBtn: "उत्पाद जोड़ें", cancel: "रद्द करें",
       productStockStatus: "उत्पाद स्टॉक स्थिति", refresh: "रिफ्रेश",
-      product: "उत्पाद", cost: "लागत", sell: "बिक्री", stock: "स्टॉक", restock: "रीस्टॉक", actions: "कार्रवाई",
+      product: "उत्पाद", cost: "लागत", sell: "बिक्री", stock: "स्टॉक", actions: "कार्रवाई",
       edit: "संपादित", history: "इतिहास", delete: "हटाएं",
       saved: "उत्पाद सफलतापूर्वक सेव हुआ!", pleaseFill: "कृपया सभी मूल्य फील्ड भरें।",
       pleaseFillStock: "कृपया स्टॉक राशि भरें।", pleaseFillVariant: "कृपया सभी बॉक्स/पैक फील्ड भरें।",
@@ -807,19 +807,22 @@ const translations = {
 
 export default translations;
 
-export function t(key, lang = "en") {
-  const lookup = (dict) => {
+export type Language = "en" | "hi" | "th" | "my";
+
+export function t(key: string, lang: Language | string = "en"): string {
+  const lookup = (dict: any): string | undefined => {
     const keys = key.split(".");
-    let val = dict;
+    let val: any = dict;
     for (const k of keys) {
       if (val && val[k] !== undefined) val = val[k];
       else return undefined;
     }
     return typeof val === "string" ? val : undefined;
   };
-  return lookup(translations[lang]) ?? lookup(translations.en) ?? key;
+  const targetDict = (translations as any)[lang] || translations.en;
+  return lookup(targetDict) ?? lookup(translations.en) ?? key;
 }
 
-export function useT(lang) {
-  return (key) => t(key, lang);
+export function useT(lang: Language | string) {
+  return (key: string) => t(key, lang);
 }

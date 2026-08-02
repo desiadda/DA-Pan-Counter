@@ -17,7 +17,7 @@ import DashboardWidgets from "./DashboardWidgets";
 import ShortcutsModal from "./ShortcutsModal";
 import { useLangStore } from "../stores/langStore";
 import { useT } from "../lang/translations";
-import { DEFAULT_VAT_RATE, DEFAULT_PACK_SIZE, DEFAULT_DISCOUNT_REASONS } from "../constants";
+import { DEFAULT_VAT_RATE, DEFAULT_PACK_SIZE, DEFAULT_DISCOUNT_REASONS, UDHAAR_MODE, CASH_MODE } from "../constants";
 
 export default function POSView({ user }) {
   const lang = useLangStore((s) => s.lang);
