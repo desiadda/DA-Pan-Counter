@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { dbService } from "../firebase";
 import { useConfirmStore } from "../stores/confirmStore";
+import { useAuthStore } from "../stores/authStore";
 import { useCartStore } from "../stores/cartStore";
 import { useDBStore } from "../stores/dbStore";
 import { playSaleSound } from "../utils/sound";
