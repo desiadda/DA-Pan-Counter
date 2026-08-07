@@ -29,6 +29,7 @@ export default function PurchaseOrders({ prefill, onPrefillConsumed }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [receivingOrder, setReceivingOrder] = useState(null);
   const [receivePaymentMode, setReceivePaymentMode] = useState("Credit");
+  const [editingOrder, setEditingOrder] = useState(null);
   const [editingPaymentOrder, setEditingPaymentOrder] = useState(null);
   const [editingPaymentMode, setEditingPaymentMode] = useState("Cash");
   const [updatingMode, setUpdatingMode] = useState(false);
@@ -124,10 +125,10 @@ export default function PurchaseOrders({ prefill, onPrefillConsumed }) {
       <div style={styles.header}>
         <h2 style={styles.title}>📦 {tr("purchase.title")}</h2>
         <div style={{ display: "flex", gap: "0.5rem" }}>
-          <button onClick={() => { setIsDirectPurchase(false); setShowForm(true); }} className="btn btn-primary" style={{ padding: "0.4rem 0.75rem", fontSize: "0.8rem" }}>
+          <button onClick={() => { setEditingOrder(null); setIsDirectPurchase(false); setShowForm(true); setFormKey(k => k + 1); }} className="btn btn-primary" style={{ padding: "0.4rem 0.75rem", fontSize: "0.8rem" }}>
             {tr("purchase.newPo")}
           </button>
-          <button onClick={() => { setIsDirectPurchase(true); setShowForm(true); }} className="btn btn-outline" style={{ padding: "0.4rem 0.75rem", fontSize: "0.8rem", color: "var(--primary-color)" }}>
+          <button onClick={() => { setEditingOrder(null); setIsDirectPurchase(true); setShowForm(true); setFormKey(k => k + 1); }} className="btn btn-outline" style={{ padding: "0.4rem 0.75rem", fontSize: "0.8rem", color: "var(--primary-color)" }}>
             {tr("purchase.directPurchase")}
           </button>
         </div>
@@ -177,15 +178,16 @@ export default function PurchaseOrders({ prefill, onPrefillConsumed }) {
       {showForm && (
         <PurchaseOrderForm
           key={formKey}
+          editingOrder={editingOrder}
           initialItems={prefill && prefill.length > 0 ? prefill : null}
           products={products}
           suppliers={suppliers}
           orders={orders}
           paymentModes={paymentModes}
           lang={lang}
-          isDirect={isDirectPurchase}
-          onSave={() => { setShowForm(false); onPrefillConsumed?.(); load(); }}
-          onCancel={() => { setShowForm(false); onPrefillConsumed?.(); }}
+          isDirect={editingOrder ? (editingOrder.status === "received" || editingOrder.isDirect) : isDirectPurchase}
+          onSave={() => { setShowForm(false); setEditingOrder(null); onPrefillConsumed?.(); load(); }}
+          onCancel={() => { setShowForm(false); setEditingOrder(null); onPrefillConsumed?.(); }}
           onRefreshData={load}
         />
       )}
@@ -243,14 +245,29 @@ export default function PurchaseOrders({ prefill, onPrefillConsumed }) {
                 <span style={styles.total}>Total: ฿{order.total?.toFixed(0)}</span>
                 <div style={styles.actions}>
                   {order.status !== "cancelled" && (
-                    <button
-                      onClick={() => { setEditingPaymentOrder(order); setEditingPaymentMode(order.paymentMode || "Cash"); }}
-                      className="btn btn-outline"
-                      style={{ padding: "2px 8px", fontSize: "0.7rem", borderRadius: "4px" }}
-                      title={tr("purchase.editPaymentMode")}
-                    >
-                      ✏️ Edit Mode
-                    </button>
+                    <>
+                      <button
+                        onClick={() => {
+                          setEditingOrder(order);
+                          setIsDirectPurchase(order.status === "received");
+                          setShowForm(true);
+                          setFormKey(k => k + 1);
+                        }}
+                        className="btn btn-outline"
+                        style={{ padding: "2px 8px", fontSize: "0.7rem", borderRadius: "4px" }}
+                        title={tr("common.edit")}
+                      >
+                        ✏️ {tr("common.edit")}
+                      </button>
+                      <button
+                        onClick={() => { setEditingPaymentOrder(order); setEditingPaymentMode(order.paymentMode || "Cash"); }}
+                        className="btn btn-outline"
+                        style={{ padding: "2px 8px", fontSize: "0.7rem", borderRadius: "4px" }}
+                        title={tr("purchase.editPaymentMode")}
+                      >
+                        💳 Mode
+                      </button>
+                    </>
                   )}
                   {order.status === "pending" && (
                     <>
@@ -405,13 +422,19 @@ export default function PurchaseOrders({ prefill, onPrefillConsumed }) {
   );
 }
 
-function PurchaseOrderForm({ initialItems, products, suppliers, orders, paymentModes, lang, isDirect, onSave, onCancel, onRefreshData }) {
+function PurchaseOrderForm({ editingOrder, initialItems, products, suppliers, orders, paymentModes, lang, isDirect, onSave, onCancel, onRefreshData }) {
   const tr = useT(lang);
-  const [supplierId, setSupplierId] = useState("");
-  const [paymentMode, setPaymentMode] = useState("Cash");
-  const [paymentTermsId, setPaymentTermsId] = useState("immediate");
-  const [items, setItems] = useState(initialItems && initialItems.length > 0 ? initialItems : [{ productId: "", quantity: 1, costPrice: 0, isPack: false }]);
-  const [notes, setNotes] = useState("");
+  const [supplierId, setSupplierId] = useState(editingOrder ? (editingOrder.supplierId || "") : "");
+  const [paymentMode, setPaymentMode] = useState(editingOrder ? (editingOrder.paymentMode || "Cash") : "Cash");
+  const [paymentTermsId, setPaymentTermsId] = useState(editingOrder ? (editingOrder.paymentTerms?.id || "immediate") : "immediate");
+  const [items, setItems] = useState(
+    editingOrder && editingOrder.items && editingOrder.items.length > 0
+      ? editingOrder.items
+      : initialItems && initialItems.length > 0
+        ? initialItems
+        : [{ productId: "", quantity: 1, costPrice: 0, isPack: false }]
+  );
+  const [notes, setNotes] = useState(editingOrder ? (editingOrder.notes || "") : "");
   const [submitting, setSubmitting] = useState(false);
 
   const [showQuickAddSupplier, setShowQuickAddSupplier] = useState(false);
@@ -496,37 +519,53 @@ function PurchaseOrderForm({ initialItems, products, suppliers, orders, paymentM
     const user = JSON.parse(localStorage.getItem("pan_user") || "{}");
     const terms = PAYMENT_TERMS.find(t => t.id === paymentTermsId) || PAYMENT_TERMS[0];
 
-    const order = {
-      supplier: selectedSupplier.name,
-      supplierId: selectedSupplier.id,
-      ...(isDirect ? { paymentMode } : {}),
-      paymentTerms: terms,
-      ...(isDirect && paymentMode === "Credit" && terms.days > 0 ? { dueDate: Date.now() + terms.days * 86400000 } : {}),
-      items: validItems.map(item => {
-        const prod = products.find(p => p.id === item.productId);
-        return {
-          productId: item.productId,
-          productName: prod?.name || "Unknown",
-          quantity: parseInt(item.quantity) || 0,
-          isPack: item.isPack || false,
-          packSize: prod?.packSize || DEFAULT_PACK_SIZE,
-          costPrice: parseFloat(item.costPrice) || 0,
-        };
-      }),
-      total,
-      status: isDirect ? "received" : "pending",
-      createdAt: Date.now(),
-      notes: notes.trim(),
-      createdById: user.id || "system",
-      createdBy: user.name || "System",
-    };
+    const formattedItems = validItems.map(item => {
+      const prod = products.find(p => p.id === item.productId);
+      return {
+        productId: item.productId,
+        productName: prod?.name || item.productName || "Unknown",
+        quantity: parseInt(item.quantity) || 0,
+        isPack: item.isPack || false,
+        packSize: prod?.packSize || item.packSize || DEFAULT_PACK_SIZE,
+        costPrice: parseFloat(item.costPrice) || 0,
+      };
+    });
 
     try {
       setSubmitting(true);
-      await dbService.savePurchaseOrder(order);
+      if (editingOrder) {
+        const updatedOrder = {
+          ...editingOrder,
+          supplier: selectedSupplier.name,
+          supplierId: selectedSupplier.id,
+          ...(isDirect || editingOrder.status === "received" ? { paymentMode } : {}),
+          paymentTerms: terms,
+          ...(paymentMode === "Credit" && terms.days > 0 ? { dueDate: Date.now() + terms.days * 86400000 } : {}),
+          items: formattedItems,
+          total,
+          notes: notes.trim(),
+        };
+        await dbService.updatePurchaseOrder(editingOrder.id, updatedOrder, user);
+      } else {
+        const order = {
+          supplier: selectedSupplier.name,
+          supplierId: selectedSupplier.id,
+          ...(isDirect ? { paymentMode } : {}),
+          paymentTerms: terms,
+          ...(isDirect && paymentMode === "Credit" && terms.days > 0 ? { dueDate: Date.now() + terms.days * 86400000 } : {}),
+          items: formattedItems,
+          total,
+          status: isDirect ? "received" : "pending",
+          createdAt: Date.now(),
+          notes: notes.trim(),
+          createdById: user.id || "system",
+          createdBy: user.name || "System",
+        };
+        await dbService.savePurchaseOrder(order);
+      }
       onSave();
-    } catch (e) {
-      alert("❌ Failed to create purchase record: " + e.message);
+    } catch (e: any) {
+      alert("❌ Failed to save purchase record: " + e.message);
     } finally {
       setSubmitting(false);
     }
@@ -534,7 +573,13 @@ function PurchaseOrderForm({ initialItems, products, suppliers, orders, paymentM
 
   return (
     <div style={styles.formCard}>
-      <h3 style={styles.formTitle}>{isDirect ? `${tr("purchase.directPurchase")} / ${tr("purchase.received")}` : tr("purchase.newPo")}</h3>
+      <h3 style={styles.formTitle}>
+        {editingOrder
+          ? `✏️ ${tr("common.edit")} Order: ${editingOrder.supplier}`
+          : isDirect
+            ? `${tr("purchase.directPurchase")} / ${tr("purchase.received")}`
+            : tr("purchase.newPo")}
+      </h3>
       
       <div className="input-group" style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
         <div style={{ flex: isDirect ? 2 : 1 }}>

@@ -344,7 +344,7 @@ export const cancelPurchaseOrder = async (orderId) => {
   }
 };
 
-export const updatePurchaseOrderPaymentMode = async (orderId: string, newPaymentMode: string, user: any) => {
+export const updatePurchaseOrder = async (orderId: string, updatedOrder: any, user: any) => {
   try {
     if (isFirebaseEnabled) {
       await runTransaction(db, async (firestoreTx) => {
@@ -352,23 +352,30 @@ export const updatePurchaseOrderPaymentMode = async (orderId: string, newPayment
         const docSnap = await firestoreTx.get(docRef);
         if (!docSnap.exists()) throw new Error("Purchase order not found");
 
-        const order = { id: docSnap.id, ...docSnap.data() } as any;
-        const oldPaymentMode = order.paymentMode || "Cash";
-        if (oldPaymentMode === newPaymentMode) return;
-
-        const total = order.total || 0;
-        const createdById = order.createdById || user?.id || "system";
-        const createdByName = order.createdBy || user?.name || "System";
-        const supplierId = order.supplierId;
+        const existingOrder = { id: docSnap.id, ...docSnap.data() } as any;
 
         // READ PHASE
-        let supRef = null;
-        let supSnap = null;
-        if (supplierId) {
-          supRef = doc(db, "suppliers", supplierId);
-          supSnap = await firestoreTx.get(supRef);
+        const oldSupplierId = existingOrder.supplierId;
+        const newSupplierId = updatedOrder.supplierId;
+
+        let oldSupRef = null;
+        let oldSupSnap = null;
+        if (oldSupplierId) {
+          oldSupRef = doc(db, "suppliers", oldSupplierId);
+          oldSupSnap = await firestoreTx.get(oldSupRef);
         }
 
+        let newSupRef = null;
+        let newSupSnap = null;
+        if (newSupplierId && newSupplierId !== oldSupplierId) {
+          newSupRef = doc(db, "suppliers", newSupplierId);
+          newSupSnap = await firestoreTx.get(newSupRef);
+        } else {
+          newSupRef = oldSupRef;
+          newSupSnap = oldSupSnap;
+        }
+
+        const createdById = existingOrder.createdById || user?.id || "system";
         let balRef = null;
         let balSnap = null;
         if (createdById) {
@@ -376,102 +383,170 @@ export const updatePurchaseOrderPaymentMode = async (orderId: string, newPayment
           balSnap = await firestoreTx.get(balRef);
         }
 
-        // WRITE PHASE
-        // 1. Revert Old Payment Mode Effect (if PO was already received or direct)
-        if (order.status === "received") {
-          if (oldPaymentMode === "Cash" && balRef && balSnap) {
-            const currentCoh = balSnap.exists() ? (balSnap.data().balance || 0) : 0;
-            const newCoh = currentCoh + total;
-            firestoreTx.set(balRef, { balance: newCoh });
+        // READ ALL PRODUCTS IN OLD AND NEW ORDER (if status is received)
+        const prodDataMap: Record<string, { prodRef: any; prodSnap: any }> = {};
+        if (existingOrder.status === "received") {
+          const allProductIds = new Set<string>();
+          (existingOrder.items || []).forEach((it: any) => allProductIds.add(it.productId));
+          (updatedOrder.items || []).forEach((it: any) => allProductIds.add(it.productId));
 
-            const cohTxId = "coh_rev_" + Date.now();
-            const cohTxRef = doc(db, "coh_transactions", cohTxId);
-            firestoreTx.set(cohTxRef, {
-              id: cohTxId,
-              type: "income",
-              fromUserId: "supplier_" + (supplierId || ""),
-              fromUserName: order.supplier || "Supplier",
-              toUserId: createdById,
-              toUserName: createdByName,
-              amount: total,
-              sign: "credit",
-              note: `Reversal of Cash Purchase #${orderId} (Switched to ${newPaymentMode})`,
-              status: "approved",
-              performedBy: user?.name || "System",
-              timestamp: Date.now(),
-              approvedAt: Date.now(),
-            });
-          } else if (oldPaymentMode === "Credit" && supRef && supSnap && supSnap.exists()) {
-            const supData = supSnap.data();
-            const currentBal = supData.balance || 0;
-            const currentLedger = supData.ledger || [];
-            const newBal = Math.max(0, currentBal - total);
-            const newLedger = [...currentLedger, {
-              date: Date.now(),
-              type: "Adjustment",
-              amount: -total,
-              referenceId: orderId,
-              description: `Payment mode changed from Credit to ${newPaymentMode} (Invoice: ${orderId})`
-            }];
-            firestoreTx.update(supRef, { balance: newBal, ledger: newLedger });
+          for (const pid of allProductIds) {
+            const pRef = doc(db, "products", pid);
+            const pSnap = await firestoreTx.get(pRef);
+            prodDataMap[pid] = { prodRef: pRef, prodSnap: pSnap };
+          }
+        }
+
+        // WRITE PHASE
+        if (existingOrder.status === "received") {
+          // 1. Revert Old Items Stock & Batches
+          for (const item of (existingOrder.items || [])) {
+            const entry = prodDataMap[item.productId];
+            if (entry && entry.prodSnap.exists()) {
+              const prod = entry.prodSnap.data();
+              const packSz = item.packSize || prod.packSize || DEFAULT_PACK_SIZE;
+              const oldUnitQty = item.isPack ? item.quantity * packSz : item.quantity;
+
+              const filteredBatches = (prod.batches || []).filter((b: any) => !b.id.startsWith("b_po_" + orderId));
+              const revertedStock = Math.max(0, (prod.stock || 0) - oldUnitQty);
+
+              const updates: any = {
+                batches: filteredBatches,
+                stock: revertedStock,
+              };
+
+              if (prod.isCigarette) {
+                updates.stockPack = Math.floor(revertedStock / packSz);
+                updates.stockLoose = revertedStock % packSz;
+              }
+
+              firestoreTx.update(entry.prodRef, updates);
+              entry.prodSnap = {
+                exists: () => true,
+                data: () => ({ ...prod, ...updates })
+              };
+            }
           }
 
-          // 2. Apply New Payment Mode Effect
-          if (newPaymentMode === "Credit" && supRef && supSnap && supSnap.exists()) {
-            const supData = supSnap.data();
-            const currentBal = supData.balance || 0;
-            const effectiveBal = (oldPaymentMode === "Credit") ? Math.max(0, currentBal - total) : currentBal;
-            const newBal = effectiveBal + total;
-            const newLedger = [...(oldPaymentMode === "Credit" ? supData.ledger || [] : supData.ledger || []), {
-              date: Date.now(),
-              type: "Purchase",
-              amount: total,
-              referenceId: orderId,
-              description: `Purchase Invoice (Switched to Credit): ${orderId}`
-            }];
-            firestoreTx.update(supRef, { balance: newBal, ledger: newLedger });
-          } else if (newPaymentMode === "Cash" && balRef && balSnap) {
-            const currentCoh = balSnap.exists() ? (balSnap.data().balance || 0) : 0;
-            const effectiveCoh = (oldPaymentMode === "Cash") ? currentCoh + total : currentCoh;
-            const newCoh = effectiveCoh - total;
-            firestoreTx.set(balRef, { balance: newCoh });
+          // 2. Apply New Items Stock & Batches
+          for (const item of (updatedOrder.items || [])) {
+            const entry = prodDataMap[item.productId];
+            if (entry && entry.prodSnap.exists()) {
+              const prod = entry.prodSnap.data();
+              const packSz = item.packSize || prod.packSize || DEFAULT_PACK_SIZE;
+              const unitCost = item.isPack ? (item.costPrice / packSz) : item.costPrice;
+              const newUnitQty = item.isPack ? item.quantity * packSz : item.quantity;
 
-            const cohTxId = "coh_" + Date.now();
+              const newBatch = {
+                id: "b_po_" + orderId + "_" + Math.random().toString(36).substring(2),
+                costPrice: unitCost,
+                quantity: newUnitQty,
+                createdAt: Date.now(),
+              };
+
+              const updatedBatches = [...(prod.batches || []), newBatch];
+              const updatedStock = (prod.stock || 0) + newUnitQty;
+
+              const updates: any = {
+                batches: updatedBatches,
+                stock: updatedStock,
+                costPrice: unitCost,
+              };
+
+              if (prod.isCigarette) {
+                if (item.isPack) {
+                  updates.costPricePack = item.costPrice;
+                }
+                updates.stockPack = Math.floor(updatedStock / packSz);
+                updates.stockLoose = updatedStock % packSz;
+              }
+
+              firestoreTx.update(entry.prodRef, updates);
+              entry.prodSnap = {
+                exists: () => true,
+                data: () => ({ ...prod, ...updates })
+              };
+            }
+          }
+
+          // 3. Revert & Apply Financials (COH / Khata)
+          const oldTotal = existingOrder.total || 0;
+          const newTotal = updatedOrder.total || 0;
+          const oldPaymentMode = existingOrder.paymentMode || "Cash";
+          const newPaymentMode = updatedOrder.paymentMode || "Cash";
+
+          let currentCoh = (balSnap && balSnap.exists()) ? (balSnap.data().balance || 0) : 0;
+          if (oldPaymentMode === "Cash") {
+            currentCoh += oldTotal;
+          } else if (oldPaymentMode === "Credit" && oldSupSnap && oldSupSnap.exists()) {
+            const oldSupData = oldSupSnap.data();
+            const revBal = Math.max(0, (oldSupData.balance || 0) - oldTotal);
+            const revLedger = [...(oldSupData.ledger || []), {
+              date: Date.now(),
+              type: "Adjustment",
+              amount: -oldTotal,
+              referenceId: orderId,
+              description: `Reversal of PO #${orderId} for edit`
+            }];
+            firestoreTx.update(oldSupRef, { balance: revBal, ledger: revLedger });
+          }
+
+          if (newPaymentMode === "Cash" && balRef) {
+            const finalCoh = currentCoh - newTotal;
+            firestoreTx.set(balRef, { balance: finalCoh });
+
+            const cohTxId = "coh_edit_" + Date.now();
             const cohTxRef = doc(db, "coh_transactions", cohTxId);
             firestoreTx.set(cohTxRef, {
               id: cohTxId,
               type: "expense",
               fromUserId: createdById,
-              fromUserName: createdByName,
-              toUserId: "supplier_" + (supplierId || ""),
-              toUserName: order.supplier,
-              amount: total,
+              fromUserName: existingOrder.createdBy || user?.name || "System",
+              toUserId: "supplier_" + (updatedOrder.supplierId || ""),
+              toUserName: updatedOrder.supplier,
+              amount: newTotal,
               sign: "debit",
-              note: `Cash Purchase (Switched from ${oldPaymentMode}): ${order.supplier}`,
+              note: `Edited Purchase Order: ${updatedOrder.supplier}`,
               status: "approved",
               performedBy: user?.name || "System",
               timestamp: Date.now(),
               approvedAt: Date.now(),
             });
+          } else if (newPaymentMode === "Credit" && newSupSnap && newSupSnap.exists()) {
+            const newSupData = newSupSnap.data();
+            const startBal = (oldSupplierId === newSupplierId && oldPaymentMode === "Credit")
+              ? Math.max(0, (newSupData.balance || 0) - oldTotal)
+              : (newSupData.balance || 0);
+
+            const finalBal = startBal + newTotal;
+            const finalLedger = [...(newSupData.ledger || []), {
+              date: Date.now(),
+              type: "Purchase",
+              amount: newTotal,
+              referenceId: orderId,
+              description: `Purchase Invoice (Updated): ${orderId}`
+            }];
+            firestoreTx.update(newSupRef, { balance: finalBal, ledger: finalLedger });
           }
         }
 
-        // 3. Update Document
-        firestoreTx.update(docRef, { paymentMode: newPaymentMode, updatedAt: Date.now() });
+        const { id, ...saveData } = updatedOrder;
+        saveData.updatedAt = Date.now();
+        firestoreTx.set(docRef, saveData);
       });
-      logAudit("purchase_payment_updated", "purchase", orderId, `Payment mode updated to ${newPaymentMode}`, { amount: 0 });
+      logAudit("purchase_updated", "purchase", orderId, `Edited purchase order · ${updatedOrder.supplier || "?"} · ฿${(updatedOrder.total || 0).toFixed(2)}`, { amount: updatedOrder.total || 0 });
     } else {
       const list = getLocalData(LS_KEY, []);
-      const order = list.find((o: any) => o.id === orderId);
-      if (order) {
-        order.paymentMode = newPaymentMode;
-        order.updatedAt = Date.now();
+      const idx = list.findIndex((o: any) => o.id === orderId);
+      if (idx !== -1) {
+        list[idx] = { ...list[idx], ...updatedOrder, updatedAt: Date.now() };
         setLocalData(LS_KEY, list);
       }
     }
   } catch (err: any) {
     logError("PURCHASE", err.message, err.stack);
-    throw new Error(`Update error: ${err.message}`);
+    throw new Error(`Update order error: ${err.message}`);
   }
 };
+
 

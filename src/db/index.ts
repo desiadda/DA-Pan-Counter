@@ -11,7 +11,7 @@ import {
   getHistoryForUser, getAllTransactions, initCOHListener,
 } from "./coh";
 import { recordPriceChange, getPriceHistory, getAllPriceHistory, clearPriceHistory } from "./priceHistory";
-import { getPurchaseOrders, savePurchaseOrder, receivePurchaseOrder, cancelPurchaseOrder, updatePurchaseOrderPaymentMode } from "./purchases";
+import { getPurchaseOrders, savePurchaseOrder, receivePurchaseOrder, cancelPurchaseOrder, updatePurchaseOrder } from "./purchases";
 import { getSuppliers, saveSupplier, deleteSupplier, updateSupplierBalance, adjustSupplierBalance, recordSupplierPayment, initSuppliersListener } from "./suppliers";
 import { initFinanceListener, getBanks, addBank, updateBank, deleteBank, getFinanceTransactions, financeTransfer } from "./finance";
 import { initSettingsListener, saveAppSettings } from "./settings";
@@ -32,7 +32,7 @@ export const dbService = {
   savePurchaseOrder,
   receivePurchaseOrder,
   cancelPurchaseOrder,
-  updatePurchaseOrderPaymentMode,
+  updatePurchaseOrder,
   saveProduct,
   deleteProduct,
   addStockAdjustment,
