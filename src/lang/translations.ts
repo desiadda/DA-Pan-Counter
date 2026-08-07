@@ -124,6 +124,9 @@ const translations = {
       quickAddSupplier: "+ Add New Supplier",
       quickAddProductTitle: "Quick Add Product / Item",
       quickAddSupplierTitle: "Quick Add Supplier",
+      editPaymentMode: "Edit Payment Mode",
+      changeModeHint: "Changing mode between Cash and Credit will automatically reconcile Cash on Hand (COH) and Supplier Khata balance.",
+      paymentModeUpdated: "Payment mode updated successfully!",
     },
     supplier: {
       title: "Supplier Directory & Khata", addSupplier: "+ Add Supplier",
@@ -347,6 +350,9 @@ const translations = {
       quickAddSupplier: "+ नया आपूर्तिकर्ता जोड़ें",
       quickAddProductTitle: "त्वरित नया आइटम जोड़ें",
       quickAddSupplierTitle: "त्वरित नया आपूर्तिकर्ता जोड़ें",
+      editPaymentMode: "भुगतान मोड संपादित करें",
+      changeModeHint: "कैश (COH) और क्रेडिट (खाता) के बीच मोड बदलने पर गल्ला और आपूर्तिकर्ता खाता अपने आप एडजस्ट हो जाएगा।",
+      paymentModeUpdated: "भुगतान मोड सफलतापूर्वक अपडेट हुआ!",
     },
     supplier: {
       title: "आपूर्तिकर्ता निर्देशिका और खाता", addSupplier: "+ आपूर्तिकर्ता जोड़ें",
@@ -546,6 +552,9 @@ const translations = {
       quickAddSupplier: "+ เพิ่มผู้จำหน่ายใหม่",
       quickAddProductTitle: "เพิ่มสินค้าด่วน",
       quickAddSupplierTitle: "เพิ่มผู้จำหน่ายด่วน",
+      editPaymentMode: "แก้ไขวิธีการชำระเงิน",
+      changeModeHint: "การเปลี่ยนโหมดระหว่างเงินสดและเครดิตจะปรับยอดเงินสดในมือ (COH) และยอดซัพพลายเออร์โดยอัตโนมัติ",
+      paymentModeUpdated: "อัปเดตวิธีการชำระเงินเรียบร้อยแล้ว!",
     },
     supplier: {
       title: "ไดเรกทอรีซัพพลายเออร์", addSupplier: "+ เพิ่มซัพพลายเออร์",
@@ -726,6 +735,9 @@ const translations = {
       quickAddSupplier: "+ ပေးသွင်းသူသစ်ထည့်ပါ",
       quickAddProductTitle: "ပစ္စည်းသစ်အမြန်ထည့်ပါ",
       quickAddSupplierTitle: "ပေးသွင်းသူသစ်အမြန်ထည့်ပါ",
+      editPaymentMode: "ငွေပေးချေမှုနည်းလမ်းပြင်ရန်",
+      changeModeHint: "ငွေသားနှင့် အကြွေးကြား နည်းလမ်းပြောင်းပါက လက်ထဲငွေနှင့် ပေးသွင်းသူအကြွေး ရှင်းတမ်း အလိုအလျောက် ညှိပါမည်။",
+      paymentModeUpdated: "ငွေပေးချေမှုနည်းလမ်းမွမ်းမံပြီးပါပြီ!",
     },
     supplier: {
       title: "ပေးသွင်းသူများနှင့် အကြွေးအကောင့်", addSupplier: "+ ပေးသွင်းသူထည့်ရန်",

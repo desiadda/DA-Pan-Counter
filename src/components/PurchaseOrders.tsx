@@ -11,10 +11,13 @@ import { useT } from "../lang/translations";
 import QuickAddProductModal from "./QuickAddProductModal";
 import QuickAddSupplierModal from "./QuickAddSupplierModal";
 
+import { useAuthStore } from "../stores/authStore";
+
 export default function PurchaseOrders({ prefill, onPrefillConsumed }) {
   const lang = useLangStore((s) => s.lang);
   const tr = useT(lang);
   const confirm = useConfirmStore((s) => s.confirm);
+  const user = useAuthStore((s) => s.user);
   const paymentModes = useDBStore((s) => s.paymentModes);
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
@@ -26,6 +29,9 @@ export default function PurchaseOrders({ prefill, onPrefillConsumed }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [receivingOrder, setReceivingOrder] = useState(null);
   const [receivePaymentMode, setReceivePaymentMode] = useState("Credit");
+  const [editingPaymentOrder, setEditingPaymentOrder] = useState(null);
+  const [editingPaymentMode, setEditingPaymentMode] = useState("Cash");
+  const [updatingMode, setUpdatingMode] = useState(false);
 
   useEffect(() => {
     if (prefill && prefill.length > 0) {
@@ -236,6 +242,16 @@ export default function PurchaseOrders({ prefill, onPrefillConsumed }) {
               <div style={styles.footer}>
                 <span style={styles.total}>Total: ฿{order.total?.toFixed(0)}</span>
                 <div style={styles.actions}>
+                  {order.status !== "cancelled" && (
+                    <button
+                      onClick={() => { setEditingPaymentOrder(order); setEditingPaymentMode(order.paymentMode || "Cash"); }}
+                      className="btn btn-outline"
+                      style={{ padding: "2px 8px", fontSize: "0.7rem", borderRadius: "4px" }}
+                      title={tr("purchase.editPaymentMode")}
+                    >
+                      ✏️ Edit Mode
+                    </button>
+                  )}
                   {order.status === "pending" && (
                     <>
                       <button onClick={() => receiveOrder(order)} className="btn btn-primary" style={{ padding: "2px 8px", fontSize: "0.7rem", borderRadius: "4px" }}>
@@ -303,6 +319,81 @@ export default function PurchaseOrders({ prefill, onPrefillConsumed }) {
                   ✅ {tr("purchase.confirmReceive")} ({receiveModeLabel(receivePaymentMode)})
                 </button>
                 <button onClick={() => setReceivingOrder(null)} className="btn btn-outline" style={{ flex: 1, padding: "0.5rem", fontSize: "0.8rem" }}>
+                  {tr("common.cancel")}
+                </button>
+              </div>
+            </div>
+          </div>
+        </ModalPortal>
+      )}
+
+      {editingPaymentOrder && (
+        <ModalPortal onClose={() => setEditingPaymentOrder(null)}>
+          <div
+            style={{
+              position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100,
+              display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem",
+            }}
+            onClick={() => setEditingPaymentOrder(null)}
+          >
+            <div
+              style={{
+                background: "#fff", borderRadius: "14px", width: "100%", maxWidth: "420px",
+                display: "flex", flexDirection: "column", gap: "0.75rem", padding: "1.25rem",
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div>
+                <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 800, color: "#1e293b" }}>
+                  ✏️ {tr("purchase.editPaymentMode")}
+                </h3>
+                <div style={{ fontSize: "0.78rem", color: "#64748b", marginTop: "4px" }}>
+                  {editingPaymentOrder.supplier} · Total: <strong>฿{(editingPaymentOrder.total || 0).toFixed(0)}</strong>
+                </div>
+              </div>
+
+              <div>
+                <label className="input-label">{tr("purchase.payMode")}</label>
+                <select
+                  value={editingPaymentMode}
+                  onChange={e => setEditingPaymentMode(e.target.value)}
+                  className="input-field"
+                  style={{ fontFamily: "inherit" }}
+                >
+                  {receiveModes.map(m => (
+                    <option key={m.id} value={m.id === UDHAAR_MODE ? "Credit" : m.id}>
+                      {m.id === UDHAAR_MODE ? "Credit (Khata)" : m.id === "Cash" ? "Cash (COH)" : m.name}
+                    </option>
+                  ))}
+                </select>
+                <div style={{ fontSize: "0.75rem", color: "#92400e", marginTop: "0.5rem", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: "8px", padding: "0.5rem 0.65rem" }}>
+                  📌 {tr("purchase.changeModeHint")}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.25rem" }}>
+                <button
+                  onClick={async () => {
+                    if (updatingMode) return;
+                    try {
+                      setUpdatingMode(true);
+                      await dbService.updatePurchaseOrderPaymentMode(editingPaymentOrder.id, editingPaymentMode, user);
+                      setEditingPaymentOrder(null);
+                      alert("✅ " + tr("purchase.paymentModeUpdated"));
+                      load();
+                    } catch (err: any) {
+                      alert("❌ Failed to update payment mode: " + err.message);
+                    } finally {
+                      setUpdatingMode(false);
+                    }
+                  }}
+                  disabled={updatingMode}
+                  className="btn btn-primary"
+                  style={{ flex: 1, padding: "0.5rem", fontSize: "0.8rem" }}
+                >
+                  {updatingMode ? tr("purchase.processing") : tr("common.save")}
+                </button>
+                <button onClick={() => setEditingPaymentOrder(null)} className="btn btn-outline" style={{ flex: 1, padding: "0.5rem", fontSize: "0.8rem" }}>
                   {tr("common.cancel")}
                 </button>
               </div>
