@@ -476,9 +476,33 @@ export const updatePurchaseOrder = async (orderId: string, updatedOrder: any, us
           const newPaymentMode = updatedOrder.paymentMode || "Cash";
 
           let currentCoh = (balSnap && balSnap.exists()) ? (balSnap.data().balance || 0) : 0;
-          if (oldPaymentMode === "Cash") {
+
+          // Revert old COH if old payment mode was Cash
+          if (oldPaymentMode === "Cash" && balRef) {
             currentCoh += oldTotal;
-          } else if (oldPaymentMode === "Credit" && oldSupSnap && oldSupSnap.exists()) {
+            firestoreTx.set(balRef, { balance: currentCoh });
+
+            const cohTxId = "coh_rev_" + Date.now();
+            const cohTxRef = doc(db, "coh_transactions", cohTxId);
+            firestoreTx.set(cohTxRef, {
+              id: cohTxId,
+              type: "income",
+              fromUserId: "supplier_" + (oldSupplierId || ""),
+              fromUserName: existingOrder.supplier || "Supplier",
+              toUserId: createdById,
+              toUserName: existingOrder.createdBy || user?.name || "System",
+              amount: oldTotal,
+              sign: "credit",
+              note: `Reversal of Cash Purchase #${orderId} (Edited)`,
+              status: "approved",
+              performedBy: user?.name || "System",
+              timestamp: Date.now(),
+              approvedAt: Date.now(),
+            });
+          }
+
+          // Revert old Khata if old payment mode was Credit
+          if (oldPaymentMode === "Credit" && oldSupSnap && oldSupSnap.exists()) {
             const oldSupData = oldSupSnap.data();
             const revBal = Math.max(0, (oldSupData.balance || 0) - oldTotal);
             const revLedger = [...(oldSupData.ledger || []), {
@@ -491,6 +515,7 @@ export const updatePurchaseOrder = async (orderId: string, updatedOrder: any, us
             firestoreTx.update(oldSupRef, { balance: revBal, ledger: revLedger });
           }
 
+          // Apply new COH if new payment mode is Cash
           if (newPaymentMode === "Cash" && balRef) {
             const finalCoh = currentCoh - newTotal;
             firestoreTx.set(balRef, { balance: finalCoh });
@@ -512,7 +537,10 @@ export const updatePurchaseOrder = async (orderId: string, updatedOrder: any, us
               timestamp: Date.now(),
               approvedAt: Date.now(),
             });
-          } else if (newPaymentMode === "Credit" && newSupSnap && newSupSnap.exists()) {
+          }
+
+          // Apply new Khata if new payment mode is Credit
+          if (newPaymentMode === "Credit" && newSupSnap && newSupSnap.exists()) {
             const newSupData = newSupSnap.data();
             const startBal = (oldSupplierId === newSupplierId && oldPaymentMode === "Credit")
               ? Math.max(0, (newSupData.balance || 0) - oldTotal)
@@ -539,6 +567,95 @@ export const updatePurchaseOrder = async (orderId: string, updatedOrder: any, us
       const list = getLocalData(LS_KEY, []);
       const idx = list.findIndex((o: any) => o.id === orderId);
       if (idx !== -1) {
+        const existingOrder = list[idx];
+        const oldTotal = existingOrder.total || 0;
+        const newTotal = updatedOrder.total || 0;
+        const oldPaymentMode = existingOrder.paymentMode || "Cash";
+        const newPaymentMode = updatedOrder.paymentMode || "Cash";
+        const createdById = existingOrder.createdById || user?.id || "system";
+
+        if (existingOrder.status === "received") {
+          // 1. Revert Old Financials in Local Storage
+          if (oldPaymentMode === "Cash") {
+            const cohBalances = getLocalData("pan_coh_balances", {});
+            cohBalances[createdById] = (cohBalances[createdById] || 0) + oldTotal;
+            setLocalData("pan_coh_balances", cohBalances);
+
+            const cohTxs = getLocalData("pan_coh_transactions", []);
+            cohTxs.unshift({
+              id: "coh_rev_" + Date.now(),
+              type: "income",
+              fromUserId: "supplier_" + (existingOrder.supplierId || ""),
+              fromUserName: existingOrder.supplier || "Supplier",
+              toUserId: createdById,
+              toUserName: existingOrder.createdBy || user?.name || "System",
+              amount: oldTotal,
+              sign: "credit",
+              note: `Reversal of Cash Purchase #${orderId} (Edited)`,
+              status: "approved",
+              performedBy: user?.name || "System",
+              timestamp: Date.now(),
+              approvedAt: Date.now(),
+            });
+            setLocalData("pan_coh_transactions", cohTxs);
+          } else if (oldPaymentMode === "Credit" && existingOrder.supplierId) {
+            const suppliers = getLocalData("pan_suppliers", []);
+            const sup = suppliers.find((s: any) => s.id === existingOrder.supplierId);
+            if (sup) {
+              sup.balance = Math.max(0, (sup.balance || 0) - oldTotal);
+              sup.ledger = [...(sup.ledger || []), {
+                date: Date.now(),
+                type: "Adjustment",
+                amount: -oldTotal,
+                referenceId: orderId,
+                description: `Reversal of PO #${orderId} for edit`
+              }];
+              setLocalData("pan_suppliers", suppliers);
+            }
+          }
+
+          // 2. Apply New Financials in Local Storage
+          if (newPaymentMode === "Cash") {
+            const cohBalances = getLocalData("pan_coh_balances", {});
+            cohBalances[createdById] = (cohBalances[createdById] || 0) - newTotal;
+            setLocalData("pan_coh_balances", cohBalances);
+
+            const cohTxs = getLocalData("pan_coh_transactions", []);
+            cohTxs.unshift({
+              id: "coh_edit_" + Date.now(),
+              type: "expense",
+              fromUserId: createdById,
+              fromUserName: existingOrder.createdBy || user?.name || "System",
+              toUserId: "supplier_" + (updatedOrder.supplierId || ""),
+              toUserName: updatedOrder.supplier,
+              amount: newTotal,
+              sign: "debit",
+              note: `Cash Purchase (Edited): ${updatedOrder.supplier}`,
+              status: "approved",
+              performedBy: user?.name || "System",
+              timestamp: Date.now(),
+              approvedAt: Date.now(),
+            });
+            setLocalData("pan_coh_transactions", cohTxs);
+          } else if (newPaymentMode === "Credit" && updatedOrder.supplierId) {
+            const suppliers = getLocalData("pan_suppliers", []);
+            const sup = suppliers.find((s: any) => s.id === updatedOrder.supplierId);
+            if (sup) {
+              sup.balance = (sup.balance || 0) + newTotal;
+              sup.ledger = [...(sup.ledger || []), {
+                date: Date.now(),
+                type: "Purchase",
+                amount: newTotal,
+                referenceId: orderId,
+                description: `Purchase Invoice (Updated): ${orderId}`
+              }];
+              setLocalData("pan_suppliers", suppliers);
+            }
+          }
+
+          window.dispatchEvent(new CustomEvent("coh-changed"));
+        }
+
         list[idx] = { ...list[idx], ...updatedOrder, updatedAt: Date.now() };
         setLocalData(LS_KEY, list);
       }
