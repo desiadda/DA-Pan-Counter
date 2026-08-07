@@ -139,13 +139,23 @@ export const adjustSupplierBalance = async (supplierId, amount, type = "Opening 
   logAudit("supplier_balance_adjusted", "supplier", supplierId, `Adjusted balance by ฿${amount.toFixed(2)} (${type})`, { amount, dateMs });
 };
 
-export const recordSupplierPayment = async (supplierId, supplierName, amount, paymentMode, cashierId, cashierName) => {
+export const recordSupplierPayment = async (
+  supplierId: string,
+  supplierName: string,
+  amount: number,
+  paymentMode: string,
+  cashierId: string,
+  cashierName: string,
+  paymentDateMs: number = Date.now(),
+  note: string = ""
+) => {
   try {
+    const paymentTimestamp = paymentDateMs || Date.now();
     const ledgerEntry = {
-      date: Date.now(),
+      date: paymentTimestamp,
       type: "Payment",
       amount,
-      description: `Paid via ${paymentMode}. Recorded by ${cashierName}.`,
+      description: note ? `Paid via ${paymentMode}. Note: ${note}` : `Paid via ${paymentMode}. Recorded by ${cashierName}.`,
     };
     
     if (isFirebaseEnabled) {
@@ -157,7 +167,7 @@ export const recordSupplierPayment = async (supplierId, supplierName, amount, pa
         const currentBal = data.balance || 0;
         const currentLedger = data.ledger || [];
         const newBal = currentBal - amount;
-        const newLedger = [...currentLedger, ledgerEntry];
+        const newLedger = [...currentLedger, ledgerEntry].sort((a, b) => (a.date || 0) - (b.date || 0));
 
         let currentCoh = 0;
         let balRef = null;
@@ -185,18 +195,52 @@ export const recordSupplierPayment = async (supplierId, supplierName, amount, pa
             toUserName: supplierName,
             amount,
             sign: "debit",
-            note: `Paid supplier: ${supplierName}`,
+            note: note ? `Paid supplier (${supplierName}): ${note}` : `Paid supplier: ${supplierName}`,
             status: "approved",
             performedBy: cashierName || "System",
-            timestamp: Date.now(),
-            approvedAt: Date.now(),
+            timestamp: paymentTimestamp,
+            approvedAt: paymentTimestamp,
           });
         }
       });
       logAudit("supplier_payment", "supplier", supplierId, `Paid ${supplierName} ฿${(amount || 0).toFixed(2)} via ${paymentMode}`, { amount });
+    } else {
+      const list = getLocalData(LS_KEY, []);
+      const idx = list.findIndex((s: any) => s.id === supplierId);
+      if (idx !== -1) {
+        list[idx].balance = (list[idx].balance || 0) - amount;
+        list[idx].ledger = [...(list[idx].ledger || []), ledgerEntry].sort((a, b) => (a.date || 0) - (b.date || 0));
+        setLocalData(LS_KEY, list);
+      }
+
+      if (paymentMode === "Cash") {
+        const cohBalances = getLocalData("pan_coh_balances", {});
+        cohBalances[cashierId] = (cohBalances[cashierId] || 0) - amount;
+        setLocalData("pan_coh_balances", cohBalances);
+
+        const cohTxs = getLocalData("pan_coh_transactions", []);
+        cohTxs.unshift({
+          id: "coh_" + Date.now(),
+          type: "expense",
+          fromUserId: cashierId,
+          fromUserName: cashierName,
+          toUserId: "supplier_" + supplierId,
+          toUserName: supplierName,
+          amount,
+          sign: "debit",
+          note: note ? `Paid supplier (${supplierName}): ${note}` : `Paid supplier: ${supplierName}`,
+          status: "approved",
+          performedBy: cashierName || "System",
+          timestamp: paymentTimestamp,
+          approvedAt: paymentTimestamp,
+        });
+        setLocalData("pan_coh_transactions", cohTxs);
+        window.dispatchEvent(new CustomEvent("coh-changed"));
+      }
     }
-  } catch (err) {
+  } catch (err: any) {
     logError("STORAGE", err.message, err.stack);
     throw err;
   }
 };
+

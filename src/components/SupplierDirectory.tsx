@@ -34,6 +34,8 @@ export default function SupplierDirectory() {
   const [paymentSup, setPaymentSup] = useState(null);
   const [payAmount, setPayAmount] = useState("");
   const [payMode, setPayMode] = useState("Cash");
+  const [payDate, setPayDate] = useState("");
+  const [payNote, setPayNote] = useState("");
 
   const [adjustSup, setAdjustSup] = useState(null);
   const [adjustAmt, setAdjustAmt] = useState("");
@@ -144,16 +146,21 @@ export default function SupplierDirectory() {
     try {
       setSubmitting(true);
       const user = JSON.parse(localStorage.getItem("pan_user") || "{}");
+      const paymentDateMs = payDate ? new Date(payDate + "T12:00:00").getTime() : Date.now();
       await dbService.recordSupplierPayment(
         paymentSup.id,
         paymentSup.name,
         amount,
         payMode,
         user.id || "system",
-        user.name || "System"
+        user.name || "System",
+        paymentDateMs,
+        payNote.trim()
       );
       setPaymentSup(null);
       setPayAmount("");
+      setPayDate("");
+      setPayNote("");
       alert("✅ Payment recorded successfully!");
       load();
     } catch (err) {
@@ -331,6 +338,16 @@ export default function SupplierDirectory() {
               </select>
             </div>
           </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
+            <div className="input-group" style={{ marginBottom: 0 }}>
+              <label className="input-label">{tr("supplier.entryDate")}</label>
+              <input type="date" value={payDate} onChange={e => setPayDate(e.target.value)} className="input-field" required />
+            </div>
+            <div className="input-group" style={{ marginBottom: 0 }}>
+              <label className="input-label">{tr("coh.noteRequired")}</label>
+              <input type="text" value={payNote} onChange={e => setPayNote(e.target.value)} className="input-field" placeholder="Note / voucher / cheque no..." />
+            </div>
+          </div>
           <div className="flex-btn-group">
             <button type="submit" disabled={submitting} className="btn btn-primary btn-sm">{tr("supplier.submitPayment")}</button>
             <button type="button" onClick={() => setPaymentSup(null)} className="btn btn-outline btn-sm">{tr("supplier.cancel")}</button>
@@ -409,7 +426,12 @@ export default function SupplierDirectory() {
                     ⚙️ {tr("supplier.adjustBalance")}
                   </button>
                   {(s.balance || 0) > 0 && (
-                    <button onClick={() => setPaymentSup(s)} className="btn btn-primary" style={{ padding: "3px 8px", fontSize: "0.7rem", borderRadius: "6px" }}>
+                    <button onClick={() => {
+                      setPaymentSup(s);
+                      setPayAmount("");
+                      setPayDate(new Date().toISOString().split("T")[0]);
+                      setPayNote("");
+                    }} className="btn btn-primary" style={{ padding: "3px 8px", fontSize: "0.7rem", borderRadius: "6px" }}>
                       💸 {tr("supplier.paySupplier")}
                     </button>
                   )}
