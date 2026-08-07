@@ -327,8 +327,13 @@ export function getAllTransactions() {
   }
 }
 
-export async function deleteCOHTransaction(txId: string) {
+export async function deleteCOHTransaction(txId: string, user?: any) {
   try {
+    const isAdmin = user?.role === "admin" || user?.permissions?.settings;
+    if (user && !isAdmin) {
+      throw new Error(localizeError("Only Admin can delete COH transactions.", "केवल व्यवस्थापक ही COH लेनदेन हटा सकते हैं।"));
+    }
+
     if (isFirebaseEnabled) {
       await runTransaction(db, async (transaction) => {
         const txRef = doc(db, "coh_transactions", txId);

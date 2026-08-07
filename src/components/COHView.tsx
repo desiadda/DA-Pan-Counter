@@ -484,24 +484,26 @@ export default function COHView({ user }) {
                     <div style={{ fontWeight: 700, fontSize: "0.95rem", color: tx.sign === "debit" ? "var(--error)" : "var(--primary)" }}>
                       {tx.sign === "debit" ? "-" : "+"}฿{(tx.amount || 0).toFixed(2)}
                     </div>
-                    <button
-                      onClick={async () => {
-                        const ok = await confirm(`Delete transaction #${tx.id} (${tx.note || "฿" + tx.amount})? This will revert its cash balance effect.`, { title: "Delete Transaction", variant: "danger" });
-                        if (!ok) return;
-                        try {
-                          await dbService.deleteCOHTransaction(tx.id);
-                          alert("✅ Transaction deleted and balance updated.");
-                          load();
-                        } catch (err: any) {
-                          alert("❌ Failed to delete: " + err.message);
-                        }
-                      }}
-                      className="btn btn-outline"
-                      style={{ padding: "1px 6px", fontSize: "0.65rem", color: "#dc2626", borderColor: "#fca5a5" }}
-                      title="Delete transaction"
-                    >
-                      🗑️ Delete
-                    </button>
+                    {(user?.role === "admin" || user?.permissions?.settings) && (
+                      <button
+                        onClick={async () => {
+                          const ok = await confirm(`Delete transaction #${tx.id} (${tx.note || "฿" + tx.amount})? This will revert its cash balance effect.`, { title: "Delete Transaction", variant: "danger" });
+                          if (!ok) return;
+                          try {
+                            await dbService.deleteCOHTransaction(tx.id, user);
+                            alert("✅ Transaction deleted and balance updated.");
+                            load();
+                          } catch (err: any) {
+                            alert("❌ Failed to delete: " + err.message);
+                          }
+                        }}
+                        className="btn btn-outline"
+                        style={{ padding: "1px 6px", fontSize: "0.65rem", color: "#dc2626", borderColor: "#fca5a5" }}
+                        title="Delete transaction (Admin only)"
+                      >
+                        🗑️ Delete
+                      </button>
+                    )}
                   </div>
                 </div>
               ))
