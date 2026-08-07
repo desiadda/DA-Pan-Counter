@@ -17,8 +17,92 @@ async function syncPurchaseToFirebase(order) {
   }
 }
 
+export const reconcileStuckCOHPurchases = async () => {
+  try {
+    let orders: any[] = [];
+    let cohTxs: any[] = [];
+    let cohBalances: Record<string, number> = {};
+
+    if (isFirebaseEnabled) {
+      const snap = await getDocs(collection(db, "purchases"));
+      orders = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+      const txSnap = await getDocs(collection(db, "coh_transactions"));
+      cohTxs = txSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+      const balSnap = await getDocs(collection(db, "coh_balances"));
+      balSnap.docs.forEach(d => {
+        cohBalances[d.id] = d.data().balance || 0;
+      });
+    } else {
+      orders = getLocalData(LS_KEY, []);
+      cohTxs = getLocalData("pan_coh_transactions", []);
+      cohBalances = getLocalData("pan_coh_balances", {});
+    }
+
+    for (const order of orders) {
+      if (order.paymentMode === "Credit" || order.status === "cancelled") {
+        const debits = cohTxs.filter((t: any) =>
+          t.type === "expense" &&
+          (t.referenceId === order.id || (t.note && t.note.includes(order.id)))
+        );
+
+        const credits = cohTxs.filter((t: any) =>
+          t.type === "income" &&
+          (t.referenceId === order.id || (t.note && t.note.includes(order.id)))
+        );
+
+        const totalDebited = debits.reduce((sum: number, d: any) => sum + (d.amount || 0), 0);
+        const totalCredited = credits.reduce((sum: number, c: any) => sum + (c.amount || 0), 0);
+        const unreversedAmt = totalDebited - totalCredited;
+
+        if (unreversedAmt > 0) {
+          const cashierId = order.createdById || debits[0]?.fromUserId || "system";
+          const newBal = (cohBalances[cashierId] || 0) + unreversedAmt;
+          cohBalances[cashierId] = newBal;
+
+          const cohTxId = "coh_rev_fix_" + Date.now() + "_" + Math.random().toString(36).substring(2, 6);
+          const revTx = {
+            id: cohTxId,
+            type: "income",
+            referenceId: order.id,
+            fromUserId: "supplier_" + (order.supplierId || ""),
+            fromUserName: order.supplier || "Supplier",
+            toUserId: cashierId,
+            toUserName: order.createdBy || "Cashier",
+            amount: unreversedAmt,
+            sign: "credit",
+            note: `Auto Reversal of Cash Purchase #${order.id} (Switched to ${order.paymentMode || "Credit"})`,
+            status: "approved",
+            performedBy: "System Auto-Fix",
+            timestamp: Date.now(),
+            approvedAt: Date.now(),
+          };
+
+          cohTxs.unshift(revTx);
+
+          if (isFirebaseEnabled) {
+            await setDoc(doc(db, "coh_balances", cashierId), { balance: newBal });
+            await setDoc(doc(db, "coh_transactions", cohTxId), revTx);
+          } else {
+            setLocalData("pan_coh_balances", cohBalances);
+            setLocalData("pan_coh_transactions", cohTxs);
+          }
+
+          logAudit("coh_auto_reconciled", "coh", order.id, `Auto-reconciled stuck COH debit of ฿${unreversedAmt.toFixed(2)} for PO #${order.id}`, { amount: unreversedAmt });
+        }
+      }
+    }
+
+    window.dispatchEvent(new CustomEvent("coh-changed"));
+  } catch (err: any) {
+    logError("COH_RECONCILE", err.message, err.stack);
+  }
+};
+
 export const getPurchaseOrders = async () => {
   try {
+    reconcileStuckCOHPurchases().catch(() => {});
     if (isFirebaseEnabled) {
       const snap = await getDocs(collection(db, "purchases"));
       return snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -665,5 +749,16 @@ export const updatePurchaseOrder = async (orderId: string, updatedOrder: any, us
     throw new Error(`Update order error: ${err.message}`);
   }
 };
+
+export const updatePurchaseOrderPaymentMode = async (orderId: string, newPaymentMode: string, user: any) => {
+  const orders = await getPurchaseOrders();
+  const order = orders.find((o: any) => o.id === orderId);
+  if (!order) throw new Error("Purchase order not found");
+
+  const updatedOrder = { ...order, paymentMode: newPaymentMode };
+  await updatePurchaseOrder(orderId, updatedOrder, user);
+  await reconcileStuckCOHPurchases();
+};
+
 
 
