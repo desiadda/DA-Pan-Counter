@@ -326,3 +326,54 @@ export function getAllTransactions() {
     return [];
   }
 }
+
+export async function deleteCOHTransaction(txId: string) {
+  try {
+    if (isFirebaseEnabled) {
+      await runTransaction(db, async (transaction) => {
+        const txRef = doc(db, "coh_transactions", txId);
+        const txSnap = await transaction.get(txRef);
+        if (!txSnap.exists()) return;
+
+        const tx = txSnap.data() as any;
+        const targetUserId = (tx.sign === "debit" || tx.type === "expense") ? tx.fromUserId : tx.toUserId;
+
+        if (targetUserId && targetUserId !== "system" && !targetUserId.startsWith("supplier_")) {
+          const balRef = doc(db, "coh_balances", targetUserId);
+          const balSnap = await transaction.get(balRef);
+          const currentBal = balSnap.exists() ? (balSnap.data().balance || 0) : 0;
+          
+          const isDebit = tx.sign === "debit" || tx.type === "expense";
+          const newBal = isDebit ? currentBal + (tx.amount || 0) : Math.max(0, currentBal - (tx.amount || 0));
+          transaction.set(balRef, { balance: newBal });
+        }
+
+        transaction.delete(txRef);
+      });
+    } else {
+      const txs = getTransactionsRaw();
+      const idx = txs.findIndex((t: any) => t.id === txId);
+      if (idx !== -1) {
+        const tx = txs[idx];
+        const targetUserId = (tx.sign === "debit" || tx.type === "expense") ? tx.fromUserId : tx.toUserId;
+
+        if (targetUserId && targetUserId !== "system" && !targetUserId.startsWith("supplier_")) {
+          const balances = getBalancesRaw();
+          const currentBal = balances[targetUserId] || 0;
+          const isDebit = tx.sign === "debit" || tx.type === "expense";
+          balances[targetUserId] = isDebit ? currentBal + (tx.amount || 0) : Math.max(0, currentBal - (tx.amount || 0));
+          saveBalancesRaw(balances);
+        }
+
+        txs.splice(idx, 1);
+        saveTransactionsRaw(txs);
+      }
+    }
+    window.dispatchEvent(new CustomEvent("coh-changed"));
+    logAudit("coh_transaction_deleted", "coh", txId, `Deleted COH transaction ${txId}`);
+  } catch (err: any) {
+    logError("COH", err.message, err.stack);
+    throw err;
+  }
+}
+
