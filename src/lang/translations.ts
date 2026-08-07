@@ -37,6 +37,7 @@ const translations = {
       pinHint: "Click ⭐ on any item to pin/unpin",
       todaySummary: "Today's Counter Summary",
       summaryHint: "Click any card for detailed reports & receipts",
+      quickAddProduct: "+ Quick Add Item",
     },
     inventory: {
       title: "Inventory Manager",
@@ -119,6 +120,10 @@ const translations = {
       atLeastOneItem: "Add at least one item", notesPlaceholder: "Order notes...",
       cancelledPo: "Cancel Purchase Order", cancelPoQ: "Cancel this purchase order?",
       receiveQ: "Stock and supplier balance will be updated.",
+      quickAddProduct: "+ Add New Item",
+      quickAddSupplier: "+ Add New Supplier",
+      quickAddProductTitle: "Quick Add Product / Item",
+      quickAddSupplierTitle: "Quick Add Supplier",
     },
     supplier: {
       title: "Supplier Directory & Khata", addSupplier: "+ Add Supplier",
@@ -257,6 +262,7 @@ const translations = {
       enterCash: "प्राप्त नकद कुल राशि से अधिक या बराबर होनी चाहिए।",
       selectUdhaar: "कृपया उधार के लिए ग्राहक चुनें।",
       quickAdd10: "+१०", quickAdd50: "+५०", quickAdd100: "+१००", quickAdd500: "+५००",
+      quickAddProduct: "+ त्वरित आइटम जोड़ें",
     },
     inventory: {
       title: "इन्वेंटरी मैनेजर", stock: "स्टॉक", purchaseOrders: "खरीद ऑर्डर",
@@ -337,6 +343,10 @@ const translations = {
       atLeastOneItem: "कम से कम एक आइटम जोड़ें", notesPlaceholder: "ऑर्डर नोट...",
       cancelledPo: "खरीद ऑर्डर रद्द करें", cancelPoQ: "क्या यह खरीद ऑर्डर रद्द करें?",
       receiveQ: "स्टॉक और आपूर्तिकर्ता शेष अपडेट होगा।",
+      quickAddProduct: "+ नया आइटम जोड़ें",
+      quickAddSupplier: "+ नया आपूर्तिकर्ता जोड़ें",
+      quickAddProductTitle: "त्वरित नया आइटम जोड़ें",
+      quickAddSupplierTitle: "त्वरित नया आपूर्तिकर्ता जोड़ें",
     },
     supplier: {
       title: "आपूर्तिकर्ता निर्देशिका और खाता", addSupplier: "+ आपूर्तिकर्ता जोड़ें",
@@ -474,6 +484,7 @@ const translations = {
       enterCash: "เงินสดที่รับต้องมากกว่าหรือเท่ากับยอดรวม",
       selectUdhaar: "กรุณาเลือกลูกค้าสำหรับเครดิต",
       quickAdd10: "+๑๐", quickAdd50: "+๕๐", quickAdd100: "+๑๐๐", quickAdd500: "+๕๐๐",
+      quickAddProduct: "+ เพิ่มสินค้าด่วน",
     },
     inventory: {
       title: "จัดการสต็อก", stock: "สต็อก", purchaseOrders: "ใบสั่งซื้อ",
@@ -531,6 +542,10 @@ const translations = {
       atLeastOneItem: "เพิ่มอย่างน้อย 1 รายการ", notesPlaceholder: "หมายเหตุ...",
       cancelledPo: "ยกเลิกใบสั่งซื้อ", cancelPoQ: "ยกเลิกใบสั่งซื้อนี้หรือไม่?",
       receiveQ: "สต็อกและยอดค้างจะถูกอัปเดต",
+      quickAddProduct: "+ เพิ่มสินค้าใหม่",
+      quickAddSupplier: "+ เพิ่มผู้จำหน่ายใหม่",
+      quickAddProductTitle: "เพิ่มสินค้าด่วน",
+      quickAddSupplierTitle: "เพิ่มผู้จำหน่ายด่วน",
     },
     supplier: {
       title: "ไดเรกทอรีซัพพลายเออร์", addSupplier: "+ เพิ่มซัพพลายเออร์",
@@ -650,6 +665,7 @@ const translations = {
       cash: "ငွေသား", promptpay: "PromptPay", bankTransfer: "ဘဏ်လွှဲ", udhaar: "အကြွေး",
       subtotal: "စုစုပေါင်းခံ", discount: "လျှော့စျေး", vat: "VAT", total: "စုစုပေါင်း",
       transactionComplete: "ငွေပေးငွေယူအောင်မြင်ပါသည်!",
+      quickAddProduct: "+ ပစ္စည်းသစ်အမြန်ထည့်ပါ",
     },
     inventory: {
       title: "စတော့စီမံခန့်ခွဲမှု", stock: "စတော့", purchaseOrders: "ဝယ်ယူမှုမှာယူချက်များ",
@@ -706,6 +722,10 @@ const translations = {
       atLeastOneItem: "အနည်းဆုံးပစ္စည်းတစ်ခုထည့်ပါ", notesPlaceholder: "မှာယူချက်မှတ်စု...",
       cancelledPo: "မှာယူချက်ပယ်ဖျက်ရန်", cancelPoQ: "ဤမှာယူချက်ကိုပယ်ဖျက်မည်လား?",
       receiveQ: "စတော့နှင့် ပေးသွင်းသူအကြွေးမွမ်းမံမည်",
+      quickAddProduct: "+ ပစ္စည်းသစ်ထည့်ပါ",
+      quickAddSupplier: "+ ပေးသွင်းသူသစ်ထည့်ပါ",
+      quickAddProductTitle: "ပစ္စည်းသစ်အမြန်ထည့်ပါ",
+      quickAddSupplierTitle: "ပေးသွင်းသူသစ်အမြန်ထည့်ပါ",
     },
     supplier: {
       title: "ပေးသွင်းသူများနှင့် အကြွေးအကောင့်", addSupplier: "+ ပေးသွင်းသူထည့်ရန်",

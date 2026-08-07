@@ -8,6 +8,8 @@ import { useConfirmStore } from "../stores/confirmStore";
 import { DEFAULT_PACK_SIZE, UDHAAR_MODE, PAYMENT_TERMS } from "../constants";
 import ModalPortal from "./ModalPortal";
 import { useT } from "../lang/translations";
+import QuickAddProductModal from "./QuickAddProductModal";
+import QuickAddSupplierModal from "./QuickAddSupplierModal";
 
 export default function PurchaseOrders({ prefill, onPrefillConsumed }) {
   const lang = useLangStore((s) => s.lang);
@@ -178,6 +180,7 @@ export default function PurchaseOrders({ prefill, onPrefillConsumed }) {
           isDirect={isDirectPurchase}
           onSave={() => { setShowForm(false); onPrefillConsumed?.(); load(); }}
           onCancel={() => { setShowForm(false); onPrefillConsumed?.(); }}
+          onRefreshData={load}
         />
       )}
 
@@ -311,7 +314,7 @@ export default function PurchaseOrders({ prefill, onPrefillConsumed }) {
   );
 }
 
-function PurchaseOrderForm({ initialItems, products, suppliers, orders, paymentModes, lang, isDirect, onSave, onCancel }) {
+function PurchaseOrderForm({ initialItems, products, suppliers, orders, paymentModes, lang, isDirect, onSave, onCancel, onRefreshData }) {
   const tr = useT(lang);
   const [supplierId, setSupplierId] = useState("");
   const [paymentMode, setPaymentMode] = useState("Cash");
@@ -319,6 +322,9 @@ function PurchaseOrderForm({ initialItems, products, suppliers, orders, paymentM
   const [items, setItems] = useState(initialItems && initialItems.length > 0 ? initialItems : [{ productId: "", quantity: 1, costPrice: 0, isPack: false }]);
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  const [showQuickAddSupplier, setShowQuickAddSupplier] = useState(false);
+  const [quickAddProductRowIdx, setQuickAddProductRowIdx] = useState<number | null>(null);
 
   const selectedSupplier = suppliers.find(s => s.id === supplierId);
 
@@ -375,6 +381,20 @@ function PurchaseOrderForm({ initialItems, products, suppliers, orders, paymentM
     setItems(prev => prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev);
   };
 
+  const handleSupplierAdded = (newSup) => {
+    onRefreshData?.();
+    setSupplierId(newSup.id);
+    setShowQuickAddSupplier(false);
+  };
+
+  const handleProductAdded = (newProd) => {
+    onRefreshData?.();
+    if (quickAddProductRowIdx !== null) {
+      updateItem(quickAddProductRowIdx, "productId", newProd.id);
+    }
+    setQuickAddProductRowIdx(null);
+  };
+
   const handleSubmit = async () => {
     if (!supplierId || !selectedSupplier) { alert(tr("purchase.selectFirst")); return; }
     if (submitting) return;
@@ -427,9 +447,31 @@ function PurchaseOrderForm({ initialItems, products, suppliers, orders, paymentM
       
       <div className="input-group" style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
         <div style={{ flex: isDirect ? 2 : 1 }}>
-          <label className="input-label">{tr("purchase.supplier")}</label>
-          <select value={supplierId} onChange={e => { setSupplierId(e.target.value); setItems([{ productId: "", quantity: 1, costPrice: 0, isPack: false }]); }} className="input-field" style={{ fontFamily: "inherit" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <label className="input-label" style={{ marginBottom: 0 }}>{tr("purchase.supplier")}</label>
+            <button
+              type="button"
+              onClick={() => setShowQuickAddSupplier(true)}
+              style={{ background: "none", border: "none", color: "#047857", fontSize: "0.75rem", fontWeight: 700, cursor: "pointer", padding: "0" }}
+            >
+              {tr("purchase.quickAddSupplier")}
+            </button>
+          </div>
+          <select
+            value={supplierId}
+            onChange={e => {
+              if (e.target.value === "__new__") {
+                setShowQuickAddSupplier(true);
+              } else {
+                setSupplierId(e.target.value);
+                setItems([{ productId: "", quantity: 1, costPrice: 0, isPack: false }]);
+              }
+            }}
+            className="input-field"
+            style={{ fontFamily: "inherit", marginTop: "0.25rem" }}
+          >
             <option value="">{tr("purchase.selectSupplier")}</option>
+            <option value="__new__">✨ {tr("purchase.quickAddSupplier")}</option>
             {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </div>
@@ -469,15 +511,40 @@ function PurchaseOrderForm({ initialItems, products, suppliers, orders, paymentM
         </div>
       ) : (
         <div style={styles.itemsSection}>
-          <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "#475569" }}>{tr("purchase.items")}</label>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.25rem" }}>
+            <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "#475569" }}>{tr("purchase.items")}</label>
+          </div>
           {items.map((item, i) => {
             const prod = products.find(p => p.id === item.productId);
             return (
               <div key={i} style={styles.formItemRow}>
-                <select value={item.productId} onChange={e => updateItem(i, "productId", e.target.value)} className="input-field" style={{ flex: 1, fontSize: "0.8rem", padding: "0.4rem" }}>
-                  <option value="">{tr("purchase.selectProduct")}</option>
-                  {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
+                <div style={{ flex: 1, display: "flex", gap: "0.25rem", alignItems: "center" }}>
+                  <select
+                    value={item.productId}
+                    onChange={e => {
+                      if (e.target.value === "__new__") {
+                        setQuickAddProductRowIdx(i);
+                      } else {
+                        updateItem(i, "productId", e.target.value);
+                      }
+                    }}
+                    className="input-field"
+                    style={{ flex: 1, fontSize: "0.8rem", padding: "0.4rem" }}
+                  >
+                    <option value="">{tr("purchase.selectProduct")}</option>
+                    <option value="__new__">✨ {tr("purchase.quickAddProduct")}</option>
+                    {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setQuickAddProductRowIdx(i)}
+                    title={tr("purchase.quickAddProduct")}
+                    className="btn btn-outline"
+                    style={{ padding: "0.3rem 0.55rem", fontSize: "0.75rem", color: "#047857", borderColor: "#a7f3d0", fontWeight: 700 }}
+                  >
+                    +
+                  </button>
+                </div>
                 
                 <input
                   type="number"
@@ -509,7 +576,15 @@ function PurchaseOrderForm({ initialItems, products, suppliers, orders, paymentM
               </div>
             );
           })}
-          <button onClick={addItem} style={{ ...styles.addItemBtn }}>{tr("purchase.addItem")}</button>
+          <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.25rem" }}>
+            <button onClick={addItem} style={{ ...styles.addItemBtn, flex: 1 }}>{tr("purchase.addItem")}</button>
+            <button
+              onClick={() => setQuickAddProductRowIdx(items.length - 1)}
+              style={{ ...styles.addItemBtn, width: "auto", padding: "0.3rem 0.75rem", borderColor: "#a7f3d0", color: "#047857" }}
+            >
+              ✨ {tr("purchase.quickAddProduct")}
+            </button>
+          </div>
         </div>
       )}
 
@@ -524,6 +599,20 @@ function PurchaseOrderForm({ initialItems, products, suppliers, orders, paymentM
         </button>
         <button onClick={onCancel} className="btn btn-outline" style={{ flex: 1 }}>{tr("common.cancel")}</button>
       </div>
+
+      {showQuickAddSupplier && (
+        <QuickAddSupplierModal
+          onClose={() => setShowQuickAddSupplier(false)}
+          onSuccess={handleSupplierAdded}
+        />
+      )}
+
+      {quickAddProductRowIdx !== null && (
+        <QuickAddProductModal
+          onClose={() => setQuickAddProductRowIdx(null)}
+          onSuccess={handleProductAdded}
+        />
+      )}
     </div>
   );
 }

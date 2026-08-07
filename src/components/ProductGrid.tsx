@@ -3,6 +3,9 @@ import { SkeletonCard } from "./Skeleton";
 import { CATEGORIES, DEFAULT_PACK_SIZE } from "../constants";
 import { useLangStore } from "../stores/langStore";
 import { useT } from "../lang/translations";
+import { dbService } from "../firebase";
+import { useDBStore } from "../stores/dbStore";
+import QuickAddProductModal from "./QuickAddProductModal";
 
 export default function ProductGrid({ products, onAddToCart }) {
   const lang = useLangStore((s) => s.lang);
@@ -11,6 +14,7 @@ export default function ProductGrid({ products, onAddToCart }) {
   const [activeCategory, setActiveCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [hoveredId, setHoveredId] = useState(null);
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
 
   // Favorite product IDs persisted in localStorage
   const [favIds, setFavIds] = useState<string[]>(() => {
@@ -155,8 +159,23 @@ export default function ProductGrid({ products, onAddToCart }) {
 
       {/* SEARCH BAR & CATEGORY TABS */}
       <div className="flex-col gap-md" style={{ marginBottom: "1rem" }}>
-        <input type="text" placeholder="🔍 Search products..." value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)} className="input-field" />
+        <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+          <input
+            type="text"
+            placeholder="🔍 Search products..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            className="input-field"
+            style={{ flex: 1 }}
+          />
+          <button
+            onClick={() => setShowQuickAdd(true)}
+            className="btn btn-outline"
+            style={{ padding: "0.5rem 0.75rem", fontSize: "0.78rem", whiteSpace: "nowrap", color: "#047857", borderColor: "#a7f3d0", fontWeight: 700 }}
+          >
+            {tr("pos.quickAddProduct")}
+          </button>
+        </div>
         <div className="cat-tabs">
           {categories.map(cat => (
             <button key={cat} onClick={() => setActiveCategory(cat)}
@@ -168,6 +187,13 @@ export default function ProductGrid({ products, onAddToCart }) {
       {/* PRODUCT GRID */}
       {products.length === 0 ? (
         <SkeletonCard count={8} />
+      ) : getDisplayProducts().length === 0 ? (
+        <div style={{ textAlign: "center", padding: "2rem", color: "#64748b", background: "#f8fafc", borderRadius: "12px", border: "1px dashed #cbd5e1" }}>
+          <p style={{ margin: "0 0 0.75rem 0" }}>No products match "{searchQuery}"</p>
+          <button onClick={() => setShowQuickAdd(true)} className="btn btn-primary" style={{ padding: "0.4rem 0.85rem", fontSize: "0.8rem" }}>
+            ✨ {tr("pos.quickAddProduct")}
+          </button>
+        </div>
       ) : (
         <div className="product-grid">
           {getDisplayProducts().map(p => {
@@ -230,6 +256,24 @@ export default function ProductGrid({ products, onAddToCart }) {
             );
           })}
         </div>
+      )}
+
+      {showQuickAdd && (
+        <QuickAddProductModal
+          initialName={searchQuery}
+          onClose={() => setShowQuickAdd(false)}
+          onSuccess={async (newProd) => {
+            try {
+              const list = await dbService.getProducts();
+              useDBStore.getState().setProducts(list);
+              if (newProd) {
+                onAddToCart(newProd);
+              }
+            } catch (e) {
+              console.error(e);
+            }
+          }}
+        />
       )}
     </div>
   );
